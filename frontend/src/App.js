@@ -1,13 +1,7 @@
 import React, { useState } from "react";
 
 function App() {
-  
-  const [imageCells, setImageCells] = useState({});
-
-  const toggleImageCell = (i) => {
-    setImageCells(prev => ({ ...prev, [i]: !prev[i] }));
-  };
-const rows = 25;
+  const rows = 25;
   const cols = 25;
 
   const [gridArea, setGridArea] = useState({
@@ -17,7 +11,7 @@ const rows = 25;
     height: 500
   });
 
-  const [mode, setMode] = useState(null); // "move" | "resize-br"
+  const [mode, setMode] = useState(null);
 
   const handleMouseMove = (e) => {
     if (mode === "move") {
@@ -28,7 +22,7 @@ const rows = 25;
       }));
     }
 
-    if (mode === "resize-br") {
+    if (mode === "resize") {
       setGridArea(prev => ({
         ...prev,
         width: Math.max(100, prev.width + e.movementX),
@@ -53,7 +47,6 @@ const rows = 25;
           style={{ width: "100%", display: "block" }}
         />
 
-        {/* GRID AREA */}
         <div
           style={{
             position: "absolute",
@@ -75,11 +68,11 @@ const rows = 25;
             }}
           />
 
-          {/* 🔥 RESIZE HANDLE (bottom-right) */}
+          {/* RESIZE */}
           <div
             onMouseDown={(e) => {
               e.stopPropagation();
-              setMode("resize-br");
+              setMode("resize");
             }}
             style={{
               position: "absolute",
@@ -103,7 +96,12 @@ const rows = 25;
             }}
           >
             {Array.from({ length: rows * cols }).map((_, i) => (
-              <div key={i} onClick={() => toggleImageCell(i)} style={{ border: '1px solid rgba(255,0,0,0.3)', backgroundColor: imageCells[i] ? 'rgba(0,0,255,0.5)' : 'transparent', cursor: 'pointer' }}>
+              <div
+                key={i}
+                style={{
+                  border: "1px solid rgba(255,0,0,0.3)"
+                }}
+              />
             ))}
           </div>
 
