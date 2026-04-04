@@ -40,7 +40,7 @@ function App() {
       style={{ display: "flex", justifyContent: "center", userSelect: "none" }}
     >
       <div style={{ position: "relative", width: "800px", maxWidth: "1200px" }}>
-        <h1>TEST 123</h1>
+        
         <img
           src="/grid.png"
           alt="grid"
