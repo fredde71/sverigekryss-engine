@@ -13,7 +13,7 @@ function App() {
   const cols = 25;
 
   const [gridArea, setGridArea] = useState({
-    top: 120,
+    top: 150,
     left: 20,
     width: 1400,
     height: 1400
@@ -160,14 +160,13 @@ if (modeView === "play") {
   
   <div style={{ overflow: "hidden" }}>
     <img
-      src="/grid.png"
-      alt="grid"
-      style={{
-        width: "1400px",
-        display: "block",
-        transform: "translateY(-80px)"
-      }}
-    />
+  src="/grid.png"
+  alt="grid"
+  style={{
+    width: "1400px",
+    display: "block"
+  }}
+/>
   </div>
 
         <div
