@@ -15,8 +15,8 @@ function App() {
   const [gridArea, setGridArea] = useState({
     top: 120,
     left: 20,
-    width: 1000,
-    height: 1000
+    width: 1400,
+    height: 1400
   });
 
   const [mode, setMode] = useState(null);
@@ -159,7 +159,7 @@ if (modeView === "play") {
         <img
           src="/grid.png"
           alt="grid"
-          style={{ width: "1000px", display: "block" }}
+          style={{ width: "1400px", display: "block" }}
         />
 
         <div
