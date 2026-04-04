@@ -13,7 +13,7 @@ function App() {
   const cols = 25;
 
   const [gridArea, setGridArea] = useState({
-    top: 50,
+    top: 120,
     left: 20,
     width: 500,
     height: 500
