@@ -157,12 +157,18 @@ if (modeView === "play") {
 
       {/* CANVAS */}
       <div style={{ position: "relative", width: "1000px" }}>
-        
-        <img
-          src="/grid.png"
-          alt="grid"
-          style={{ width: "1400px", display: "block" }}
-        />
+  
+  <div style={{ height: "800px", overflow: "hidden" }}>
+    <img
+      src="/grid.png"
+      alt="grid"
+      style={{
+        width: "1400px",
+        display: "block",
+        marginTop: "-150px"
+      }}
+    />
+    </div>
 
         <div
           style={{
