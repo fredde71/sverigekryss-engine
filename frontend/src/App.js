@@ -13,7 +13,7 @@ function App() {
   const cols = 25;
 
   const [gridArea, setGridArea] = useState({
-    top: 150,
+    top: 130,
     left: 20,
     width: 1400,
     height: 1400
@@ -164,7 +164,8 @@ if (modeView === "play") {
   alt="grid"
   style={{
     width: "1400px",
-    display: "block"
+    display: "block",
+    marginTop: "-80px"
   }}
 />
   </div>
