@@ -13,10 +13,10 @@ function App() {
   const cols = 25;
 
   const [gridArea, setGridArea] = useState({
-    top: 130,
+    top: 120,
     left: 20,
-    width: 1400,
-    height: 1400
+    width: 500,
+    height: 500
   });
 
   const [mode, setMode] = useState(null);
@@ -111,15 +111,12 @@ if (modeView === "play") {
       onMouseUp={stopDrag}
       style={{
         display: "flex",
-  flexDirection: "row",
-  gap: "20px",
-  padding: "20px",
-  alignItems: "flex-start",
-  userSelect: "none",
-  overflowX: "auto"
+        flexDirection: "row",
+        gap: "20px",
+        padding: "20px",
+        userSelect: "none"
       }}
     >
-      <h1>LIVE TEST</h1>
 
       {/* TOOLBAR */}
       <div style={{
@@ -158,18 +155,12 @@ if (modeView === "play") {
 
       {/* CANVAS */}
       <div style={{ position: "relative", width: "1000px" }}>
-  
-  <div style={{ overflow: "hidden" }}>
-    <img
-  src="/grid.png"
-  alt="grid"
-  style={{
-    width: "1400px",
-    display: "block",
-    marginTop: "-80px"
-  }}
-/>
-  </div>
+        
+        <img
+          src="/grid.png"
+          alt="grid"
+          style={{ width: "100%", display: "block" }}
+        />
 
         <div
           style={{
