@@ -13,7 +13,7 @@ function App() {
   const cols = 25;
 
   const [gridArea, setGridArea] = useState({
-    top: 50,
+    top: 120,
     left: 20,
     width: 500,
     height: 500
@@ -154,7 +154,7 @@ if (modeView === "play") {
       
 
       {/* CANVAS */}
-      <div style={{ position: "relative", width: "800px" }}>
+      <div style={{ position: "relative", width: "1000px" }}>
         
         <img
           src="/grid.png"
