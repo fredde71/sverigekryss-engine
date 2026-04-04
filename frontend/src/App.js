@@ -111,10 +111,12 @@ if (modeView === "play") {
       onMouseUp={stopDrag}
       style={{
         display: "flex",
-        flexDirection: "row",
-        gap: "20px",
-        padding: "20px",
-        userSelect: "none"
+  flexDirection: "row",
+  gap: "20px",
+  padding: "20px",
+  alignItems: "flex-start",
+  userSelect: "none",
+  overflowX: "auto"
       }}
     >
 
