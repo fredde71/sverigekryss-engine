@@ -119,6 +119,7 @@ if (modeView === "play") {
   overflowX: "auto"
       }}
     >
+      <h1>LIVE TEST</h1>
 
       {/* TOOLBAR */}
       <div style={{
