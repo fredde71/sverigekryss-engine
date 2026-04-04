@@ -15,8 +15,8 @@ function App() {
   const [gridArea, setGridArea] = useState({
     top: 120,
     left: 20,
-    width: 700,
-    height: 700
+    width: 1000,
+    height: 1000
   });
 
   const [mode, setMode] = useState(null);
