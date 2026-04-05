@@ -154,7 +154,7 @@ if (modeView === "play") {
       
 
       {/* CANVAS */}
-      <div style={{ position: "relative", width: "1000px", marginTop: "-110px", transform: "scale(1.3)",
+      <div style={{ position: "relative", width: "1000px", marginTop: "-112px", transform: "scale(1.3)",
     transformOrigin: "top left" }}>
         
         <img
