@@ -32,6 +32,24 @@ function App() {
     alert("Template kopierad!");
   };
 
+  // ✅ NY FUNKTION (tillagd)
+  const generateLink = () => {
+    const data = {
+      answers: answers,
+      cellTypes: cellTypes,
+      gridArea: gridArea,
+      rows: rows,
+      cols: cols,
+      image: "/grid.png"
+    };
+
+    const encoded = encodeURIComponent(JSON.stringify(data));
+    const url = `${window.location.origin}/play?data=${encoded}`;
+
+    console.log(url);
+    alert("Länk skapad! Se console.");
+  };
+
 const handleGridClick = (e) => {
   const rect = e.currentTarget.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -67,19 +85,16 @@ if (modeView === "play") {
   setCellTypes(prev => {
     const next = { ...prev };
 
-    // empty tool = alltid ta bort
     if (activeTool === "empty") {
       delete next[index];
       return next;
     }
 
-    // samma tool = toggle bort
     if (prev[index] === activeTool) {
       delete next[index];
       return next;
     }
 
-    // annars sätt ny
     next[index] = activeTool;
     return next;
   });
@@ -148,6 +163,12 @@ if (modeView === "play") {
         <button onClick={exportTemplate}>
           Export Template
         </button>
+
+        {/* ✅ NY KNAPP (tillagd) */}
+        <button onClick={generateLink}>
+          Generera länk
+        </button>
+
         <hr />
 
 </div>
@@ -173,7 +194,6 @@ if (modeView === "play") {
           onClick={handleGridClick}
         >
 
-          {/* MOVE */}
           {modeView === "edit" && (
             <div
               onMouseDown={() => setMode("move")}
@@ -186,7 +206,6 @@ if (modeView === "play") {
             />
           )}
 
-          {/* RESIZE */}
           {modeView === "edit" && (
             <div
               onMouseDown={(e) => {
@@ -205,7 +224,6 @@ if (modeView === "play") {
             />
           )}
 
-          {/* OVERLAY (endast i edit) */}
           {modeView === "edit" && (
             <div
               style={{
@@ -233,7 +251,6 @@ if (modeView === "play") {
             </div>
           )}
 
-          {/* GRID */}
           <div
             style={{
               width: "100%",
@@ -303,15 +320,12 @@ if (activeCell !== null) {
   }
 }
 
-  // PLAY MODE
   if (modeView === "play") {
 
-    // låsta rutor
     if (type === "image" || type === "blocked") {
       return <div key={i} />;
     }
 
-    // skrivbara rutor
     return (
       <input
   key={i}
@@ -349,8 +363,6 @@ onClick={(e) => {
     [i]: val
   }));
 
-  console.log("NEXT REF:", inputRefs.current[i + 1]);
-
   if (val) {
     setTimeout(() => {
   let nextIndex;
@@ -369,8 +381,6 @@ if (direction === "across") {
   }
 }}
 onKeyDown={(e) => {
-
-  // ignorera allt utom piltangenter
   if (!["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) {
     return;
   }
@@ -406,7 +416,6 @@ margin: 0,
     );
   }
 
-  // EDIT MODE (orörd)
   return (
     <div
       key={i}
