@@ -183,7 +183,7 @@ if (modeView === "play") {
   style={{
     width: "1200px",
     display: "block",
-    marginTop: "-109px"
+    marginTop: "-108px"
   }}
 />
 
