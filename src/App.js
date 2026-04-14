@@ -180,7 +180,7 @@ if (modeView === "play") {
         <img
           src="/grid.png"
           alt="grid"
-          style={{ width: "100%", display: "block" }}
+          style={{ width: "1400px", display: "block" }}
         />
 
         <div
