@@ -181,9 +181,9 @@ if (modeView === "play") {
   src="/grid.png"
   alt="grid"
   style={{
-    width: "1300px",
+    width: "1200px",
     display: "block",
-    marginTop: "-107px"
+    marginTop: "-109px"
   }}
 />
 
