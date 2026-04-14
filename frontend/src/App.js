@@ -104,6 +104,19 @@ if (modeView === "play") {
   };
 
   const stopDrag = () => setMode(null);
+  const generateLink = () => {
+  const data = {
+    grid: gridValues,
+    cellTypes: cellTypes,
+    image: "/grid.png"
+  };
+
+  const encoded = encodeURIComponent(JSON.stringify(data));
+  const url = `${window.location.origin}/play?data=${encoded}`;
+
+  console.log(url);
+  alert("Länk skapad! Se console.");
+};
 
   return (
     <div
@@ -148,6 +161,9 @@ if (modeView === "play") {
         <button onClick={exportTemplate}>
           Export Template
         </button>
+        <button onClick={generateLink}>
+  Generera länk
+</button>
         <hr />
 
 </div>
