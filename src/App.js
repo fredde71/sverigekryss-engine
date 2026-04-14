@@ -178,10 +178,14 @@ if (modeView === "play") {
       <div style={{ position: "relative", width: "1000px" }}>
         
         <img
-          src="/grid.png"
-          alt="grid"
-          style={{ width: "1400px", display: "block" }}
-        />
+  src="/grid.png"
+  alt="grid"
+  style={{
+    width: "1400px",
+    display: "block",
+    marginTop: "-92px"
+  }}
+/>
 
         <div
           style={{
