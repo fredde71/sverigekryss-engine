@@ -215,7 +215,7 @@ if (modeView === "play") {
       
 
       {/* CANVAS */}
-      <div style={{ position: "relative", width: gridArea.width }}>
+      <div style={{ position: "relative", width: "1200px", margin: "0 auto" }}>
         
         <img
   src="/grid.png"
