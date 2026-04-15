@@ -119,6 +119,46 @@ if (modeView === "play") {
   };
 
   const stopDrag = () => setMode(null);
+  React.useEffect(() => {
+  const handleKey = (e) => {
+    if (modeView !== "edit") return;
+
+    // Flytta grid (1px precision)
+    if (!e.shiftKey) {
+      if (e.key === "ArrowUp") {
+        setGridArea(prev => ({ ...prev, top: prev.top - 1 }));
+      }
+      if (e.key === "ArrowDown") {
+        setGridArea(prev => ({ ...prev, top: prev.top + 1 }));
+      }
+      if (e.key === "ArrowLeft") {
+        setGridArea(prev => ({ ...prev, left: prev.left - 1 }));
+      }
+      if (e.key === "ArrowRight") {
+        setGridArea(prev => ({ ...prev, left: prev.left + 1 }));
+      }
+    }
+
+    // Resize grid (SHIFT + pilar)
+    if (e.shiftKey) {
+      if (e.key === "ArrowRight") {
+        setGridArea(prev => ({ ...prev, width: prev.width + 1 }));
+      }
+      if (e.key === "ArrowLeft") {
+        setGridArea(prev => ({ ...prev, width: prev.width - 1 }));
+      }
+      if (e.key === "ArrowDown") {
+        setGridArea(prev => ({ ...prev, height: prev.height + 1 }));
+      }
+      if (e.key === "ArrowUp") {
+        setGridArea(prev => ({ ...prev, height: prev.height - 1 }));
+      }
+    }
+  };
+
+  window.addEventListener("keydown", handleKey);
+  return () => window.removeEventListener("keydown", handleKey);
+}, [modeView]);
 
   return (
     <div
