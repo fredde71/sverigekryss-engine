@@ -451,6 +451,7 @@ onKeyDown={(e) => {
     boxSizing: "border-box",
 padding: 0,
 margin: 0,
+backgroundColor: "transparent",
     background: isActiveLine
   ? "rgba(0,150,255,0.15)"
   : "transparent"
