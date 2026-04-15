@@ -40,7 +40,7 @@ function App() {
       gridArea: gridArea,
       rows: rows,
       cols: cols,
-      image: "/grid.png"
+      image: window.location.origin + "/grid.png"
     };
 
     const encoded = encodeURIComponent(JSON.stringify(data));
