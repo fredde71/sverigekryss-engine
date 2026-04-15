@@ -14,10 +14,15 @@ function Play() {
       <div style={{ position: "relative", width: "1000px" }}>
         
         <img
-          src={image}
-          alt="grid"
-          style={{ width: "100%", display: "block" }}
-        />
+  src={image}
+  alt="grid"
+  style={{
+    width: gridArea.width,
+    height: gridArea.height,
+    display: "block",
+    objectFit: "none"
+  }}
+/>
 
         <div
           style={{
