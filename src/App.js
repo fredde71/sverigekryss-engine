@@ -367,7 +367,7 @@ if (activeCell !== null) {
   if (modeView === "play") {
 
     if (type === "image" || type === "blocked") {
-      return <div key={i} />;
+      return null;
     }
 
     return (
