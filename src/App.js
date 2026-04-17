@@ -232,7 +232,8 @@ if (modeView === "play") {
             top: gridArea.top,
             left: gridArea.left,
             width: gridArea.width,
-            height: gridArea.height
+            height: gridArea.height,
+            pointerEvents: modeView === "play" ? "none" : "auto"
           }}
           onClick={handleGridClick}
         >
@@ -452,6 +453,7 @@ onKeyDown={(e) => {
 padding: 0,
 margin: 0,
 backgroundColor: "transparent",
+pointerEvents: "auto",
     background: isActiveLine
   ? "rgba(0,150,255,0.15)"
   : "transparent"
