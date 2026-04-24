@@ -316,6 +316,8 @@ let isActiveLine = false;
 
 if (activeCell !== null) {
 
+  let cellsInWord = [];
+
   if (direction === "across") {
 
     let start = activeCell;
@@ -327,19 +329,17 @@ if (activeCell !== null) {
       start--;
     }
 
-    let end = activeCell;
+    let current = start;
     while (
-      end % cols !== cols - 1 &&
-      cellTypes[end + 1] !== "image" &&
-      cellTypes[end + 1] !== "blocked"
+      current % cols !== cols &&
+      cellTypes[current] !== "image" &&
+      cellTypes[current] !== "blocked"
     ) {
-      end++;
-    }
+      cellsInWord.push(current);
 
-    isActiveLine =
-  Math.floor(i / cols) === Math.floor(activeCell / cols) &&
-  i >= start &&
-  i <= end;
+      if (current % cols === cols - 1) break;
+      current++;
+    }
 
   } else {
 
@@ -352,25 +352,18 @@ if (activeCell !== null) {
       start -= cols;
     }
 
-    let end = activeCell;
+    let current = start;
     while (
-      end + cols < rows * cols &&
-      cellTypes[end + cols] !== "image" &&
-      cellTypes[end + cols] !== "blocked"
+      current < rows * cols &&
+      cellTypes[current] !== "image" &&
+      cellTypes[current] !== "blocked"
     ) {
-      end += cols;
+      cellsInWord.push(current);
+      current += cols;
     }
-    isActiveLine =
-  i % cols === activeCell % cols &&
-  i >= start &&
-  i <= end;
-
-    // 🔥 FIX: kolumnmatch istället för range
-    isActiveLine =
-      i % cols === activeCell % cols &&
-      i >= start &&
-      i <= end;
   }
+
+  isActiveLine = cellsInWord.includes(i);
 }
 
   if (modeView === "play") {
