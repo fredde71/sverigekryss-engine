@@ -56,9 +56,14 @@ const handleGridClick = (e) => {
   const y = e.clientY - rect.top;
 
   const col = Math.floor((x / gridArea.width) * cols);
-  const row = Math.floor((y / gridArea.height) * rows);
+const row = Math.floor((y / gridArea.height) * rows);
 
-  const index = safeRow * cols + safeCol;
+// ✅ lägg till dessa två rader
+const safeCol = Math.max(0, Math.min(cols - 1, col));
+const safeRow = Math.max(0, Math.min(rows - 1, row));
+
+// ✅ använd dessa istället
+const index = safeRow * cols + safeCol;
   // PLAY MODE → sätt riktning
 if (modeView === "play") {
 
