@@ -311,11 +311,6 @@ if (modeView === "play") {
           >
            {Array.from({ length: rows * cols }).map((_, i) => {
   const type = cellTypes[i];
-  const row = Math.floor(i / cols);
-const col = i % cols;
-
-const activeRow = activeCell !== null ? Math.floor(activeCell / cols) : null;
-const activeCol = activeCell !== null ? activeCell % cols : null;
 
 let isActiveLine = false;
 
