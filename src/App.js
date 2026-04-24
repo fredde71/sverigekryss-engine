@@ -320,52 +320,54 @@ const activeCol = activeCell !== null ? activeCell % cols : null;
 let isActiveLine = false;
 
 if (activeCell !== null) {
+
   if (direction === "across") {
-    if (row === activeRow) {
 
-      let start = activeCell;
-      while (
-        start % cols !== 0 &&
-        cellTypes[start - 1] !== "image" &&
-        cellTypes[start - 1] !== "blocked"
-      ) {
-        start--;
-      }
-
-      let end = activeCell;
-      while (
-        end % cols !== cols - 1 &&
-        cellTypes[end + 1] !== "image" &&
-        cellTypes[end + 1] !== "blocked"
-      ) {
-        end++;
-      }
-
-      isActiveLine = i >= start && i <= end;
+    let start = activeCell;
+    while (
+      start % cols !== 0 &&
+      cellTypes[start - 1] !== "image" &&
+      cellTypes[start - 1] !== "blocked"
+    ) {
+      start--;
     }
+
+    let end = activeCell;
+    while (
+      end % cols !== cols - 1 &&
+      cellTypes[end + 1] !== "image" &&
+      cellTypes[end + 1] !== "blocked"
+    ) {
+      end++;
+    }
+
+    isActiveLine = (i >= start && i <= end);
+
   } else {
-    if (col === activeCol) {
 
-      let start = activeCell;
-      while (
-        start - cols >= 0 &&
-        cellTypes[start - cols] !== "image" &&
-        cellTypes[start - cols] !== "blocked"
-      ) {
-        start -= cols;
-      }
-
-      let end = activeCell;
-      while (
-        end + cols < rows * cols &&
-        cellTypes[end + cols] !== "image" &&
-        cellTypes[end + cols] !== "blocked"
-      ) {
-        end += cols;
-      }
-
-      isActiveLine = i >= start && i <= end;
+    let start = activeCell;
+    while (
+      start - cols >= 0 &&
+      cellTypes[start - cols] !== "image" &&
+      cellTypes[start - cols] !== "blocked"
+    ) {
+      start -= cols;
     }
+
+    let end = activeCell;
+    while (
+      end + cols < rows * cols &&
+      cellTypes[end + cols] !== "image" &&
+      cellTypes[end + cols] !== "blocked"
+    ) {
+      end += cols;
+    }
+
+    // 🔥 FIX: kolumnmatch istället för range
+    isActiveLine =
+      i % cols === activeCell % cols &&
+      i >= start &&
+      i <= end;
   }
 }
 
@@ -384,28 +386,37 @@ if (activeCell !== null) {
   setActiveCell(i);
 }}
 onClick={(e) => {
-  // 🔁 klickar du på samma ruta → växla riktning
-  if (activeCell === i) {
-    setDirection(prev => (prev === "across" ? "down" : "across"));
-    return;
-  }
-
   setActiveCell(i);
 
   const right = i + 1;
+  const left = i - 1;
   const down = i + cols;
+  const up = i - cols;
 
   const isRightWritable =
+    right % cols !== 0 &&
     cellTypes[right] !== "image" &&
     cellTypes[right] !== "blocked";
 
+  const isLeftWritable =
+    i % cols !== 0 &&
+    cellTypes[left] !== "image" &&
+    cellTypes[left] !== "blocked";
+
   const isDownWritable =
+    down < rows * cols &&
     cellTypes[down] !== "image" &&
     cellTypes[down] !== "blocked";
 
-  if (isRightWritable) {
+  const isUpWritable =
+    up >= 0 &&
+    cellTypes[up] !== "image" &&
+    cellTypes[up] !== "blocked";
+
+  // 🔥 prioritet: om horisontellt ord finns → across
+  if (isLeftWritable || isRightWritable) {
     setDirection("across");
-  } else if (isDownWritable) {
+  } else if (isUpWritable || isDownWritable) {
     setDirection("down");
   }
 }}
