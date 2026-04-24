@@ -336,7 +336,10 @@ if (activeCell !== null) {
       end++;
     }
 
-    isActiveLine = (i >= start && i <= end);
+    isActiveLine =
+  Math.floor(i / cols) === Math.floor(activeCell / cols) &&
+  i >= start &&
+  i <= end;
 
   } else {
 
@@ -357,6 +360,10 @@ if (activeCell !== null) {
     ) {
       end += cols;
     }
+    isActiveLine =
+  i % cols === activeCell % cols &&
+  i >= start &&
+  i <= end;
 
     // 🔥 FIX: kolumnmatch istället för range
     isActiveLine =
