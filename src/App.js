@@ -384,6 +384,13 @@ if (activeCell !== null) {
   setActiveCell(i);
 }}
 onClick={(e) => {
+  // 🔁 klickar du på samma ruta → växla riktning
+  if (activeCell === i) {
+    setDirection(prev => (prev === "across" ? "down" : "across"));
+    return;
+  }
+
+  setActiveCell(i);
 
   const right = i + 1;
   const down = i + cols;
