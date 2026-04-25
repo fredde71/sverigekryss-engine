@@ -238,7 +238,7 @@ if (modeView === "play") {
             left: gridArea.left,
             width: gridArea.width,
             height: gridArea.height,
-            pointerEvents: modeView === "play" ? "none" : "auto"
+            pointerEvents: "auto"
           }}
           onClick={handleGridClick}
         >
@@ -316,8 +316,6 @@ let isActiveLine = false;
 
 if (activeCell !== null) {
 
-  let cellsInWord = [];
-
   if (direction === "across") {
 
     let start = activeCell;
@@ -329,17 +327,16 @@ if (activeCell !== null) {
       start--;
     }
 
-    let current = start;
+    let end = activeCell;
     while (
-      current % cols !== cols &&
-      cellTypes[current] !== "image" &&
-      cellTypes[current] !== "blocked"
+      end % cols !== cols - 1 &&
+      cellTypes[end + 1] !== "image" &&
+      cellTypes[end + 1] !== "blocked"
     ) {
-      cellsInWord.push(current);
-
-      if (current % cols === cols - 1) break;
-      current++;
+      end++;
     }
+
+    isActiveLine = i >= start && i <= end;
 
   } else {
 
@@ -352,18 +349,20 @@ if (activeCell !== null) {
       start -= cols;
     }
 
-    let current = start;
+    let end = activeCell;
     while (
-      current < rows * cols &&
-      cellTypes[current] !== "image" &&
-      cellTypes[current] !== "blocked"
+      end + cols < rows * cols &&
+      cellTypes[end + cols] !== "image" &&
+      cellTypes[end + cols] !== "blocked"
     ) {
-      cellsInWord.push(current);
-      current += cols;
+      end += cols;
     }
-  }
 
-  isActiveLine = cellsInWord.includes(i);
+    isActiveLine =
+      (i - start) % cols === 0 &&
+      i >= start &&
+      i <= end;
+  }
 }
 
   if (modeView === "play") {
