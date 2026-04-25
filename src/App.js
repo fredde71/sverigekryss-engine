@@ -55,8 +55,8 @@ const handleGridClick = (e) => {
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
 
-  const col = Math.floor((x / gridArea.width) * cols);
-const row = Math.floor((y / gridArea.height) * rows);
+const col = Math.floor((x / rect.width) * cols);
+const row = Math.floor((y / rect.height) * rows);
 
 // ✅ lägg till dessa två rader
 const safeCol = Math.max(0, Math.min(cols - 1, col));
