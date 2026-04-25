@@ -231,13 +231,13 @@ if (modeView === "play") {
   }}
 />
 
-        <div
+ <div
   style={{
     position: "absolute",
-    top: modeView === "edit" ? gridArea.top : 0,
-    left: modeView === "edit" ? gridArea.left : 0,
-    width: modeView === "edit" ? gridArea.width : "100%",
-    height: modeView === "edit" ? gridArea.height : "100%",
+    top: gridArea.top,
+    left: gridArea.left,
+    width: gridArea.width,
+    height: gridArea.height,
     pointerEvents: "auto"
   }}
   onClick={handleGridClick}
