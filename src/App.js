@@ -500,6 +500,8 @@ pointerEvents: "auto",
     );
   }
 
+// EDIT MODE
+if (modeView === "edit") {
   return (
     <div
       key={i}
@@ -509,6 +511,19 @@ pointerEvents: "auto",
       }}
     />
   );
+}
+
+// PLAY MODE (transparent fallback)
+return (
+  <div
+    key={i}
+    style={{
+      width: "100%",
+      height: "100%",
+      backgroundColor: "transparent"
+    }}
+  />
+);
 })}
           </div>
 
