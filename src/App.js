@@ -367,9 +367,30 @@ if (activeCell !== null) {
 
   if (modeView === "play") {
 
-    if (type === "image" || type === "blocked") {
-      return null;
-    }
+    if (type === "blocked") {
+  return (
+    <div
+      key={i}
+      style={{
+        width: "100%",
+        height: "100%",
+        backgroundColor: "black"
+      }}
+    />
+  );
+}
+
+if (type === "image") {
+  return (
+    <div
+      key={i}
+      style={{
+        width: "100%",
+        height: "100%"
+      }}
+    />
+  );
+}
 
     return (
       <input
