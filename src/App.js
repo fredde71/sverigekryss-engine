@@ -8,6 +8,32 @@ function App() {
   const [activeCell, setActiveCell] = useState(null);
   const [answers, setAnswers] = useState({});
   const [direction, setDirection] = useState("across"); // across | down
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const data = params.get("data");
+
+    if (!data) return;
+
+    try {
+      const parsed = JSON.parse(decodeURIComponent(data));
+
+      setCellTypes(parsed.cellTypes || {});
+      setAnswers(parsed.answers || {});
+
+      // 🔥 viktigt: ignorera edit-position
+      setGridArea({
+        top: 0,
+        left: 0,
+        width: 1200,
+        height: 1200
+      });
+
+      setModeView("play");
+
+    } catch (err) {
+      console.error("Fel vid parsing av URL-data", err);
+    }
+  }, []);
   const inputRefs = React.useRef([]);
   const rows = 25;
   const cols = 25;
