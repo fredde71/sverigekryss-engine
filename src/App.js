@@ -299,7 +299,7 @@ if (modeView === "play") {
             />
           )}
 
-          {modeView === "edit" && (
+          {modeView === "edit" && !window.location.search.includes("data=") && (
             <div
               style={{
                 position: "absolute",
