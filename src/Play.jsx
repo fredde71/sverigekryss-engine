@@ -16,7 +16,7 @@ return (
     <div style={{ position: "relative", width: "1200px", margin: "0 auto" }}>
       
       <img
-        src={image}
+        src="/grid.png"
         alt="grid"
         style={{
           width: "1200px",
