@@ -5,7 +5,7 @@ function Play() {
   const query = new URLSearchParams(useLocation().search);
   const data = JSON.parse(decodeURIComponent(query.get("data")));
 
-  const { cellTypes, rows, cols, image } = data;
+  const { cellTypes, rows, cols, } = data;
 
   const [answers, setAnswers] = useState({});
 
