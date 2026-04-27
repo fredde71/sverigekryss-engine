@@ -77,7 +77,7 @@ function App() {
   };
 
   const encoded = encodeURIComponent(JSON.stringify(data));
-  const url = `${window.location.origin}/play?data=${encoded}`;
+  const url = `${window.location.origin}/?data=${encoded}`;
 
   console.log(url);
   alert("Länk skapad! Se console.");
