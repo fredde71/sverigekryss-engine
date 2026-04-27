@@ -272,7 +272,7 @@ if (modeView === "play") {
     left: gridArea.left,
     width: gridArea.width,
     height: gridArea.height,
-    pointerEvents: "auto"
+    pointerEvents: modeView === "play" ? "none" : "auto"
   }}
   onClick={handleGridClick}
 >
@@ -307,7 +307,7 @@ if (modeView === "play") {
             />
           )}
 
-          {modeView === "edit" && !window.location.search.includes("data=") && (
+          {modeView === "edit" && (
             <div
               style={{
                 position: "absolute",
