@@ -60,21 +60,28 @@ function App() {
 
   // ✅ NY FUNKTION (tillagd)
   const generateLink = () => {
-    const data = {
-      answers: answers,
-      cellTypes: cellTypes,
-      gridArea: gridArea,
-      rows: rows,
-      cols: cols,
-      image: window.location.origin + "/grid.png"
-    };
 
-    const encoded = encodeURIComponent(JSON.stringify(data));
-    const url = `${window.location.origin}/play?data=${encoded}`;
+  // ✅ SKAPA FULLT GRID
+  const fullCellTypes = {};
 
-    console.log(url);
-    alert("Länk skapad! Se console.");
+  for (let i = 0; i < rows * cols; i++) {
+    fullCellTypes[i] = cellTypes[i] || "empty";
+  }
+
+  const data = {
+    answers: answers,
+    cellTypes: fullCellTypes, // 🔥 ändrad rad
+    rows: rows,
+    cols: cols,
+    image: "/grid.png"
   };
+
+  const encoded = encodeURIComponent(JSON.stringify(data));
+  const url = `${window.location.origin}/play?data=${encoded}`;
+
+  console.log(url);
+  alert("Länk skapad! Se console.");
+};
 
 const handleGridClick = (e) => {
   const rect = e.currentTarget.getBoundingClientRect();
@@ -400,7 +407,7 @@ if (activeCell !== null) {
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "transparant"
+        backgroundColor: "transparent"
       }}
     />
   );
@@ -540,16 +547,8 @@ if (modeView === "edit") {
 }
 
 // PLAY MODE (transparent fallback)
-return (
-  <div
-    key={i}
-    style={{
-      width: "100%",
-      height: "100%",
-      backgroundColor: "transparent"
-    }}
-  />
-);
+return null;
+
 })}
           </div>
 
