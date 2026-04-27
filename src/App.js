@@ -212,6 +212,7 @@ if (modeView === "play") {
     >
 
       {/* TOOLBAR */}
+      {!window.location.search.includes("data=") && (
       <div style={{
         width: "160px",
         background: "#f5f5f5",
@@ -250,7 +251,7 @@ if (modeView === "play") {
         <hr />
 
 </div>
-      
+      )} 
 
       {/* CANVAS */}
       <div style={{ position: "relative", width: "1200px", margin: "0 auto" }}>
