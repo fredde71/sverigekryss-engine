@@ -272,9 +272,9 @@ if (modeView === "play") {
     left: gridArea.left,
     width: gridArea.width,
     height: gridArea.height,
-    pointerEvents: modeView === "play" ? "none" : "auto"
+    pointerEvents: "auto"
   }}
-  onClick={handleGridClick}
+  onClick={modeView === "edit" ? handleGridClick : undefined}
 >
 
           {modeView === "edit" && (
