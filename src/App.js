@@ -2,6 +2,7 @@ import React, { useState } from "react";
 
 function App() {
 
+  const isSharedView = window.location.search.includes("data=");
   const [activeTool, setActiveTool] = useState("image");
   const [modeView, setModeView] = useState("edit"); // edit | play
   const [cellTypes, setCellTypes] = useState({});
