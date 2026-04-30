@@ -277,7 +277,7 @@ if (modeView === "play") {
   onClick={modeView === "edit" ? handleGridClick : undefined}
 >
 
-          {modeView === "edit" && (
+          {modeView === "edit" && !isSharedView && (
             <div
               onMouseDown={() => setMode("move")}
               style={{
@@ -289,7 +289,7 @@ if (modeView === "play") {
             />
           )}
 
-          {modeView === "edit" && (
+          {modeView === "edit" && !isSharedView && (
             <div
               onMouseDown={(e) => {
                 e.stopPropagation();
@@ -307,7 +307,7 @@ if (modeView === "play") {
             />
           )}
 
-          {modeView === "edit" && (
+          {modeView === "edit" && !isSharedView && (
             <div
               style={{
                 position: "absolute",
