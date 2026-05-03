@@ -383,7 +383,7 @@ if (activeCell !== null) {
       startD - cols >= 0 &&
       cellTypes[startD - cols] !== "image" &&
       cellTypes[startD - cols] !== "blocked" &&
-      cellTypes[stratD - cols] !== "double"
+      cellTypes[startD - cols] !== "double"
     ) startD -= cols;
 
     let endD = activeCell;
