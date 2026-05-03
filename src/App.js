@@ -407,12 +407,6 @@ if (activeCell !== null) {
     if (direction === "across") {
 
       let start = activeCell;
-      while (
-        start % cols !== 0 &&
-        cellTypes[start - 1] !== "image" &&
-        cellTypes[start - 1] !== "blocked" &&
-        cellTypes[start - 1] !== "double"
-      ) start--;
 
       let end = activeCell;
       while (
@@ -427,12 +421,6 @@ if (activeCell !== null) {
     } else {
 
       let start = activeCell;
-      while (
-        start - cols >= 0 &&
-        cellTypes[start - cols] !== "image" &&
-        cellTypes[start - cols] !== "blocked" &&
-        cellTypes[start - cols] !== "double"
-      ) start -= cols;
 
       let end = activeCell;
       while (
@@ -483,9 +471,12 @@ if (type === "double") {
       key={i}
       onClick={() => {
         setActiveCell(i);
-        setDirection(prev =>
-          prev === "across" ? "down" : "across"
-        );
+     setDirection(prev => {
+  if (prev === "across") {
+    return "down";
+  }
+  return "across";
+});
       }}
       style={{
         width: "100%",
@@ -509,21 +500,13 @@ onClick={(e) => {
   setActiveCell(i);
 
   const right = i + 1;
-  const left = i - 1;
   const down = i + cols;
-  const up = i - cols;
-
+ 
   const isRightWritable =
-    right % cols !== 0 &&
-    cellTypes[right] !== "image" &&
-    cellTypes[right] !== "blocked" &&
-    cellTypes[right] !== "double";
-
-  const isLeftWritable =
-    i % cols !== 0 &&
-    cellTypes[left] !== "image" &&
-    cellTypes[left] !== "blocked" &&
-    cellTypes[left] !== "double";
+  right % cols !== 0 &&
+  cellTypes[right] !== "image" &&
+  cellTypes[right] !== "blocked" &&
+  cellTypes[right] !== "double";
 
   const isDownWritable =
     down < rows * cols &&
@@ -531,16 +514,11 @@ onClick={(e) => {
     cellTypes[down] !== "blocked" &&
     cellTypes[down] !== "double";
 
-  const isUpWritable =
-    up >= 0 &&
-    cellTypes[up] !== "image" &&
-    cellTypes[up] !== "blocked" &&
-    cellTypes[up] !== "double";
-
   // 🔥 prioritet: om horisontellt ord finns → across
-  if (isLeftWritable || isRightWritable) {
+  if (activeCell === null) {
+  if (isRightWritable) {
     setDirection("across");
-  } else if (isUpWritable || isDownWritable) {
+  } else if (isDownWritable) {
     setDirection("down");
   }
 }}
@@ -559,34 +537,50 @@ onClick={(e) => {
   let nextIndex;
 
 if (direction === "across") {
-  nextIndex = i + 1;
-} else {
-  nextIndex = i + cols;
-}
-  const next = document.querySelector(`[data-index="${nextIndex}"]`);
+  const next = i + 1;
 
-  if (next) {
-    next.focus();
+  if (
+    next % cols !== 0 &&
+    cellTypes[next] !== "image" &&
+    cellTypes[next] !== "blocked" &&
+    cellTypes[next] !== "double"
+  ) {
+    nextIndex = next;
   }
+
+} else {
+
+  const next = i + cols;
+
+  if (
+    next < rows * cols &&
+    cellTypes[next] !== "image" &&
+    cellTypes[next] !== "blocked" &&
+    cellTypes[next] !== "double"
+  ) {
+    nextIndex = next;
+  }
+}
+ const nextInput = document.querySelector(`[data-index="${nextIndex}"]`);
+
+if (nextInput) {
+  nextInput.focus();
+}
 }, 0);
   }
 }}
 onKeyDown={(e) => {
-  if (!["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) {
-    return;
-  }
+  if (!["ArrowRight", "ArrowDown"].includes(e.key)) return;
 
   e.preventDefault();
 
   let nextIndex = null;
 
   if (e.key === "ArrowRight") nextIndex = i + 1;
-  if (e.key === "ArrowLeft") nextIndex = i - 1;
   if (e.key === "ArrowDown") nextIndex = i + cols;
-  if (e.key === "ArrowUp") nextIndex = i - cols;
 
-  const next = document.querySelector(`[data-index="${nextIndex}"]`);
-  if (next) next.focus();
+  const nextInput = document.querySelector(`[data-index="${nextIndex}"]`);
+  if (nextInput) nextInput.focus();
 }}
   style={{
     width: "100%",
