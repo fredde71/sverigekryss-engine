@@ -106,11 +106,13 @@ if (modeView === "play") {
 
   const isRightWritable =
     cellTypes[right] !== "image" &&
-    cellTypes[right] !== "blocked";
+    cellTypes[right] !== "blocked" &&
+    cellTypes[right] !== "double";
 
   const isDownWritable =
     cellTypes[down] !== "image" &&
-    cellTypes[down] !== "blocked";
+    cellTypes[down] !== "blocked" &&
+    cellTypes[down] !== "double";
 
   if (isRightWritable) {
     setDirection("across");
@@ -363,14 +365,16 @@ if (activeCell !== null) {
     while (
       startA % cols !== 0 &&
       cellTypes[startA - 1] !== "image" &&
-      cellTypes[startA - 1] !== "blocked"
+      cellTypes[startA - 1] !== "blocked" &&
+      cellTypes[startA - 1] !== "double"
     ) startA--;
 
     let endA = activeCell;
     while (
       endA % cols !== cols - 1 &&
       cellTypes[endA + 1] !== "image" &&
-      cellTypes[endA + 1] !== "blocked"
+      cellTypes[endA + 1] !== "blocked" &&
+      cellTypes[endA + 1] !== "double"
     ) endA++;
 
     // DOWN
@@ -378,14 +382,16 @@ if (activeCell !== null) {
     while (
       startD - cols >= 0 &&
       cellTypes[startD - cols] !== "image" &&
-      cellTypes[startD - cols] !== "blocked"
+      cellTypes[startD - cols] !== "blocked" &&
+      cellTypes[stratD - cols] !== "double"
     ) startD -= cols;
 
     let endD = activeCell;
     while (
       endD + cols < rows * cols &&
       cellTypes[endD + cols] !== "image" &&
-      cellTypes[endD + cols] !== "blocked"
+      cellTypes[endD + cols] !== "blocked" &&
+      cellTypes[endD + cols] !== "double"
     ) endD += cols;
 
     const acrossActive = i >= startA && i <= endA;
@@ -404,14 +410,16 @@ if (activeCell !== null) {
       while (
         start % cols !== 0 &&
         cellTypes[start - 1] !== "image" &&
-        cellTypes[start - 1] !== "blocked"
+        cellTypes[start - 1] !== "blocked" &&
+        cellTypes[start - 1] !== "double"
       ) start--;
 
       let end = activeCell;
       while (
         end % cols !== cols - 1 &&
         cellTypes[end + 1] !== "image" &&
-        cellTypes[end + 1] !== "blocked"
+        cellTypes[end + 1] !== "blocked" &&
+        cellTypes[end + 1] !== "double"
       ) end++;
 
       isActiveLine = i >= start && i <= end;
@@ -422,14 +430,16 @@ if (activeCell !== null) {
       while (
         start - cols >= 0 &&
         cellTypes[start - cols] !== "image" &&
-        cellTypes[start - cols] !== "blocked"
+        cellTypes[start - cols] !== "blocked" &&
+        cellTypes[start - cols] !== "double"
       ) start -= cols;
 
       let end = activeCell;
       while (
         end + cols < rows * cols &&
         cellTypes[end + cols] !== "image" &&
-        cellTypes[end + cols] !== "blocked"
+        cellTypes[end + cols] !== "blocked" &&
+        cellTypes[end + cols] !== "double"
       ) end += cols;
 
       isActiveLine =
@@ -480,7 +490,7 @@ if (type === "double") {
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "rgba(255,0,0,0.2)",
+        backgroundColor: "transparent",
         cursor: "pointer"
       }}
     />
@@ -506,22 +516,26 @@ onClick={(e) => {
   const isRightWritable =
     right % cols !== 0 &&
     cellTypes[right] !== "image" &&
-    cellTypes[right] !== "blocked";
+    cellTypes[right] !== "blocked" &&
+    cellTypes[right] !== "double";
 
   const isLeftWritable =
     i % cols !== 0 &&
     cellTypes[left] !== "image" &&
-    cellTypes[left] !== "blocked";
+    cellTypes[left] !== "blocked" &&
+    cellTypes[left] !== "double";
 
   const isDownWritable =
     down < rows * cols &&
     cellTypes[down] !== "image" &&
-    cellTypes[down] !== "blocked";
+    cellTypes[down] !== "blocked" &&
+    cellTypes[down] !== "double";
 
   const isUpWritable =
     up >= 0 &&
     cellTypes[up] !== "image" &&
-    cellTypes[up] !== "blocked";
+    cellTypes[up] !== "blocked" &&
+    cellTypes[up] !== "double";
 
   // 🔥 prioritet: om horisontellt ord finns → across
   if (isLeftWritable || isRightWritable) {
