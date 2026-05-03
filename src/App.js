@@ -230,6 +230,7 @@ if (modeView === "play") {
 
         <button onClick={() => setActiveTool("image")}>Image</button><br /><br />
         <button onClick={() => setActiveTool("blocked")}>Blocked</button><br /><br />
+        <button onClick={() => setActiveTool("double")}>Double clue</button><br /><br />
         <button onClick={() => setActiveTool("empty")}>Empty</button><br /><br />
 
         <hr />
@@ -324,11 +325,13 @@ if (modeView === "play") {
                   key={i}
                   style={{
                     backgroundColor:
-                      cellTypes[i] === "image"
-                        ? "rgba(0,120,255,0.3)"
-                        : cellTypes[i] === "blocked"
-                        ? "rgba(0,0,0,0.4)"
-                        : "transparent"
+  cellTypes[i] === "image"
+    ? "rgba(0,120,255,0.3)"
+    : cellTypes[i] === "blocked"
+    ? "rgba(0,0,0,0.4)"
+    : cellTypes[i] === "double"
+    ? "rgba(255,0,0,0.3)"
+    : "transparent"
                   }}
                 />
               ))}
@@ -351,52 +354,90 @@ let isActiveLine = false;
 
 if (activeCell !== null) {
 
-  if (direction === "across") {
+  const isDouble = cellTypes[activeCell] === "double";
 
-    let start = activeCell;
+  if (isDouble) {
+
+    // ACROSS
+    let startA = activeCell;
     while (
-      start % cols !== 0 &&
-      cellTypes[start - 1] !== "image" &&
-      cellTypes[start - 1] !== "blocked"
-    ) {
-      start--;
-    }
+      startA % cols !== 0 &&
+      cellTypes[startA - 1] !== "image" &&
+      cellTypes[startA - 1] !== "blocked"
+    ) startA--;
 
-    let end = activeCell;
+    let endA = activeCell;
     while (
-      end % cols !== cols - 1 &&
-      cellTypes[end + 1] !== "image" &&
-      cellTypes[end + 1] !== "blocked"
-    ) {
-      end++;
-    }
+      endA % cols !== cols - 1 &&
+      cellTypes[endA + 1] !== "image" &&
+      cellTypes[endA + 1] !== "blocked"
+    ) endA++;
 
-    isActiveLine = i >= start && i <= end;
+    // DOWN
+    let startD = activeCell;
+    while (
+      startD - cols >= 0 &&
+      cellTypes[startD - cols] !== "image" &&
+      cellTypes[startD - cols] !== "blocked"
+    ) startD -= cols;
+
+    let endD = activeCell;
+    while (
+      endD + cols < rows * cols &&
+      cellTypes[endD + cols] !== "image" &&
+      cellTypes[endD + cols] !== "blocked"
+    ) endD += cols;
+
+    const acrossActive = i >= startA && i <= endA;
+    const downActive =
+      (i - startD) % cols === 0 &&
+      i >= startD &&
+      i <= endD;
+
+    isActiveLine = acrossActive || downActive;
 
   } else {
 
-    let start = activeCell;
-    while (
-      start - cols >= 0 &&
-      cellTypes[start - cols] !== "image" &&
-      cellTypes[start - cols] !== "blocked"
-    ) {
-      start -= cols;
+    if (direction === "across") {
+
+      let start = activeCell;
+      while (
+        start % cols !== 0 &&
+        cellTypes[start - 1] !== "image" &&
+        cellTypes[start - 1] !== "blocked"
+      ) start--;
+
+      let end = activeCell;
+      while (
+        end % cols !== cols - 1 &&
+        cellTypes[end + 1] !== "image" &&
+        cellTypes[end + 1] !== "blocked"
+      ) end++;
+
+      isActiveLine = i >= start && i <= end;
+
+    } else {
+
+      let start = activeCell;
+      while (
+        start - cols >= 0 &&
+        cellTypes[start - cols] !== "image" &&
+        cellTypes[start - cols] !== "blocked"
+      ) start -= cols;
+
+      let end = activeCell;
+      while (
+        end + cols < rows * cols &&
+        cellTypes[end + cols] !== "image" &&
+        cellTypes[end + cols] !== "blocked"
+      ) end += cols;
+
+      isActiveLine =
+        (i - start) % cols === 0 &&
+        i >= start &&
+        i <= end;
     }
 
-    let end = activeCell;
-    while (
-      end + cols < rows * cols &&
-      cellTypes[end + cols] !== "image" &&
-      cellTypes[end + cols] !== "blocked"
-    ) {
-      end += cols;
-    }
-
-    isActiveLine =
-      (i - start) % cols === 0 &&
-      i >= start &&
-      i <= end;
   }
 }
 
@@ -422,6 +463,25 @@ if (type === "image") {
       style={{
         width: "100%",
         height: "100%"
+      }}
+    />
+  );
+}
+if (type === "double") {
+  return (
+    <div
+      key={i}
+      onClick={() => {
+        setActiveCell(i);
+        setDirection(prev =>
+          prev === "across" ? "down" : "across"
+        );
+      }}
+      style={{
+        width: "100%",
+        height: "100%",
+        backgroundColor: "rgba(255,0,0,0.2)",
+        cursor: "pointer"
       }}
     />
   );
