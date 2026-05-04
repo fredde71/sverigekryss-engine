@@ -520,6 +520,7 @@ onClick={(e) => {
     setDirection("across");
   } else if (isDownWritable) {
     setDirection("down");
+    }
   }
 }}
   maxLength={1}
