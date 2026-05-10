@@ -1,4 +1,9 @@
+import { getActiveCells } from "./engine/activeLine";
 import React, { useState } from "react";
+import GridCell from "./components/GridCell";
+import EditCell from "./components/EditCell";
+import PlayCell from "./components/PlayCell";
+import { getNextCell } from "./engine/navigation";
 
 function App() {
 
@@ -201,6 +206,14 @@ if (modeView === "play") {
   return () => window.removeEventListener("keydown", handleKey);
 }, [modeView]);
 
+const activeCells = getActiveCells({
+  activeCell,
+  direction,
+  cellTypes,
+  cols,
+  rows
+});
+
   return (
     <div
       onMouseMove={handleMouseMove}
@@ -352,98 +365,13 @@ if (modeView === "play") {
            {Array.from({ length: rows * cols }).map((_, i) => {
   const type = cellTypes[i];
 
-let isActiveLine = false;
-
-if (activeCell !== null) {
-
-  const isDouble = cellTypes[activeCell] === "double";
-
-  if (isDouble) {
-
-    // ACROSS
-    let startA = activeCell;
-    while (
-      startA % cols !== 0 &&
-      cellTypes[startA - 1] !== "image" &&
-      cellTypes[startA - 1] !== "blocked" &&
-      cellTypes[startA - 1] !== "double"
-    ) startA--;
-
-    let endA = activeCell;
-    while (
-      endA % cols !== cols - 1 &&
-      cellTypes[endA + 1] !== "image" &&
-      cellTypes[endA + 1] !== "blocked" &&
-      cellTypes[endA + 1] !== "double"
-    ) endA++;
-
-    // DOWN
-    let startD = activeCell;
-    while (
-      startD - cols >= 0 &&
-      cellTypes[startD - cols] !== "image" &&
-      cellTypes[startD - cols] !== "blocked" &&
-      cellTypes[startD - cols] !== "double"
-    ) startD -= cols;
-
-    let endD = activeCell;
-    while (
-      endD + cols < rows * cols &&
-      cellTypes[endD + cols] !== "image" &&
-      cellTypes[endD + cols] !== "blocked" &&
-      cellTypes[endD + cols] !== "double"
-    ) endD += cols;
-
-    const acrossActive = i >= startA && i <= endA;
-    const downActive =
-      (i - startD) % cols === 0 &&
-      i >= startD &&
-      i <= endD;
-
-    isActiveLine = acrossActive || downActive;
-
-  } else {
-
-    if (direction === "across") {
-
-      let start = activeCell;
-
-      let end = activeCell;
-      while (
-        end % cols !== cols - 1 &&
-        cellTypes[end + 1] !== "image" &&
-        cellTypes[end + 1] !== "blocked" &&
-        cellTypes[end + 1] !== "double"
-      ) end++;
-
-      isActiveLine = i >= start && i <= end;
-
-    } else {
-
-      let start = activeCell;
-
-      let end = activeCell;
-      while (
-        end + cols < rows * cols &&
-        cellTypes[end + cols] !== "image" &&
-        cellTypes[end + cols] !== "blocked" &&
-        cellTypes[end + cols] !== "double"
-      ) end += cols;
-
-      isActiveLine =
-        (i - start) % cols === 0 &&
-        i >= start &&
-        i <= end;
-    }
-
-  }
-}
+const isActiveLine = activeCells.has(i);
 
   if (modeView === "play") {
 
     if (type === "blocked") {
   return (
-    <div
+    <PlayCell
       key={i}
       style={{
         width: "100%",
@@ -456,7 +384,7 @@ if (activeCell !== null) {
 
 if (type === "image") {
   return (
-    <div
+    <PlayCell
       key={i}
       style={{
         width: "100%",
@@ -467,7 +395,7 @@ if (type === "image") {
 }
 if (type === "double") {
   return (
-    <div
+    <PlayCell
       key={i}
       onClick={() => {
         setActiveCell(i);
@@ -491,6 +419,7 @@ if (type === "double") {
     return (
       <input
   key={i}
+  ref={(el) => (inputRefs.current[i] = el)}
   data-index={i}
   onFocus={(e) => {
   e.target.select();
@@ -515,12 +444,13 @@ onClick={(e) => {
     cellTypes[down] !== "double";
 
   // 🔥 prioritet: om horisontellt ord finns → across
-  if (activeCell === null) {
-  if (isRightWritable) {
-    setDirection("across");
-  } else if (isDownWritable) {
-    setDirection("down");
-    }
+  if (isRightWritable && isDownWritable) {
+  // dubbelruta → toggla
+  setDirection(prev => prev === "across" ? "down" : "across");
+} else if (isRightWritable) {
+  setDirection("across");
+} else if (isDownWritable) {
+  setDirection("down");
   }
 }}
   maxLength={1}
@@ -535,34 +465,14 @@ onClick={(e) => {
 
   if (val) {
     setTimeout(() => {
-  let nextIndex;
-
-if (direction === "across") {
-  const next = i + 1;
-
-  if (
-    next % cols !== 0 &&
-    cellTypes[next] !== "image" &&
-    cellTypes[next] !== "blocked" &&
-    cellTypes[next] !== "double"
-  ) {
-    nextIndex = next;
-  }
-
-} else {
-
-  const next = i + cols;
-
-  if (
-    next < rows * cols &&
-    cellTypes[next] !== "image" &&
-    cellTypes[next] !== "blocked" &&
-    cellTypes[next] !== "double"
-  ) {
-    nextIndex = next;
-  }
-}
- const nextInput = document.querySelector(`[data-index="${nextIndex}"]`);
+  const nextIndex = getNextCell({
+  currentIndex: i,
+  direction,
+  cols,
+  rows,
+  cellTypes
+});
+ const nextInput = inputRefs.current[nextIndex];
 
 if (nextInput) {
   nextInput.focus();
@@ -571,7 +481,14 @@ if (nextInput) {
   }
 }}
 onKeyDown={(e) => {
-  if (!["ArrowRight", "ArrowDown"].includes(e.key)) return;
+  if (
+  ![
+    "ArrowRight",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowUp"
+  ].includes(e.key)
+) return;
 
   e.preventDefault();
 
@@ -579,6 +496,8 @@ onKeyDown={(e) => {
 
   if (e.key === "ArrowRight") nextIndex = i + 1;
   if (e.key === "ArrowDown") nextIndex = i + cols;
+  if (e.key === "ArrowLeft") nextIndex = i - 1;
+  if (e.key === "ArrowUp") nextIndex = i - cols;
 
   const nextInput = document.querySelector(`[data-index="${nextIndex}"]`);
   if (nextInput) nextInput.focus();
@@ -607,13 +526,11 @@ pointerEvents: "auto",
 // EDIT MODE
 if (modeView === "edit") {
   return (
-    <div
-      key={i}
-      ref={(el) => (inputRefs.current[i] = el)}
-      style={{
-        border: "1px solid rgba(0,0,0,0.15)"
-      }}
-    />
+    <EditCell
+  key={i}
+  ref={(el) => (inputRefs.current[i] = el)}
+  isEdit
+/>
   );
 }
 
