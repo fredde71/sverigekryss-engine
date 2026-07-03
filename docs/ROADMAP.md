@@ -154,6 +154,12 @@ Första TemplateCanvas-steget är genomfört:
 - App.js äger fortsatt mode/workflow
 - framtida Editor-ownership är separat
 
+Första Editor ownership-steget är genomfört:
+
+- EditorViewport äger editor grid placement interaction
+- App.js äger fortsatt gridArea state och workflow
+- Runtime ownership ändrades inte
+
 Kvarvarande App.js-arbete ska inte flytta runtime state tillbaka till App.js.
 
 ---

@@ -8,7 +8,6 @@ import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import RuntimeLayer from "./runtime/RuntimeLayer";
 import TemplateCanvas from "./template/TemplateCanvas";
-import { moveGridArea } from "./engine/gridArea";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -83,7 +82,6 @@ useEffect(() => {
     height: 1200
   });
 
-  const [mode, setMode] = useState(null);
   const [imageSrc, setImageSrc] = useState("/grid.png");
 
   const handleImageUpload = async (e) => {
@@ -247,27 +245,6 @@ if (modeView === "play") {
 });
 };
 
-  const handleMouseMove = (e) => {
-    if (mode === "move") {
-      setGridArea(
-        prev => moveGridArea(
-  prev,
-  e.movementX,
-  e.movementY
-)
-      );
-    }
-
-    if (mode === "resize") {
-      setGridArea(prev => ({
-        ...prev,
-        width: Math.max(100, prev.width + e.movementX),
-        height: Math.max(100, prev.height + e.movementY)
-      }));
-    }
-  };
-
-  const stopDrag = () => setMode(null);
   const createGrid = () => {
 
   setRows(pendingRows);
@@ -276,51 +253,9 @@ if (modeView === "play") {
   setCellTypes({});
 
 };
-  React.useEffect(() => {
-  const handleKey = (e) => {
-    if (modeView !== "edit") return;
-
-    // Flytta grid (1px precision)
-    if (!e.shiftKey) {
-      if (e.key === "ArrowUp") {
-        setGridArea(prev => ({ ...prev, top: prev.top - 1 }));
-      }
-      if (e.key === "ArrowDown") {
-        setGridArea(prev => ({ ...prev, top: prev.top + 1 }));
-      }
-      if (e.key === "ArrowLeft") {
-        setGridArea(prev => ({ ...prev, left: prev.left - 1 }));
-      }
-      if (e.key === "ArrowRight") {
-        setGridArea(prev => ({ ...prev, left: prev.left + 1 }));
-      }
-    }
-
-    // Resize grid (SHIFT + pilar)
-    if (e.shiftKey) {
-      if (e.key === "ArrowRight") {
-        setGridArea(prev => ({ ...prev, width: prev.width + 1 }));
-      }
-      if (e.key === "ArrowLeft") {
-        setGridArea(prev => ({ ...prev, width: prev.width - 1 }));
-      }
-      if (e.key === "ArrowDown") {
-        setGridArea(prev => ({ ...prev, height: prev.height + 1 }));
-      }
-      if (e.key === "ArrowUp") {
-        setGridArea(prev => ({ ...prev, height: prev.height - 1 }));
-      }
-    }
-  };
-
-  window.addEventListener("keydown", handleKey);
-  return () => window.removeEventListener("keydown", handleKey);
-}, [modeView]);
 
   return (
     <div
-      onMouseMove={handleMouseMove}
-      onMouseUp={stopDrag}
       style={{
         display: "flex",
         flexDirection: "row",
@@ -469,11 +404,11 @@ if (modeView === "play") {
 
  {modeView === "edit" && (
  <EditorViewport
-  gridArea={{
-  ...gridArea,
-  onGridClick: handleGridClick
-}}
+  gridArea={gridArea}
+  setGridArea={setGridArea}
+  onGridClick={handleGridClick}
 >
+    {({ setMode }) => (
     <>
       <EditorGrid
         rows={rows}
@@ -490,6 +425,7 @@ if (modeView === "play") {
         gridArea={gridArea}
       />
     </>
+    )}
 </EditorViewport>
   )}
 

@@ -28,6 +28,14 @@ Ansvarar för:
 - Markering av celltyper
 - Template-definition
 
+EditorViewport äger editor grid placement interaction:
+
+- move/resize-drag
+- musbaserad gridförflyttning och resize
+- tangentbordsstyrd gridförflyttning och resize
+
+App.js äger fortsatt gridArea state och workflow.
+
 Celltyper:
 
 - image
@@ -145,7 +153,9 @@ App.js äger fortsatt:
 
 Framtida separat arbete:
 
-- flytta editor-specifikt ägarskap till Editor-subsystemet.
+- flytta kvarvarande editor-specifikt ägarskap till Editor-subsystemet.
+
+Runtime ownership påverkas inte av Editor ownership-steg.
 
 ---
 

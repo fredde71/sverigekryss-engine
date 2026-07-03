@@ -6,7 +6,7 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter slutförd Epic 1 runtime ownership-migrering och första Epic 2 TemplateCanvas-steg.
+Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg och första Epic 3 Editor ownership-steg.
 
 ---
 
@@ -56,13 +56,23 @@ App.js äger fortsatt:
 - mode-val
 - workflow
 - template state och template-livscykel för nuvarande implementation
+- gridArea state
 - montering av Editor eller Runtime i TemplateCanvas
 
 Bakgrund/canvas har flyttats till TemplateCanvas eftersom detta är delad template-presentation, inte RuntimeSession-beteende.
 
+EditorViewport äger nu:
+
+- editor grid placement interaction
+- move/resize drag mode
+- musbaserad gridförflyttning och resize
+- tangentbordsstyrd gridförflyttning och resize
+
+Runtime ownership ändrades inte i detta Editor-steg.
+
 Framtida separat ownership-kandidat:
 
-- Editor-ägarskap för editor-specifik gridpositionering, verktyg och interaction
+- fortsatt Editor-ägarskap för editor-verktyg och template editing
 
 Verifierat:
 
