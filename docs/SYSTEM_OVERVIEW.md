@@ -36,6 +36,15 @@ EditorViewport äger editor grid placement interaction:
 - cell click mapping
 - cell type updates baserat på activeTool
 
+EditorLayer äger:
+
+- EditorGrid-rendering
+- editor overlay controls för move/resize
+
+App.js renderar inte längre EditorGrid direkt.
+
+Duplicerad EditorGrid-rendering har tagits bort utan visuell stylingändring.
+
 App.js äger fortsatt:
 
 - gridArea state

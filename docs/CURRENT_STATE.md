@@ -6,7 +6,7 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg och två Epic 3 Editor ownership-steg.
+Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg och tre Epic 3 Editor ownership-steg.
 
 ---
 
@@ -74,6 +74,17 @@ EditorViewport äger nu:
 - cell type updates baserat på activeTool
 
 Toolbar ownership är oförändrat.
+
+EditorLayer äger nu:
+
+- EditorGrid-rendering
+- editor overlay controls för move/resize
+
+App.js renderar inte längre EditorGrid direkt.
+
+Duplicerad EditorGrid-rendering har tagits bort.
+
+Ingen visuell styling ändrades; endast den dubbla renderingen togs bort.
 
 Runtime ownership ändrades inte i dessa Editor-steg.
 

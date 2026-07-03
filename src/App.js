@@ -3,7 +3,6 @@ import { useParams } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import EditorLayer from "./editor/EditorLayer";
 import EditorViewport from "./editor/EditorViewport";
-import EditorGrid from "./editor/EditorGrid";
 import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import RuntimeLayer from "./runtime/RuntimeLayer";
@@ -376,12 +375,6 @@ URL.revokeObjectURL(url);
 >
     {({ setMode }) => (
     <>
-      <EditorGrid
-        rows={rows}
-        cols={cols}
-        cellTypes={cellTypes}
-      />
-
       <EditorLayer
         rows={rows}
         cols={cols}

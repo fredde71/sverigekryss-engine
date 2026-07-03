@@ -167,6 +167,13 @@ Andra Editor ownership-steget är genomfört:
 - toolbar ownership är oförändrat
 - Runtime ownership ändrades inte
 
+Tredje Editor ownership-steget är genomfört:
+
+- EditorLayer äger EditorGrid-rendering
+- App.js renderar inte längre EditorGrid direkt
+- duplicerad EditorGrid-rendering togs bort
+- ingen visuell styling ändrades
+
 Kvarvarande App.js-arbete ska inte flytta runtime state tillbaka till App.js.
 
 ---
