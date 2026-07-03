@@ -25,32 +25,30 @@ export function getActiveCells({
   // DOUBLE CLUE
   if (isDouble) {
 
-    // across
-    let endA = activeCell;
+    if (direction === "across") {
+      let current = activeCell + 1;
+
+      while (
+        current < rows * cols &&
+        current % cols !== 0 &&
+        Math.floor(current / cols) === Math.floor(activeCell / cols) &&
+        !isBlocked(current)
+      ) {
+        active.add(current);
+        current++;
+      }
+
+      return active;
+    }
+
+    let current = activeCell + cols;
 
     while (
-      endA % cols !== cols - 1 &&
-      !isBlocked(endA + 1)
+      current < rows * cols &&
+      !isBlocked(current)
     ) {
-      endA++;
-    }
-
-    for (let i = activeCell; i <= endA; i++) {
-      active.add(i);
-    }
-
-    // down
-    let endD = activeCell;
-
-    while (
-      endD + cols < rows * cols &&
-      !isBlocked(endD + cols)
-    ) {
-      endD += cols;
-    }
-
-    for (let i = activeCell; i <= endD; i += cols) {
-      active.add(i);
+      active.add(current);
+      current += cols;
     }
 
     return active;

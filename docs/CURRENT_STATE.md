@@ -1,0 +1,457 @@
+# CURRENT_STATE.md
+
+## Projektstatus
+
+Projekt: Sverigekryss Engine
+
+Senast uppdaterad:
+
+Efter slutförd Epic 1 runtime ownership-migrering.
+
+---
+
+# Senaste verifierade milstolpe
+
+Epic 1 – Build Runtime är slutförd.
+
+App.js äger inte längre runtime state, runtime interaction/navigation eller runtime grid/cell-rendering.
+
+Aktiv runtime-pipeline:
+
+App.js
+↓
+RuntimeLayer
+↓
+RuntimeGrid
+↓
+RuntimeCell
+↓
+PlayCell
+
+RuntimeLayer äger:
+
+- runtime state
+- input handling
+- click handling
+- keyboard handling
+- focus movement
+- active line
+- runtime grid/cell-rendering
+
+App.js äger fortsatt:
+
+- applikationsskal
+- mode-val
+- delad template presentation shell
+- bakgrundsbild/canvas för Editor och Runtime
+
+Bakgrund/canvas ligger kvar i App.js eftersom detta är delad template-presentation, inte RuntimeSession-beteende.
+
+Framtida kandidat:
+
+- neutral TemplateCanvas/PuzzleCanvas för delad template/canvas-presentation
+
+Verifierat:
+
+- Editor fungerar
+- Play fungerar
+- Runtime fungerar
+- Navigation fungerar
+- Riktningshantering fungerar
+- Double clue fungerar
+- Write fungerar
+- Blocked fungerar
+
+---
+
+# Viktigaste arkitekturfynd
+
+## RuntimeCell-kontrakt
+
+Kritisk bugg identifierad:
+
+RuntimeCell fick inte:
+
+type={type}
+
+från App.js.
+
+Konsekvens:
+
+- Runtime kunde inte tolka celltyper korrekt.
+- Play fungerade inte korrekt.
+
+Lösning:
+
+type skickas nu vidare till RuntimeCell.
+
+Resultat:
+
+Editor och Play fungerar igen.
+
+---
+
+# Aktuellt subsystem
+
+Runtime ownership / App.js-separation
+
+---
+
+# Senaste verifiering
+
+## PDF-upload
+
+Verifierad fungerande.
+
+Upload Image accepterar:
+
+- PDF
+- PNG
+- JPG
+
+Tidigare misstänkt fel visade sig bero på att:
+
+Import Template är avsedd för:
+
+- .json
+
+och inte för PDF-filer.
+
+Ingen kodändring krävdes.
+
+## Browser/Publiceringsläge
+
+Verifiering genomförd.
+
+Browser-versionen använder inte samma runtime-pipeline som lokal Play.
+
+Lokal Play:
+
+App.js
+↓
+RuntimeViewport
+↓
+RuntimeGrid
+↓
+RuntimeCell
+↓
+PlayCell
+
+Browser Play:
+
+Play.jsx
+↓
+RuntimeLayer
+↓
+CrosswordRenderer
+
+Projektet innehåller därför två parallella runtime-implementationer.
+
+Detta förklarar sannolikt varför browser-versionen uppvisar annat beteende än lokal Play.
+
+Ingen kodändring genomförd.
+Endast verifiering utförd.
+
+Verifierat:
+
+Browser-versionen använder fortfarande
+RuntimeLayer + CrosswordRenderer.
+
+CrosswordRenderer innehåller en äldre runtime-motor.
+
+Den saknar:
+
+- direction
+- active line
+- navigation
+- RuntimeCell-pipeline
+
+Detta förklarar skillnaden mellan lokal Play och browser Play.
+
+## Browser/Publiceringsläge
+
+Verifiering genomförd.
+
+Browser-versionen använder inte samma runtime-pipeline som lokal Play.
+
+Lokal Play:
+
+App.js
+↓
+RuntimeViewport
+↓
+RuntimeGrid
+↓
+RuntimeCell
+↓
+PlayCell
+
+Browser Play:
+
+Play.jsx
+↓
+RuntimeLayer
+↓
+CrosswordRenderer
+↓
+PlayCell
+
+CrosswordRenderer innehåller en äldre runtime-motor.
+
+Verifierat saknas:
+
+- active line
+- direction-hantering
+- navigation
+- RuntimeCell-pipeline
+
+Detta förklarar skillnaden mellan lokal Play och browser Play.
+
+Beslut:
+
+Målet är att migrera browser-versionen till samma runtime-pipeline som lokal Play.
+
+Ingen kodändring genomförd ännu.
+Endast verifiering och arkitekturbeslut.
+
+Migreringssteg 1 verifierat.
+
+CrosswordRenderer ersatt med RuntimeGrid i RuntimeLayer.
+
+Projektet kompilerar.
+
+Grid-overlay renderas fortfarande korrekt ovanpå korsordsbilden.
+
+Verifierat att Browser Runtime kan använda RuntimeGrid utan CrosswordRenderer-logik.
+
+Migreringssteg 2 verifierat.
+
+Browser Runtime renderar nu RuntimeGrid med samtliga RuntimeCells baserat på cellTypes från template.
+
+CrosswordRenderer används inte längre för rendering av gridceller.
+
+Editor Mode och Lokal Play fungerar oförändrat.
+
+Browser Runtime saknar fortfarande write-logik, navigation, direction och active line.
+
+Migreringssteg 3 verifierat.
+
+Browser Runtime skickar nu value till RuntimeCell.
+
+Editor Mode och Lokal Play fungerar oförändrat.
+
+Ingen regression observerad.
+
+Browser Runtime saknar fortfarande:
+
+- onChange
+- onClick
+- navigation
+- direction
+- active line
+
+Migreringssteg 4 verifierat.
+
+Browser Runtime skickar nu onClick till RuntimeCell.
+
+Rutor kan markeras/klickas i browser-läget.
+
+Ingen textinmatning fungerar ännu.
+
+Navigation, direction och active line saknas fortfarande.
+
+Editor Mode och Lokal Play fungerar fortsatt utan regression.
+
+Migreringssteg 5 verifierat.
+
+Browser Runtime skickar nu onChange till RuntimeCell.
+
+Text kan matas in i browser-läget.
+
+Klick och textinmatning fungerar.
+
+Navigation, direction och active line saknas fortfarande.
+
+Editor Mode och Lokal Play fungerar fortsatt utan regression.
+
+Migreringssteg 6 verifierat.
+
+Browser Runtime stödjer nu klick och textinmatning.
+
+Samtliga celltyper behandlas fortfarande som write-celler.
+
+Typstyrd rendering från App.js har ännu inte migrerats.
+
+Konsekvens:
+- blocked kan skrivas i
+- image kan skrivas i
+- double beter sig som write 
+
+Verifierat att Browser Runtime nu stödjer klick och textinmatning.
+
+Tidigare antagande om att RuntimeLayer inte kördes avfärdat.
+
+Browser Runtime exekverar RuntimeLayer-koden.
+
+Kvarvarande arbete:
+- blocked
+- image
+- double
+- direction
+- active line
+- navigation
+
+Verifierat att Browser Runtime mottar blocked-celler från template-data.
+
+17 blocked-celler identifierades vid laddning.
+
+Problemet ligger inte i template-data utan i renderings- eller interaktionslagret.
+
+Ny verifiering.
+
+Browser Runtime uppvisar ökande positionsavvikelse längre ned i korsordet.
+
+Markör och klickyta driver från den visuella rutan.
+
+Symptom:
+- blocked verkar skrivbar
+- image verkar skrivbar
+- double fungerar inte korrekt
+- fokus hamnar delvis utanför ruta
+
+Misstanke:
+Grid-overlay och bakgrundsbild skalar inte identiskt i Browser Runtime.
+
+Grid-alignment måste verifieras innan fortsatt migrering av cellbehörigheter och navigation.
+
+Migreringskartläggning genomförd.
+
+Browser Runtime innehåller redan:
+
+- answers
+- activeCell
+- direction
+- inputRefs
+
+samt runtime-funktionerna:
+
+- getDirection
+- getNextCell
+- getArrowNextIndex
+- focusNextInput
+- getActiveCells
+- normalizeInputValue
+
+Kvarvarande migrering består huvudsakligen av att koppla in funktionerna i renderingen.
+
+Ingen ytterligare felsökning ska ske innan migreringen är komplett.
+
+Migreringssteg verifierat.
+
+Browser Runtime använder nu:
+
+- onKeyDown
+- getArrowNextIndex
+- focusNextInput
+
+Piltangentsnavigation är inkopplad.
+
+Observation:
+Fokusflytt fungerar men uppvisar avvikelser efter flera steg.
+Ingen felsökning genomförd eftersom migreringen ännu inte är färdig.
+
+Migreringssteg verifierat.
+
+Browser Runtime använder nu:
+
+- getNextCell()
+- focusNextInput()
+
+Automatisk fokusflytt efter inmatning fungerar.
+
+Ingen regression observerad i Editor eller Play.
+
+Migreringssteg verifierat.
+
+Browser Runtime skickar nu activeCells-information till RuntimeCell via isActive.
+
+Ingen funktionell förändring ännu.
+Detta steg förbereder active line-renderingen.
+
+Ingen regression observerad.
+
+Subsystem: Active Cell Rendering
+
+Status: Färdigmigrerat.
+
+Verifierad kedja:
+
+RuntimeLayer
+→ RuntimeCell
+→ PlayCell
+→ input
+
+Följande props används nu genom hela kedjan:
+
+- value
+- onChange
+- onClick
+- onFocus
+- onKeyDown
+- inputRef
+- dataIndex
+- isActive
+- maxLength
+
+Ingen regression observerad.
+
+---
+
+# Verifierat fungerande
+
+## Editor
+
+- Grid rendering
+- Grid flyttning
+- Grid storlek
+- PDF-upload
+- Image-markering
+- Blocked-markering
+- Double-markering
+- Write-markering
+- Växling mellan verktyg
+
+## Runtime
+
+- Renderering
+- Input
+- Navigation
+- Active line
+- Double clue
+- Write
+- Blocked
+
+---
+
+# Nästa steg
+
+1. Uppdatera dokumentation efter Epic 1
+2. Besluta om neutral TemplateCanvas/PuzzleCanvas
+3. Template-livscykel
+4. Persistence för templates
+5. Browser/publicering
+6. Backend/API
+
+---
+
+# Viktig regel
+
+Innan ny kodändring:
+
+Läs:
+
+- DEVELOPMENT_RULES.md
+- SYSTEM_OVERVIEW.md
+- RUNTIME_ARCHITECTURE.md
+
+och genomför Pre-Flight Check.

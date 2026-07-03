@@ -1,19 +1,26 @@
-import { getActiveCells } from "./engine/activeLine";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import * as pdfjsLib from "pdfjs-dist";
+import EditorLayer from "./editor/EditorLayer";
+import EditorViewport from "./editor/EditorViewport";
+import EditorGrid from "./editor/EditorGrid";
 import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
-import PlayCell from "./components/PlayCell";
-import { getNextCell } from "./engine/navigation";
+import RuntimeLayer from "./runtime/RuntimeLayer";
+import { moveGridArea } from "./engine/gridArea";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
 
 function App() {
-
+  
+  const { id } = useParams();
   const isSharedView = window.location.search.includes("data=");
+  const isPublicRuntime = !!id;
   const [activeTool, setActiveTool] = useState("image");
   const [modeView, setModeView] = useState("edit"); // edit | play
-  const [cellTypes, setCellTypes] = useState({});
-  const [activeCell, setActiveCell] = useState(null);
-  const [answers, setAnswers] = useState({});
-  const [direction, setDirection] = useState("across"); // across | down
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const data = params.get("data");
@@ -24,15 +31,9 @@ function App() {
       const parsed = JSON.parse(decodeURIComponent(data));
 
       setCellTypes(parsed.cellTypes || {});
-      setAnswers(parsed.answers || {});
+      setImageSrc(parsed.imageSrc || "");
 
-      // 🔥 viktigt: ignorera edit-position
-      setGridArea({
-        top: 0,
-        left: 0,
-        width: 1200,
-        height: 1200
-      });
+      setGridArea(parsed.gridArea);
 
       setModeView("play");
 
@@ -40,9 +41,39 @@ function App() {
       console.error("Fel vid parsing av URL-data", err);
     }
   }, []);
-  const inputRefs = React.useRef([]);
-  const rows = 25;
-  const cols = 25;
+
+useEffect(() => {
+
+  if (!id) return;
+
+  fetch(`http://localhost:5050/api/crossword/${id}`)
+    .then(res => res.json())
+    .then(template => {
+
+      setCellTypes(template.cellTypes || {});
+      setImageSrc(template.imageSrc || "");
+      setGridArea(template.gridArea);
+
+      setRows(template.rows || 25);
+      setCols(template.cols || 25);
+
+      setModeView("play");
+
+    });
+
+}, [id]);
+
+  const [rows, setRows] = useState(25);
+  const [cols, setCols] = useState(25);
+
+  const [cellTypes, setCellTypes] = useState(
+  Array(rows * cols).fill("empty")
+);
+
+  const [pendingRows, setPendingRows] = useState(25);
+  const [pendingCols, setPendingCols] = useState(25);
+
+  const [crosswordId, setCrosswordId] = useState("");
 
   const [gridArea, setGridArea] = useState({
     top: 0,
@@ -52,16 +83,106 @@ function App() {
   });
 
   const [mode, setMode] = useState(null);
+  const [imageSrc, setImageSrc] = useState("/grid.png");
 
+  const handleImageUpload = async (e) => {
+
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  console.log(file);
+
+  if (file.type === "application/pdf") {
+
+  const arrayBuffer = await file.arrayBuffer();
+
+  const pdf = await pdfjsLib.getDocument({
+  data: arrayBuffer
+}).promise;
+
+const page = await pdf.getPage(1);
+
+const viewport = page.getViewport({ scale: 2 });
+
+const canvas = document.createElement("canvas");
+
+const context = canvas.getContext("2d");
+
+canvas.width = viewport.width;
+canvas.height = viewport.height;
+
+await page.render({
+  canvasContext: context,
+  viewport
+}).promise;
+
+const image = canvas.toDataURL("image/png");
+
+setImageSrc(image);
+
+e.target.value = "";
+
+return;
+}
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    setImageSrc(reader.result);
+  };
+
+  reader.readAsDataURL(file);
+
+};
+const handleTemplateImport = async (e) => {
+
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  const text = await file.text();
+
+  const data = JSON.parse(text);
+
+  if (data.gridArea) {
+    setGridArea(data.gridArea);
+  }
+
+  if (data.cellTypes) {
+    setCellTypes(data.cellTypes);
+  }
+
+  if (data.imageSrc) {
+  setImageSrc(data.imageSrc);
+}
+
+};
   const exportTemplate = () => {
     const data = {
       gridArea,
-      cellTypes
+      cellTypes,
+      imageSrc,
+      crosswordId
     };
 
-    console.log("TEMPLATE:", JSON.stringify(data, null, 2));
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    alert("Template kopierad!");
+    const json = JSON.stringify(data, null, 2);
+
+const blob = new Blob(
+  [json],
+  { type: "application/json" }
+);
+
+const url = URL.createObjectURL(blob);
+
+const a = document.createElement("a");
+
+a.href = url;
+a.download = "sverigekryss-template.json";
+
+a.click();
+
+URL.revokeObjectURL(url);
   };
 
   // ✅ NY FUNKTION (tillagd)
@@ -75,7 +196,6 @@ function App() {
   }
 
   const data = {
-    answers: answers,
     cellTypes: fullCellTypes, // 🔥 ändrad rad
     rows: rows,
     cols: cols,
@@ -90,7 +210,7 @@ function App() {
 };
 
 const handleGridClick = (e) => {
-  const rect = e.currentTarget.getBoundingClientRect();
+const rect = e.currentTarget.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
 
@@ -103,56 +223,38 @@ const safeRow = Math.max(0, Math.min(rows - 1, row));
 
 // ✅ använd dessa istället
 const index = safeRow * cols + safeCol;
-  // PLAY MODE → sätt riktning
 if (modeView === "play") {
-
-  const right = index + 1;
-  const down = index + cols;
-
-  const isRightWritable =
-    cellTypes[right] !== "image" &&
-    cellTypes[right] !== "blocked" &&
-    cellTypes[right] !== "double";
-
-  const isDownWritable =
-    cellTypes[down] !== "image" &&
-    cellTypes[down] !== "blocked" &&
-    cellTypes[down] !== "double";
-
-  if (isRightWritable) {
-    setDirection("across");
-  } else if (isDownWritable) {
-    setDirection("down");
-  }
-
   return; // viktigt: stoppa edit-logik
 }
 
   setCellTypes(prev => {
-    const next = { ...prev };
+  const next = [...prev];
 
-    if (activeTool === "empty") {
-      delete next[index];
-      return next;
-    }
-
-    if (prev[index] === activeTool) {
-      delete next[index];
-      return next;
-    }
-
-    next[index] = activeTool;
+  if (activeTool === "empty") {
+    next[index] = "empty";
     return next;
-  });
+  }
+
+  if (prev[index] === activeTool) {
+    next[index] = "empty";
+    return next;
+  }
+
+  next[index] = activeTool;
+
+  return next;
+});
 };
 
   const handleMouseMove = (e) => {
     if (mode === "move") {
-      setGridArea(prev => ({
-        ...prev,
-        top: prev.top + e.movementY,
-        left: prev.left + e.movementX
-      }));
+      setGridArea(
+        prev => moveGridArea(
+  prev,
+  e.movementX,
+  e.movementY
+)
+      );
     }
 
     if (mode === "resize") {
@@ -165,6 +267,14 @@ if (modeView === "play") {
   };
 
   const stopDrag = () => setMode(null);
+  const createGrid = () => {
+
+  setRows(pendingRows);
+  setCols(pendingCols);
+
+  setCellTypes({});
+
+};
   React.useEffect(() => {
   const handleKey = (e) => {
     if (modeView !== "edit") return;
@@ -206,14 +316,6 @@ if (modeView === "play") {
   return () => window.removeEventListener("keydown", handleKey);
 }, [modeView]);
 
-const activeCells = getActiveCells({
-  activeCell,
-  direction,
-  cellTypes,
-  cols,
-  rows
-});
-
   return (
     <div
       onMouseMove={handleMouseMove}
@@ -236,16 +338,50 @@ const activeCells = getActiveCells({
         border: "1px solid #ddd"
       }}>
         <h4>Tools</h4>
-        {modeView === "edit" && (
         <div style={{ marginBottom: "10px" }}>
-  <button onClick={() => setDirection("across")}>→</button>
-  <button onClick={() => setDirection("down")}>↓</button>
-</div>
-)}
 
+  <div>Crossword ID</div>
+
+  <input
+    type="text"
+    value={crosswordId}
+    onChange={(e) => setCrosswordId(e.target.value)}
+    placeholder="TT-2026-0001"
+    style={{ width: "140px" }}
+  />
+
+</div>
+        <div style={{ marginBottom: "10px" }}>
+
+  <div>Rows</div>
+
+  <input
+    type="number"
+    value={pendingRows}
+    onChange={(e) => setPendingRows(Number(e.target.value))}
+    style={{ width: "80px" }}
+  />
+
+  <div style={{ marginTop: "10px" }}>Cols</div>
+
+  <input
+    type="number"
+    value={pendingCols}
+    onChange={(e) => setPendingCols(Number(e.target.value))}
+    style={{ width: "80px" }}
+  />
+
+  <br /><br />
+
+<button onClick={createGrid}>
+  Create Grid
+</button>
+
+</div>
         <button onClick={() => setActiveTool("image")}>Image</button><br /><br />
         <button onClick={() => setActiveTool("blocked")}>Blocked</button><br /><br />
         <button onClick={() => setActiveTool("double")}>Double clue</button><br /><br />
+        <button onClick={() => setActiveTool("write")}>Write</button><br /><br />
         <button onClick={() => setActiveTool("empty")}>Empty</button><br /><br />
 
         <hr />
@@ -256,9 +392,57 @@ const activeCells = getActiveCells({
 
         <br /><br />
 
+<div>Upload Image</div>
+
+<input
+  type="file"
+  accept="image/*,.pdf"
+  onChange={handleImageUpload}
+/>
+<br /><br />
+
+<div>Import Template</div>
+
+<input
+  key={imageSrc}
+  type="file"
+  accept=".json"
+  onChange={handleTemplateImport}
+/>
+
+<br /><br />
         <button onClick={exportTemplate}>
           Export Template
         </button>
+
+        <button
+  onClick={async () => {
+
+    const template = {
+      crosswordId,
+      gridArea,
+      cellTypes,
+      imageSrc,
+      rows,
+      cols
+    };
+
+    const response = await fetch("http://localhost:5050/api/publish", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(template)
+    });
+
+    const data = await response.json();
+
+    console.log(data);
+
+  }}
+>
+  Publish
+</button>
 
         {/* ✅ NY KNAPP (tillagd) */}
         <button onClick={generateLink}>
@@ -271,10 +455,17 @@ const activeCells = getActiveCells({
       )} 
 
       {/* CANVAS */}
-      <div style={{ position: "relative", width: "1200px", margin: "0 auto" }}>
+      <div
+  style={{
+    position: "relative",
+    width: "1200px",
+    height: "1200px",
+    margin: "0 auto"
+  }}
+>
         
         <img
-  src="/grid.png"
+  src={imageSrc}
   alt="grid"
   style={{
     width: "1200px",
@@ -282,265 +473,44 @@ const activeCells = getActiveCells({
   }}
 />
 
- <div
-  style={{
-    position: "absolute",
-    top: gridArea.top,
-    left: gridArea.left,
-    width: gridArea.width,
-    height: gridArea.height,
-    pointerEvents: "auto"
-  }}
-  onClick={modeView === "edit" ? handleGridClick : undefined}
+ {modeView === "edit" && (
+ <EditorViewport
+  gridArea={{
+  ...gridArea,
+  onGridClick: handleGridClick
+}}
 >
+    <>
+      <EditorGrid
+        rows={rows}
+        cols={cols}
+        cellTypes={cellTypes}
+      />
 
-          {modeView === "edit" && !isSharedView && (
-            <div
-              onMouseDown={() => setMode("move")}
-              style={{
-                position: "absolute",
-                inset: 0,
-                border: "2px dashed blue",
-                cursor: "move"
-              }}
-            />
-          )}
+      <EditorLayer
+        rows={rows}
+        cols={cols}
+        cellTypes={cellTypes}
+        setMode={setMode}
+        isPublicRuntime={isPublicRuntime}
+        gridArea={gridArea}
+      />
+    </>
+</EditorViewport>
+  )}
 
-          {modeView === "edit" && !isSharedView && (
-            <div
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                setMode("resize");
-              }}
-              style={{
-                position: "absolute",
-                right: -6,
-                bottom: -6,
-                width: "12px",
-                height: "12px",
-                background: "blue",
-                cursor: "nwse-resize"
-              }}
-            />
-          )}
-
-          {modeView === "edit" && !isSharedView && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                pointerEvents: "none",
-                display: "grid",
-                gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                gridTemplateRows: `repeat(${rows}, 1fr)`
-              }}
-            >
-              {Array.from({ length: rows * cols }).map((_, i) => (
-    <div
-                  key={i}
-                  style={{
-                    backgroundColor:
-  cellTypes[i] === "image"
-    ? "rgba(0,120,255,0.3)"
-    : cellTypes[i] === "blocked"
-    ? "rgba(0,0,0,0.4)"
-    : cellTypes[i] === "double"
-    ? "rgba(255,0,0,0.3)"
-    : "transparent"
-                  }}
-                />
-              ))}
-            </div>
-          )}
-
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "grid",
-              gridTemplateColumns: `repeat(${cols}, 1fr)`,
-              gridTemplateRows: `repeat(${rows}, 1fr)`
-            }}
-          >
-           {Array.from({ length: rows * cols }).map((_, i) => {
-  const type = cellTypes[i];
-
-const isActiveLine = activeCells.has(i);
-
-  if (modeView === "play") {
-
-    if (type === "blocked") {
-  return (
-    <PlayCell
-      key={i}
-      style={{
-        width: "100%",
-        height: "100%",
-        backgroundColor: "transparent"
-      }}
-    />
-  );
-}
-
-if (type === "image") {
-  return (
-    <PlayCell
-      key={i}
-      style={{
-        width: "100%",
-        height: "100%"
-      }}
-    />
-  );
-}
-if (type === "double") {
-  return (
-    <PlayCell
-      key={i}
-      onClick={() => {
-        setActiveCell(i);
-     setDirection(prev => {
-  if (prev === "across") {
-    return "down";
-  }
-  return "across";
-});
-      }}
-      style={{
-        width: "100%",
-        height: "100%",
-        backgroundColor: "transparent",
-        cursor: "pointer"
-      }}
-    />
-  );
-}
-
-    return (
-      <input
-  key={i}
-  ref={(el) => (inputRefs.current[i] = el)}
-  data-index={i}
-  onFocus={(e) => {
-  e.target.select();
-  setActiveCell(i);
-}}
-onClick={(e) => {
-  setActiveCell(i);
-
-  const right = i + 1;
-  const down = i + cols;
- 
-  const isRightWritable =
-  right % cols !== 0 &&
-  cellTypes[right] !== "image" &&
-  cellTypes[right] !== "blocked" &&
-  cellTypes[right] !== "double";
-
-  const isDownWritable =
-    down < rows * cols &&
-    cellTypes[down] !== "image" &&
-    cellTypes[down] !== "blocked" &&
-    cellTypes[down] !== "double";
-
-  // 🔥 prioritet: om horisontellt ord finns → across
-  if (isRightWritable && isDownWritable) {
-  // dubbelruta → toggla
-  setDirection(prev => prev === "across" ? "down" : "across");
-} else if (isRightWritable) {
-  setDirection("across");
-} else if (isDownWritable) {
-  setDirection("down");
-  }
-}}
-  maxLength={1}
-  value={answers[i] || ""}
-   onChange={(e) => {
-  const val = e.target.value.toUpperCase().slice(0, 1);
-
-  setAnswers(prev => ({
-    ...prev,
-    [i]: val
-  }));
-
-  if (val) {
-    setTimeout(() => {
-  const nextIndex = getNextCell({
-  currentIndex: i,
-  direction,
-  cols,
-  rows,
-  cellTypes
-});
- const nextInput = inputRefs.current[nextIndex];
-
-if (nextInput) {
-  nextInput.focus();
-}
-}, 0);
-  }
-}}
-onKeyDown={(e) => {
-  if (
-  ![
-    "ArrowRight",
-    "ArrowDown",
-    "ArrowLeft",
-    "ArrowUp"
-  ].includes(e.key)
-) return;
-
-  e.preventDefault();
-
-  let nextIndex = null;
-
-  if (e.key === "ArrowRight") nextIndex = i + 1;
-  if (e.key === "ArrowDown") nextIndex = i + cols;
-  if (e.key === "ArrowLeft") nextIndex = i - 1;
-  if (e.key === "ArrowUp") nextIndex = i - cols;
-
-  const nextInput = document.querySelector(`[data-index="${nextIndex}"]`);
-  if (nextInput) nextInput.focus();
-}}
-  style={{
-    width: "100%",
-    height: "100%",
-    textAlign: "center",
-    fontSize: "18px",
-    fontWeight: "bold",
-    border: "none",
-    outline: "none",
-    boxSizing: "border-box",
-padding: 0,
-margin: 0,
-backgroundColor: "transparent",
-pointerEvents: "auto",
-    background: isActiveLine
-  ? "rgba(0,150,255,0.15)"
-  : "transparent"
+{modeView === "play" && (
+<RuntimeLayer
+  data={{
+    cellTypes,
+    rows,
+    cols,
+    gridArea,
+    imageSrc
   }}
 />
-    );
-  }
+                    )}
 
-// EDIT MODE
-if (modeView === "edit") {
-  return (
-    <EditCell
-  key={i}
-  ref={(el) => (inputRefs.current[i] = el)}
-  isEdit
-/>
-  );
-}
-
-// PLAY MODE (transparent fallback)
-return null;
-
-})}
-          </div>
-
-        </div>
       </div>
 
     </div>
