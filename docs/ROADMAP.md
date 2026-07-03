@@ -74,11 +74,11 @@ PlayCell
 
 RuntimeLayer äger runtime state, interaction/navigation, active line och runtime grid/cell-rendering.
 
-App.js väljer mode, monterar RuntimeLayer och äger tills vidare delad bakgrund/canvas som template presentation shell.
+App.js väljer mode och monterar RuntimeLayer.
 
-Framtida kandidat:
+TemplateCanvas äger delad bakgrund/canvas/overlay-yta som template presentation shell.
 
-- neutral TemplateCanvas/PuzzleCanvas för delad canvas/template-presentation.
+TemplateCanvas äger inte Editor- eller Runtime-beteende.
 
 ---
 
@@ -147,6 +147,12 @@ Hög
 Status:
 
 Runtime ownership är slutförd inom Epic 1.
+
+Första TemplateCanvas-steget är genomfört:
+
+- delad canvas/background/overlay-yta ägs av TemplateCanvas
+- App.js äger fortsatt mode/workflow
+- framtida Editor-ownership är separat
 
 Kvarvarande App.js-arbete ska inte flytta runtime state tillbaka till App.js.
 

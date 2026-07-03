@@ -14,6 +14,10 @@ App.js
 
 ↓
 
+TemplateCanvas
+
+↓
+
 RuntimeLayer
 
 ↓
@@ -39,16 +43,29 @@ Ansvarar för:
 - orchestration
 - mode-val
 - koppling mellan subsystem
-- delad template presentation shell
-- bakgrundsbild/canvas för Editor och Runtime
 
 App.js ska inte äga runtime state, runtime interaction/navigation eller runtime cell/grid-rendering.
 
-Bakgrund/canvas ligger kvar i App.js tills vidare eftersom det är delad template-presentation.
+App.js äger fortsatt mode/workflow och monterar RuntimeLayer i TemplateCanvas.
 
-Framtida kandidat:
+---
 
-- neutral TemplateCanvas/PuzzleCanvas för delad template/canvas-presentation.
+## TemplateCanvas
+
+Ansvarar för:
+
+- delad template presentation shell
+- bakgrundsbild/canvas för Editor och Runtime
+- overlay-yta där Runtime eller Editor renderas
+
+TemplateCanvas äger inte:
+
+- runtime state
+- runtime interaction/navigation
+- runtime cell/grid-rendering
+- editor-specifikt beteende
+
+Framtida Editor-ownership är separat från TemplateCanvas.
 
 ---
 
@@ -207,5 +224,5 @@ Epic 1 runtime ownership är slutförd:
 # Framtida arbete
 
 - tydligare ownership mellan RuntimeCell och PlayCell
-- neutral TemplateCanvas/PuzzleCanvas för delad template/canvas-presentation
 - fortsatt App.js-separation utanför Runtime ownership
+- flytta editor-specifikt ägarskap till Editor-subsystemet

@@ -6,7 +6,7 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter slutförd Epic 1 runtime ownership-migrering.
+Efter slutförd Epic 1 runtime ownership-migrering och första Epic 2 TemplateCanvas-steg.
 
 ---
 
@@ -38,18 +38,31 @@ RuntimeLayer äger:
 - active line
 - runtime grid/cell-rendering
 
+TemplateCanvas äger:
+
+- delad template presentation shell
+- bakgrundsbild/canvas för Editor och Runtime
+- overlay-yta där Editor eller Runtime monteras
+
+TemplateCanvas äger inte:
+
+- Editor-beteende
+- Runtime-beteende
+- state, navigation eller workflow
+
 App.js äger fortsatt:
 
 - applikationsskal
 - mode-val
-- delad template presentation shell
-- bakgrundsbild/canvas för Editor och Runtime
+- workflow
+- template state och template-livscykel för nuvarande implementation
+- montering av Editor eller Runtime i TemplateCanvas
 
-Bakgrund/canvas ligger kvar i App.js eftersom detta är delad template-presentation, inte RuntimeSession-beteende.
+Bakgrund/canvas har flyttats till TemplateCanvas eftersom detta är delad template-presentation, inte RuntimeSession-beteende.
 
-Framtida kandidat:
+Framtida separat ownership-kandidat:
 
-- neutral TemplateCanvas/PuzzleCanvas för delad template/canvas-presentation
+- Editor-ägarskap för editor-specifik gridpositionering, verktyg och interaction
 
 Verifierat:
 

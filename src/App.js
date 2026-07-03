@@ -7,6 +7,7 @@ import EditorGrid from "./editor/EditorGrid";
 import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import RuntimeLayer from "./runtime/RuntimeLayer";
+import TemplateCanvas from "./template/TemplateCanvas";
 import { moveGridArea } from "./engine/gridArea";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -455,23 +456,16 @@ if (modeView === "play") {
       )} 
 
       {/* CANVAS */}
-      <div
-  style={{
-    position: "relative",
-    width: "1200px",
-    height: "1200px",
-    margin: "0 auto"
-  }}
->
-        
-        <img
-  src={imageSrc}
-  alt="grid"
-  style={{
-    width: "1200px",
-    display: "block"
-  }}
-/>
+      <TemplateCanvas
+        template={{
+          crosswordId,
+          rows,
+          cols,
+          cellTypes,
+          imageSrc,
+          gridArea
+        }}
+      >
 
  {modeView === "edit" && (
  <EditorViewport
@@ -511,7 +505,7 @@ if (modeView === "play") {
 />
                     )}
 
-      </div>
+      </TemplateCanvas>
 
     </div>
   );

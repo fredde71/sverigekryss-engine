@@ -63,6 +63,26 @@ PlayCell
 
 ---
 
+## TemplateCanvas
+
+Ansvarar för delad template-presentation:
+
+- canvas/surface för korsordet
+- bakgrundsbild
+- overlay-yta där Editor eller Runtime monteras
+
+TemplateCanvas äger inte:
+
+- Editor-beteende
+- Runtime-beteende
+- mode/workflow
+
+App.js väljer fortsatt workflow och monterar rätt subsystem i TemplateCanvas.
+
+Framtida Editor-ownership är separat från TemplateCanvas.
+
+---
+
 ## Engine
 
 Ansvarar för gemensam logik som inte ska ligga i UI-komponenter.
@@ -109,7 +129,7 @@ Affärslogik ska successivt flyttas till respektive subsystem.
 
 App.js väljer mode och monterar Editor eller Runtime.
 
-App.js äger tills vidare delad template presentation shell:
+TemplateCanvas äger delad template presentation shell:
 
 - bakgrundsbild
 - canvas
@@ -117,9 +137,15 @@ App.js äger tills vidare delad template presentation shell:
 
 Detta är inte RuntimeSession-beteende.
 
-Framtida kandidat:
+App.js äger fortsatt:
 
-- neutral TemplateCanvas/PuzzleCanvas för delad template/canvas-presentation.
+- mode-val
+- workflow
+- koppling mellan subsystem
+
+Framtida separat arbete:
+
+- flytta editor-specifikt ägarskap till Editor-subsystemet.
 
 ---
 
