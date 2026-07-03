@@ -33,8 +33,16 @@ EditorViewport äger editor grid placement interaction:
 - move/resize-drag
 - musbaserad gridförflyttning och resize
 - tangentbordsstyrd gridförflyttning och resize
+- cell click mapping
+- cell type updates baserat på activeTool
 
-App.js äger fortsatt gridArea state och workflow.
+App.js äger fortsatt:
+
+- gridArea state
+- activeTool state
+- cellTypes state
+- toolbar ownership
+- workflow
 
 Celltyper:
 

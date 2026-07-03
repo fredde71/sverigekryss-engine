@@ -208,43 +208,6 @@ URL.revokeObjectURL(url);
   alert("Länk skapad! Se console.");
 };
 
-const handleGridClick = (e) => {
-const rect = e.currentTarget.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-const col = Math.floor((x / rect.width) * cols);
-const row = Math.floor((y / rect.height) * rows);
-
-// ✅ lägg till dessa två rader
-const safeCol = Math.max(0, Math.min(cols - 1, col));
-const safeRow = Math.max(0, Math.min(rows - 1, row));
-
-// ✅ använd dessa istället
-const index = safeRow * cols + safeCol;
-if (modeView === "play") {
-  return; // viktigt: stoppa edit-logik
-}
-
-  setCellTypes(prev => {
-  const next = [...prev];
-
-  if (activeTool === "empty") {
-    next[index] = "empty";
-    return next;
-  }
-
-  if (prev[index] === activeTool) {
-    next[index] = "empty";
-    return next;
-  }
-
-  next[index] = activeTool;
-
-  return next;
-});
-};
-
   const createGrid = () => {
 
   setRows(pendingRows);
@@ -406,7 +369,10 @@ if (modeView === "play") {
  <EditorViewport
   gridArea={gridArea}
   setGridArea={setGridArea}
-  onGridClick={handleGridClick}
+  rows={rows}
+  cols={cols}
+  activeTool={activeTool}
+  setCellTypes={setCellTypes}
 >
     {({ setMode }) => (
     <>

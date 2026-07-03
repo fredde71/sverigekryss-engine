@@ -160,6 +160,13 @@ Första Editor ownership-steget är genomfört:
 - App.js äger fortsatt gridArea state och workflow
 - Runtime ownership ändrades inte
 
+Andra Editor ownership-steget är genomfört:
+
+- EditorViewport äger cell click mapping och cell type updates
+- App.js äger fortsatt activeTool och cellTypes state
+- toolbar ownership är oförändrat
+- Runtime ownership ändrades inte
+
 Kvarvarande App.js-arbete ska inte flytta runtime state tillbaka till App.js.
 
 ---

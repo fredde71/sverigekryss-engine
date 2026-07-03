@@ -4,10 +4,45 @@ import { moveGridArea } from "../engine/gridArea";
 export default function EditorViewport({
   gridArea,
   setGridArea,
-  onGridClick,
+  rows,
+  cols,
+  activeTool,
+  setCellTypes,
   children
 }) {
   const [mode, setMode] = useState(null);
+
+  const handleGridClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const col = Math.floor((x / rect.width) * cols);
+    const row = Math.floor((y / rect.height) * rows);
+
+    const safeCol = Math.max(0, Math.min(cols - 1, col));
+    const safeRow = Math.max(0, Math.min(rows - 1, row));
+
+    const index = safeRow * cols + safeCol;
+
+    setCellTypes(prev => {
+      const next = [...prev];
+
+      if (activeTool === "empty") {
+        next[index] = "empty";
+        return next;
+      }
+
+      if (prev[index] === activeTool) {
+        next[index] = "empty";
+        return next;
+      }
+
+      next[index] = activeTool;
+
+      return next;
+    });
+  };
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -81,7 +116,7 @@ export default function EditorViewport({
 
   return (
     <div
-      onClick={onGridClick}
+      onClick={handleGridClick}
       style={{
         position: "absolute",
         top: gridArea.top,
