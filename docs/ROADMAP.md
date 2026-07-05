@@ -181,6 +181,14 @@ Fjärde Editor ownership-steget är genomfört:
 - App.js äger fortsatt editor state och toolbar
 - Runtime ownership ändrades inte
 
+Femte Editor ownership-steget är genomfört:
+
+- EditorWorkspace äger editor-only state
+- EditorToolbar äger editor toolbar rendering
+- App.js äger fortsatt template state och application workflow
+- nya grids initierar cellTypes som array
+- Runtime ownership ändrades inte
+
 Kvarvarande App.js-arbete ska inte flytta runtime state tillbaka till App.js.
 
 ---

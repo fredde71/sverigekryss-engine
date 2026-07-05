@@ -33,8 +33,20 @@ EditorWorkspace äger editor composition:
 - montering av EditorViewport
 - montering av EditorLayer
 - composition boundary för Editor-subsystemet
+- editor-only state
+- activeTool state
+- pendingRows state
+- pendingCols state
 
 App.js monterar inte längre editor-komponenter direkt.
+
+EditorToolbar äger:
+
+- editor toolbar rendering
+- cell type buttons
+- create grid controls
+
+Nya grids initierar cellTypes som array med empty-celler.
 
 EditorViewport äger editor grid placement interaction:
 
@@ -56,10 +68,10 @@ Duplicerad EditorGrid-rendering har tagits bort utan visuell stylingändring.
 App.js äger fortsatt:
 
 - gridArea state
-- activeTool state
 - cellTypes state
-- toolbar ownership
 - workflow
+- template state
+- application workflow
 
 Runtime ownership påverkas inte av EditorWorkspace.
 

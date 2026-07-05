@@ -6,7 +6,7 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg och fyra Epic 3 Editor ownership-steg.
+Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg och fem Epic 3 Editor ownership-steg.
 
 ---
 
@@ -57,9 +57,7 @@ App.js äger fortsatt:
 - workflow
 - template state och template-livscykel för nuvarande implementation
 - gridArea state
-- activeTool state
 - cellTypes state
-- toolbar ownership
 - montering av Runtime i TemplateCanvas
 - val av Editor eller Runtime
 
@@ -71,10 +69,24 @@ EditorWorkspace äger nu:
 - montering av EditorViewport
 - montering av EditorLayer
 - koppling mellan EditorViewport och EditorLayer
+- editor-only state
+- activeTool state
+- pendingRows state
+- pendingCols state
 
 App.js monterar inte längre editor-komponenter direkt.
 
-App.js äger fortsatt editor state och toolbar.
+App.js äger fortsatt template state och application workflow.
+
+EditorToolbar äger nu:
+
+- editor toolbar rendering
+- cell type buttons
+- create grid controls
+
+Nya grids initierar cellTypes som array:
+
+- Array(pendingRows * pendingCols).fill("empty")
 
 EditorViewport äger nu:
 
@@ -84,8 +96,6 @@ EditorViewport äger nu:
 - tangentbordsstyrd gridförflyttning och resize
 - cell click mapping
 - cell type updates baserat på activeTool
-
-Toolbar ownership är oförändrat.
 
 EditorLayer äger nu:
 

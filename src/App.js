@@ -17,7 +17,6 @@ function App() {
   const { id } = useParams();
   const isSharedView = window.location.search.includes("data=");
   const isPublicRuntime = !!id;
-  const [activeTool, setActiveTool] = useState("image");
   const [modeView, setModeView] = useState("edit"); // edit | play
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -67,9 +66,6 @@ useEffect(() => {
   const [cellTypes, setCellTypes] = useState(
   Array(rows * cols).fill("empty")
 );
-
-  const [pendingRows, setPendingRows] = useState(25);
-  const [pendingCols, setPendingCols] = useState(25);
 
   const [crosswordId, setCrosswordId] = useState("");
 
@@ -206,16 +202,19 @@ URL.revokeObjectURL(url);
   alert("Länk skapad! Se console.");
 };
 
-  const createGrid = () => {
-
-  setRows(pendingRows);
-  setCols(pendingCols);
-
-  setCellTypes({});
-
-};
-
   return (
+    <EditorWorkspace
+      rows={rows}
+      cols={cols}
+      cellTypes={cellTypes}
+      gridArea={gridArea}
+      setRows={setRows}
+      setCols={setCols}
+      setGridArea={setGridArea}
+      setCellTypes={setCellTypes}
+      isPublicRuntime={isPublicRuntime}
+    >
+      {({ toolbar, editor }) => (
     <div
       style={{
         display: "flex",
@@ -248,38 +247,7 @@ URL.revokeObjectURL(url);
   />
 
 </div>
-        <div style={{ marginBottom: "10px" }}>
-
-  <div>Rows</div>
-
-  <input
-    type="number"
-    value={pendingRows}
-    onChange={(e) => setPendingRows(Number(e.target.value))}
-    style={{ width: "80px" }}
-  />
-
-  <div style={{ marginTop: "10px" }}>Cols</div>
-
-  <input
-    type="number"
-    value={pendingCols}
-    onChange={(e) => setPendingCols(Number(e.target.value))}
-    style={{ width: "80px" }}
-  />
-
-  <br /><br />
-
-<button onClick={createGrid}>
-  Create Grid
-</button>
-
-</div>
-        <button onClick={() => setActiveTool("image")}>Image</button><br /><br />
-        <button onClick={() => setActiveTool("blocked")}>Blocked</button><br /><br />
-        <button onClick={() => setActiveTool("double")}>Double clue</button><br /><br />
-        <button onClick={() => setActiveTool("write")}>Write</button><br /><br />
-        <button onClick={() => setActiveTool("empty")}>Empty</button><br /><br />
+        {toolbar}
 
         <hr />
 
@@ -364,16 +332,7 @@ URL.revokeObjectURL(url);
       >
 
  {modeView === "edit" && (
- <EditorWorkspace
-    rows={rows}
-    cols={cols}
-    cellTypes={cellTypes}
-    gridArea={gridArea}
-    setGridArea={setGridArea}
-    activeTool={activeTool}
-    setCellTypes={setCellTypes}
-    isPublicRuntime={isPublicRuntime}
-  />
+   editor
   )}
 
 {modeView === "play" && (
@@ -391,6 +350,8 @@ URL.revokeObjectURL(url);
       </TemplateCanvas>
 
     </div>
+      )}
+    </EditorWorkspace>
   );
 }
 

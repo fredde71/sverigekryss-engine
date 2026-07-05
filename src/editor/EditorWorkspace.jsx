@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import EditorLayer from "./EditorLayer";
+import EditorToolbar from "./EditorToolbar";
 import EditorViewport from "./EditorViewport";
 
 export default function EditorWorkspace({
@@ -7,12 +8,36 @@ export default function EditorWorkspace({
   cols,
   cellTypes,
   gridArea,
+  setRows,
+  setCols,
   setGridArea,
-  activeTool,
   setCellTypes,
-  isPublicRuntime
+  isPublicRuntime,
+  children
 }) {
-  return (
+  const [activeTool, setActiveTool] = useState("image");
+  const [pendingRows, setPendingRows] = useState(25);
+  const [pendingCols, setPendingCols] = useState(25);
+
+  const createGrid = () => {
+    setRows(pendingRows);
+    setCols(pendingCols);
+
+    setCellTypes(Array(pendingRows * pendingCols).fill("empty"));
+  };
+
+  const toolbar = (
+    <EditorToolbar
+      pendingRows={pendingRows}
+      setPendingRows={setPendingRows}
+      pendingCols={pendingCols}
+      setPendingCols={setPendingCols}
+      setActiveTool={setActiveTool}
+      createGrid={createGrid}
+    />
+  );
+
+  const editor = (
     <EditorViewport
       gridArea={gridArea}
       setGridArea={setGridArea}
@@ -35,4 +60,13 @@ export default function EditorWorkspace({
       )}
     </EditorViewport>
   );
+
+  if (typeof children === "function") {
+    return children({
+      toolbar,
+      editor
+    });
+  }
+
+  return editor;
 }
