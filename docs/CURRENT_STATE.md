@@ -6,7 +6,7 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg och fem Epic 3 Editor ownership-steg.
+Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg och slutförd Epic 3 Editor interaction/UI ownership.
 
 ---
 
@@ -110,9 +110,13 @@ Ingen visuell styling ändrades; endast den dubbla renderingen togs bort.
 
 Runtime ownership ändrades inte i dessa Editor-steg.
 
+Epic 3 Editor interaction/UI ownership är slutförd.
+
+Template state ligger kvar i App.js till kommande Template Lifecycle-arbete.
+
 Framtida separat ownership-kandidat:
 
-- fortsatt Editor-ägarskap för editor-verktyg och template editing
+- Template Lifecycle för template state, import/export/load/publish och template-normalisering
 
 Verifierat:
 

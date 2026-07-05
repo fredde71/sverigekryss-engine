@@ -189,6 +189,10 @@ Femte Editor ownership-steget är genomfört:
 - nya grids initierar cellTypes som array
 - Runtime ownership ändrades inte
 
+Editor interaction/UI ownership är därmed slutförd.
+
+Template state ligger kvar i App.js tills Template Lifecycle.
+
 Kvarvarande App.js-arbete ska inte flytta runtime state tillbaka till App.js.
 
 ---

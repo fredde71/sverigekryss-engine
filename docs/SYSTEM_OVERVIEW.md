@@ -38,6 +38,8 @@ EditorWorkspace äger editor composition:
 - pendingRows state
 - pendingCols state
 
+Editor interaction/UI ownership är slutförd.
+
 App.js monterar inte längre editor-komponenter direkt.
 
 EditorToolbar äger:
@@ -72,6 +74,8 @@ App.js äger fortsatt:
 - workflow
 - template state
 - application workflow
+
+Template state ligger kvar i App.js tills Template Lifecycle-subsystemet tar över.
 
 Runtime ownership påverkas inte av EditorWorkspace.
 
