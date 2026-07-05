@@ -28,6 +28,14 @@ Ansvarar för:
 - Markering av celltyper
 - Template-definition
 
+EditorWorkspace äger editor composition:
+
+- montering av EditorViewport
+- montering av EditorLayer
+- composition boundary för Editor-subsystemet
+
+App.js monterar inte längre editor-komponenter direkt.
+
 EditorViewport äger editor grid placement interaction:
 
 - move/resize-drag
@@ -52,6 +60,8 @@ App.js äger fortsatt:
 - cellTypes state
 - toolbar ownership
 - workflow
+
+Runtime ownership påverkas inte av EditorWorkspace.
 
 Celltyper:
 

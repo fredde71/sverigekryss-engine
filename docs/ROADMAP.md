@@ -174,6 +174,13 @@ Tredje Editor ownership-steget är genomfört:
 - duplicerad EditorGrid-rendering togs bort
 - ingen visuell styling ändrades
 
+Fjärde Editor ownership-steget är genomfört:
+
+- EditorWorkspace äger editor composition
+- App.js monterar inte längre editor-komponenter direkt
+- App.js äger fortsatt editor state och toolbar
+- Runtime ownership ändrades inte
+
 Kvarvarande App.js-arbete ska inte flytta runtime state tillbaka till App.js.
 
 ---

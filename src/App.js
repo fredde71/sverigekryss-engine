@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
-import EditorLayer from "./editor/EditorLayer";
-import EditorViewport from "./editor/EditorViewport";
+import EditorWorkspace from "./editor/EditorWorkspace";
 import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import RuntimeLayer from "./runtime/RuntimeLayer";
@@ -365,27 +364,16 @@ URL.revokeObjectURL(url);
       >
 
  {modeView === "edit" && (
- <EditorViewport
-  gridArea={gridArea}
-  setGridArea={setGridArea}
-  rows={rows}
-  cols={cols}
-  activeTool={activeTool}
-  setCellTypes={setCellTypes}
->
-    {({ setMode }) => (
-    <>
-      <EditorLayer
-        rows={rows}
-        cols={cols}
-        cellTypes={cellTypes}
-        setMode={setMode}
-        isPublicRuntime={isPublicRuntime}
-        gridArea={gridArea}
-      />
-    </>
-    )}
-</EditorViewport>
+ <EditorWorkspace
+    rows={rows}
+    cols={cols}
+    cellTypes={cellTypes}
+    gridArea={gridArea}
+    setGridArea={setGridArea}
+    activeTool={activeTool}
+    setCellTypes={setCellTypes}
+    isPublicRuntime={isPublicRuntime}
+  />
   )}
 
 {modeView === "play" && (
