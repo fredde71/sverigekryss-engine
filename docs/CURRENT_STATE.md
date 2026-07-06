@@ -6,7 +6,7 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg och slutförd Epic 3 Editor interaction/UI ownership.
+Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg, slutförd Epic 3 Editor interaction/UI ownership och första Template Lifecycle-steg.
 
 ---
 
@@ -114,9 +114,17 @@ Epic 3 Editor interaction/UI ownership är slutförd.
 
 Template state ligger kvar i App.js till kommande Template Lifecycle-arbete.
 
+Template Lifecycle äger nu:
+
+- createTemplate
+- canonical Template v1 construction
+- cellTypes-normalisering till array med längden rows * cols
+
+exportTemplate använder nu canonical Template creation.
+
 Framtida separat ownership-kandidat:
 
-- Template Lifecycle för template state, import/export/load/publish och template-normalisering
+- fortsatt Template Lifecycle för fler template-vägar, en i taget
 
 Verifierat:
 

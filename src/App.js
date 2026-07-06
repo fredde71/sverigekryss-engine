@@ -6,6 +6,7 @@ import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import RuntimeLayer from "./runtime/RuntimeLayer";
 import TemplateCanvas from "./template/TemplateCanvas";
+import { createTemplate } from "./template/templateModel";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -152,12 +153,14 @@ const handleTemplateImport = async (e) => {
 
 };
   const exportTemplate = () => {
-    const data = {
+    const data = createTemplate({
+      crosswordId,
+      rows,
+      cols,
       gridArea,
       cellTypes,
-      imageSrc,
-      crosswordId
-    };
+      imageSrc
+    });
 
     const json = JSON.stringify(data, null, 2);
 

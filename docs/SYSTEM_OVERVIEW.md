@@ -216,6 +216,51 @@ Det får aldrig finnas separata definitioner av korsordets struktur.
 
 ---
 
+## Template v1
+
+Template representerar ett digitaliserat tryckt korsord.
+
+Systemet digitaliserar befintliga tryckta korsord.
+
+Systemet skapar inte korsord.
+
+Obligatoriska fält:
+
+- crosswordId
+- rows
+- cols
+- cellTypes
+- gridArea
+- imageSrc
+
+cellTypes är en array med exakt:
+
+rows * cols
+
+poster.
+
+metadata är valfritt.
+
+Template äger inte runtime state eller editor session state.
+
+Editor modifierar Template.
+
+Runtime konsumerar Template.
+
+Persistence lagrar Template.
+
+App.js orkestrerar endast.
+
+Template Lifecycle äger:
+
+- createTemplate
+- canonical Template v1 construction
+- cellTypes-normalisering till array med längden rows * cols
+
+exportTemplate använder createTemplate för canonical Template export.
+
+---
+
 ## En källa till sanningen
 
 Systemet ska alltid ha:

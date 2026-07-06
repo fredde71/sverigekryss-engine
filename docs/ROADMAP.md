@@ -108,11 +108,45 @@ Publicering
 
 Ownership:
 
-Editor + Runtime
+Template Lifecycle
 
 Prioritet:
 
 Hög
+
+Beslut:
+
+Template v1 representerar ett digitaliserat tryckt korsord.
+
+Obligatoriska fält:
+
+- crosswordId
+- rows
+- cols
+- cellTypes
+- gridArea
+- imageSrc
+
+cellTypes är en array med längden rows * cols.
+
+metadata är valfritt.
+
+Template innehåller ingen runtime state och ingen editor session state.
+
+Editor modifierar Template.
+
+Runtime konsumerar Template.
+
+Persistence lagrar Template.
+
+App.js orkestrerar endast.
+
+Första Template Lifecycle-steg är genomfört:
+
+- createTemplate finns
+- createTemplate bygger canonical Template v1
+- cellTypes normaliseras till array med längden rows * cols
+- exportTemplate använder canonical Template creation
 
 ---
 

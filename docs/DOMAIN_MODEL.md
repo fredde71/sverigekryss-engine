@@ -14,18 +14,54 @@ Architecture decisions should always follow this document.
 
 ## 1. Template
 
-Represents a published crossword template.
+A Template represents a digitized printed puzzle.
+
+The platform digitalizes existing printed puzzles.
+
+The platform does not create puzzles.
+
+A Template is the canonical digital representation of the printed source.
 
 A Template contains no runtime state.
 
-### Owns
+### Template v1 required fields
 
 - crosswordId
 - rows
 - cols
 - cellTypes
-- imageSrc
 - gridArea
+- imageSrc
+
+### Field rules
+
+cellTypes must be an array with exactly:
+
+rows * cols
+
+entries.
+
+Each entry represents the cell type at that grid index.
+
+Supported v1 cell types:
+
+- image
+- blocked
+- double
+- write
+- empty
+
+gridArea represents the placement of the interactive grid over the digitized printed puzzle image.
+
+imageSrc references the digitized printed puzzle image.
+
+### Optional fields
+
+- metadata
+
+metadata may contain descriptive or operational information such as title, publisher, issue date, source filename, creation time, update time, or notes.
+
+metadata must not be required for Runtime.
 
 ### Does NOT own
 
@@ -33,6 +69,33 @@ A Template contains no runtime state.
 - activeCell
 - direction
 - inputRefs
+- activeTool
+- pendingRows
+- pendingCols
+- dragState
+- resizeState
+
+### Lifecycle ownership
+
+Editor modifies Template.
+
+Runtime consumes Template.
+
+Persistence stores Template.
+
+App orchestrates only.
+
+### Template Lifecycle helper
+
+Template Lifecycle owns canonical Template v1 construction.
+
+createTemplate constructs Template v1 objects.
+
+createTemplate normalizes cellTypes to an array with length:
+
+rows * cols
+
+exportTemplate uses createTemplate for canonical Template export.
 
 ---
 
