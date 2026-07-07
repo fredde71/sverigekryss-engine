@@ -344,9 +344,39 @@ Medel
 
 ---
 
+## 11. Responsive Public Runtime
+
+Mål:
+
+Public Play ska fungera på:
+
+- mobil
+- tablet
+- desktop
+
+Strategi:
+
+Editor är desktop-first för produktionsarbete.
+
+Public Play måste stödja mobil och tablet.
+
+Responsive Public Runtime är ett Version 1.0-krav.
+
+Responsive-arbete ska inte blandas med Template Lifecycle eller Editor ownership changes.
+
+Ownership:
+
+Runtime / TemplateCanvas
+
+Prioritet:
+
+Hög inför Version 1.0
+
+---
+
 # Fas 5 – Plattform
 
-## 11. Backend
+## 12. Backend
 
 Mål:
 
@@ -362,7 +392,7 @@ Låg
 
 ---
 
-## 12. API
+## 13. API
 
 Mål:
 
@@ -378,7 +408,7 @@ Låg
 
 ---
 
-## 13. Användarhantering
+## 14. Användarhantering
 
 Mål:
 
