@@ -8,6 +8,7 @@ import RuntimeLayer from "./runtime/RuntimeLayer";
 import TemplateCanvas from "./template/TemplateCanvas";
 import { normalizeTemplate } from "./template/templateModel";
 import { exportTemplateFile } from "./template/templateExport";
+import { importTemplateFile } from "./template/templateImport";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -150,9 +151,7 @@ const handleTemplateImport = async (e) => {
 
   if (!file) return;
 
-  const text = await file.text();
-
-  const data = normalizeTemplate(JSON.parse(text), {
+  const data = await importTemplateFile(file, {
     crosswordId,
     rows,
     cols,

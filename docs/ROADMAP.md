@@ -201,6 +201,20 @@ Oförändrat i detta steg:
 - Runtime
 - state ownership
 
+Sjätte Template Lifecycle-steg är genomfört:
+
+- templateImport finns
+- Template Lifecycle äger JSON template parsing and normalization
+- App.js delegerar import-beteende till templateImport
+- App.js äger fortsatt Template state application
+
+Oförändrat i detta steg:
+
+- Runtime
+- publish
+- backend
+- state ownership
+
 ---
 
 # Fas 2 – Arkitekturstädning

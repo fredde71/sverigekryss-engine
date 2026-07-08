@@ -103,6 +103,12 @@ App.js delegates export behavior to templateExport.
 
 Export still creates canonical Template v1.
 
+templateImport owns JSON template parsing and normalization.
+
+App.js delegates import behavior to templateImport.
+
+App.js still owns Template state application.
+
 normalizeTemplate handles canonical Template v1 input.
 
 normalizeTemplate preserves:
@@ -131,7 +137,9 @@ Backend error handling is unchanged in this step.
 
 App.js, publish, and Runtime ownership are unchanged in this step.
 
-Import, publish, Runtime, and state ownership are unchanged in this step.
+Runtime, publish, and backend are unchanged in this step.
+
+State ownership is unchanged.
 
 URL data load is still unchanged.
 
