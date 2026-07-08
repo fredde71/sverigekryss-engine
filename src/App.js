@@ -313,6 +313,11 @@ URL.revokeObjectURL(url);
         <button
   onClick={async () => {
 
+    if (!crosswordId.trim()) {
+      alert("Ange Crossword ID innan publicering.");
+      return;
+    }
+
     const template = {
       crosswordId,
       gridArea,
