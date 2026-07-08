@@ -6,9 +6,9 @@ import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import RuntimeLayer from "./runtime/RuntimeLayer";
 import TemplateCanvas from "./template/TemplateCanvas";
-import { normalizeTemplate } from "./template/templateModel";
 import { exportTemplateFile } from "./template/templateExport";
 import { importTemplateFile } from "./template/templateImport";
+import { loadBackendTemplate } from "./template/templateApi";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -46,22 +46,8 @@ useEffect(() => {
 
   if (!id) return;
 
-  fetch(`http://localhost:5050/api/crossword/${id}`)
-    .then(res => res.json())
-    .then(template => {
-
-      const data = normalizeTemplate(template, {
-        crosswordId: id,
-        rows: 25,
-        cols: 25,
-        gridArea: {
-          top: 0,
-          left: 0,
-          width: 1200,
-          height: 1200
-        },
-        imageSrc: ""
-      });
+  loadBackendTemplate(id)
+    .then(data => {
 
       setCrosswordId(data.crosswordId);
       setCellTypes(data.cellTypes);

@@ -120,10 +120,12 @@ Template Lifecycle äger nu:
 - normalizeTemplate
 - templateExport
 - templateImport
+- templateApi
 - canonical Template v1 construction
 - canonical Template v1 input handling
 - canonical Template v1 file export
 - JSON template parsing and normalization
+- backend template loading and normalization
 - cellTypes-normalisering till array med längden rows * cols
 
 Template Lifecycle äger nu template file export.
@@ -150,7 +152,11 @@ Importerade templates återställer canonical Template v1-fält när de finns:
 - imageSrc
 - metadata
 
-App.js backend load använder nu normalizeTemplate.
+Template Lifecycle äger nu backend template loading and normalization.
+
+App.js delegerar backend load till templateApi.
+
+App.js är fortsatt application orchestrator och applicerar Template state.
 
 Laddade backend-templates återställer canonical Template v1-fält när de finns, inklusive crosswordId.
 
@@ -162,7 +168,9 @@ Backend error handling är oförändrad i detta steg.
 
 App.js, publish och Runtime ownership är oförändrade i detta steg.
 
-Runtime, publish och backend är oförändrade i detta steg.
+Backend contract och Runtime behavior är oförändrade i detta steg.
+
+Publish är oförändrat.
 
 State ownership är oförändrat.
 

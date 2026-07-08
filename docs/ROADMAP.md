@@ -215,6 +215,20 @@ Oförändrat i detta steg:
 - backend
 - state ownership
 
+Sjunde Template Lifecycle-steg är genomfört:
+
+- templateApi finns
+- Template Lifecycle äger backend template loading and normalization
+- App.js delegerar backend load till templateApi
+- App.js är fortsatt application orchestrator och applicerar Template state
+
+Oförändrat i detta steg:
+
+- backend contract
+- Runtime behavior
+- publish
+- state ownership
+
 ---
 
 # Fas 2 – Arkitekturstädning

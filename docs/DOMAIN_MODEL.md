@@ -109,6 +109,12 @@ App.js delegates import behavior to templateImport.
 
 App.js still owns Template state application.
 
+templateApi owns backend template loading and normalization.
+
+App.js delegates backend load to templateApi.
+
+App.js remains the application orchestrator and applies Template state.
+
 normalizeTemplate handles canonical Template v1 input.
 
 normalizeTemplate preserves:
@@ -125,8 +131,6 @@ JSON import uses normalizeTemplate.
 
 Imported templates restore canonical Template v1 fields when present.
 
-App.js backend load uses normalizeTemplate.
-
 Loaded backend templates restore canonical Template v1 fields when present, including crosswordId.
 
 Play.jsx uses normalizeTemplate for backend-loaded templates.
@@ -137,7 +141,9 @@ Backend error handling is unchanged in this step.
 
 App.js, publish, and Runtime ownership are unchanged in this step.
 
-Runtime, publish, and backend are unchanged in this step.
+Backend contract and Runtime behavior are unchanged in this step.
+
+Publish is unchanged.
 
 State ownership is unchanged.
 
