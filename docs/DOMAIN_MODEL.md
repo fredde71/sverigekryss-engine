@@ -117,7 +117,15 @@ App.js backend load uses normalizeTemplate.
 
 Loaded backend templates restore canonical Template v1 fields when present, including crosswordId.
 
-Publish, import, Runtime, Play.jsx, and URL data load are unchanged in this step.
+Play.jsx uses normalizeTemplate for backend-loaded templates.
+
+TemplateCanvas and RuntimeLayer receive normalized Template data in public play.
+
+Backend error handling is unchanged in this step.
+
+App.js, publish, and Runtime ownership are unchanged in this step.
+
+URL data load is still unchanged.
 
 ---
 

@@ -174,6 +174,19 @@ Oförändrat i detta steg:
 - Runtime
 - Play.jsx
 
+Fjärde Template Lifecycle-steg är genomfört:
+
+- Play.jsx använder normalizeTemplate för backend-laddade templates
+- TemplateCanvas får normalized Template data i public play
+- RuntimeLayer får normalized Template data i public play
+- backend error handling är oförändrad
+
+Oförändrat i detta steg:
+
+- App.js
+- publish
+- Runtime ownership
+
 ---
 
 # Fas 2 – Arkitekturstädning
