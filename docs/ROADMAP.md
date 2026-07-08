@@ -187,6 +187,20 @@ Oförändrat i detta steg:
 - publish
 - Runtime ownership
 
+Femte Template Lifecycle-steg är genomfört:
+
+- templateExport finns
+- Template Lifecycle äger template file export
+- App.js delegerar export-beteende till templateExport
+- export skapar fortsatt canonical Template v1
+
+Oförändrat i detta steg:
+
+- import
+- publish
+- Runtime
+- state ownership
+
 ---
 
 # Fas 2 – Arkitekturstädning

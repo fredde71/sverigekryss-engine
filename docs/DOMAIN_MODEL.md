@@ -97,6 +97,12 @@ rows * cols
 
 exportTemplate uses createTemplate for canonical Template export.
 
+templateExport owns Template file export behavior.
+
+App.js delegates export behavior to templateExport.
+
+Export still creates canonical Template v1.
+
 normalizeTemplate handles canonical Template v1 input.
 
 normalizeTemplate preserves:
@@ -124,6 +130,8 @@ TemplateCanvas and RuntimeLayer receive normalized Template data in public play.
 Backend error handling is unchanged in this step.
 
 App.js, publish, and Runtime ownership are unchanged in this step.
+
+Import, publish, Runtime, and state ownership are unchanged in this step.
 
 URL data load is still unchanged.
 

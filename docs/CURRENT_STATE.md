@@ -118,11 +118,17 @@ Template Lifecycle äger nu:
 
 - createTemplate
 - normalizeTemplate
+- templateExport
 - canonical Template v1 construction
 - canonical Template v1 input handling
+- canonical Template v1 file export
 - cellTypes-normalisering till array med längden rows * cols
 
-exportTemplate använder nu canonical Template creation.
+Template Lifecycle äger nu template file export.
+
+App.js delegerar export-beteende till templateExport.
+
+Export skapar fortfarande canonical Template v1.
 
 JSON import använder nu normalizeTemplate.
 
@@ -147,6 +153,8 @@ TemplateCanvas och RuntimeLayer får normalized Template data i public play.
 Backend error handling är oförändrad i detta steg.
 
 App.js, publish och Runtime ownership är oförändrade i detta steg.
+
+Import, publish, Runtime och state ownership är oförändrade i detta steg.
 
 URL data load är fortfarande oförändrad.
 

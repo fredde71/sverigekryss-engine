@@ -6,7 +6,8 @@ import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import RuntimeLayer from "./runtime/RuntimeLayer";
 import TemplateCanvas from "./template/TemplateCanvas";
-import { createTemplate, normalizeTemplate } from "./template/templateModel";
+import { normalizeTemplate } from "./template/templateModel";
+import { exportTemplateFile } from "./template/templateExport";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -180,7 +181,7 @@ const handleTemplateImport = async (e) => {
 
 };
   const exportTemplate = () => {
-    const data = createTemplate({
+    exportTemplateFile({
       crosswordId,
       rows,
       cols,
@@ -188,24 +189,6 @@ const handleTemplateImport = async (e) => {
       cellTypes,
       imageSrc
     });
-
-    const json = JSON.stringify(data, null, 2);
-
-const blob = new Blob(
-  [json],
-  { type: "application/json" }
-);
-
-const url = URL.createObjectURL(blob);
-
-const a = document.createElement("a");
-
-a.href = url;
-a.download = "sverigekryss-template.json";
-
-a.click();
-
-URL.revokeObjectURL(url);
   };
 
   // ✅ NY FUNKTION (tillagd)
