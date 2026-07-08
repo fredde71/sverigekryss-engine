@@ -117,10 +117,26 @@ Template state ligger kvar i App.js till kommande Template Lifecycle-arbete.
 Template Lifecycle äger nu:
 
 - createTemplate
+- normalizeTemplate
 - canonical Template v1 construction
+- canonical Template v1 input handling
 - cellTypes-normalisering till array med längden rows * cols
 
 exportTemplate använder nu canonical Template creation.
+
+JSON import använder nu normalizeTemplate.
+
+Importerade templates återställer canonical Template v1-fält när de finns:
+
+- crosswordId
+- rows
+- cols
+- cellTypes
+- gridArea
+- imageSrc
+- metadata
+
+Backend load, Play.jsx och URL data load är oförändrade i detta steg.
 
 Framtida separat ownership-kandidat:
 

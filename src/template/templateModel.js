@@ -17,6 +17,25 @@ export function createTemplate(input) {
   };
 }
 
+export function normalizeTemplate(input, defaults = {}) {
+  const rows = input.rows ?? defaults.rows;
+  const cols = input.cols ?? defaults.cols;
+
+  return {
+    crosswordId: input.crosswordId ?? defaults.crosswordId,
+    rows,
+    cols,
+    cellTypes: normalizeCellTypes({
+      cellTypes: input.cellTypes,
+      rows,
+      cols
+    }),
+    gridArea: input.gridArea ?? defaults.gridArea,
+    imageSrc: input.imageSrc ?? defaults.imageSrc,
+    metadata: input.metadata ?? defaults.metadata
+  };
+}
+
 function normalizeCellTypes({
   cellTypes,
   rows,

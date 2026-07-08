@@ -148,6 +148,19 @@ Första Template Lifecycle-steg är genomfört:
 - cellTypes normaliseras till array med längden rows * cols
 - exportTemplate använder canonical Template creation
 
+Andra Template Lifecycle-steg är genomfört:
+
+- normalizeTemplate finns
+- normalizeTemplate hanterar canonical Template v1 input
+- JSON import använder normalizeTemplate
+- importerade templates återställer canonical Template v1-fält när de finns
+
+Oförändrat i detta steg:
+
+- backend load
+- Play.jsx
+- URL data load
+
 ---
 
 # Fas 2 – Arkitekturstädning

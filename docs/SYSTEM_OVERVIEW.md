@@ -254,10 +254,18 @@ App.js orkestrerar endast.
 Template Lifecycle äger:
 
 - createTemplate
+- normalizeTemplate
 - canonical Template v1 construction
+- canonical Template v1 input handling
 - cellTypes-normalisering till array med längden rows * cols
 
 exportTemplate använder createTemplate för canonical Template export.
+
+JSON import använder normalizeTemplate.
+
+Importerade templates återställer canonical Template v1-fält när de finns.
+
+Backend load, Play.jsx och URL data load är oförändrade i detta steg.
 
 ---
 
