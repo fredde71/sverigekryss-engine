@@ -48,12 +48,26 @@ useEffect(() => {
     .then(res => res.json())
     .then(template => {
 
-      setCellTypes(template.cellTypes || {});
-      setImageSrc(template.imageSrc || "");
-      setGridArea(template.gridArea);
+      const data = normalizeTemplate(template, {
+        crosswordId: id,
+        rows: 25,
+        cols: 25,
+        gridArea: {
+          top: 0,
+          left: 0,
+          width: 1200,
+          height: 1200
+        },
+        imageSrc: ""
+      });
 
-      setRows(template.rows || 25);
-      setCols(template.cols || 25);
+      setCrosswordId(data.crosswordId);
+      setCellTypes(data.cellTypes);
+      setImageSrc(data.imageSrc);
+      setGridArea(data.gridArea);
+
+      setRows(data.rows);
+      setCols(data.cols);
 
       setModeView("play");
 

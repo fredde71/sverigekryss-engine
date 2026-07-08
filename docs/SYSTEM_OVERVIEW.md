@@ -265,7 +265,11 @@ JSON import använder normalizeTemplate.
 
 Importerade templates återställer canonical Template v1-fält när de finns.
 
-Backend load, Play.jsx och URL data load är oförändrade i detta steg.
+App.js backend load använder normalizeTemplate.
+
+Laddade backend-templates återställer canonical Template v1-fält när de finns, inklusive crosswordId.
+
+Publish, import, Runtime, Play.jsx och URL data load är oförändrade i detta steg.
 
 ---
 

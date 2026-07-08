@@ -161,6 +161,19 @@ Oförändrat i detta steg:
 - Play.jsx
 - URL data load
 
+Tredje Template Lifecycle-steg är genomfört:
+
+- App.js backend load använder normalizeTemplate
+- laddade backend-templates återställer canonical Template v1-fält när de finns
+- crosswordId återställs från laddad template eller route id
+
+Oförändrat i detta steg:
+
+- publish
+- import
+- Runtime
+- Play.jsx
+
 ---
 
 # Fas 2 – Arkitekturstädning
