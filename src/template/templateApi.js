@@ -17,3 +17,15 @@ export async function loadBackendTemplate(id) {
     imageSrc: ""
   });
 }
+
+export async function publishBackendTemplate(template) {
+  const response = await fetch("http://localhost:5050/api/publish", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(template)
+  });
+
+  return response.json();
+}

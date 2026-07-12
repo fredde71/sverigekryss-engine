@@ -115,6 +115,12 @@ App.js delegates backend load to templateApi.
 
 App.js remains the application orchestrator and applies Template state.
 
+Persistence Platform frontend owns publish API communication through templateApi.
+
+App.js delegates publish HTTP communication to templateApi.
+
+App.js still owns publish validation, payload construction, and workflow orchestration.
+
 normalizeTemplate handles canonical Template v1 input.
 
 normalizeTemplate preserves:
@@ -139,11 +145,11 @@ TemplateCanvas and RuntimeLayer receive normalized Template data in public play.
 
 Backend error handling is unchanged in this step.
 
-App.js, publish, and Runtime ownership are unchanged in this step.
+Runtime ownership is unchanged in this step.
 
 Backend contract and Runtime behavior are unchanged in this step.
 
-Publish is unchanged.
+Publish workflow is unchanged.
 
 State ownership is unchanged.
 

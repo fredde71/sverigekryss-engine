@@ -8,7 +8,10 @@ import RuntimeLayer from "./runtime/RuntimeLayer";
 import TemplateCanvas from "./template/TemplateCanvas";
 import { exportTemplateFile } from "./template/templateExport";
 import { importTemplateFile } from "./template/templateImport";
-import { loadBackendTemplate } from "./template/templateApi";
+import {
+  loadBackendTemplate,
+  publishBackendTemplate
+} from "./template/templateApi";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -295,15 +298,7 @@ const handleTemplateImport = async (e) => {
       cols
     };
 
-    const response = await fetch("http://localhost:5050/api/publish", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(template)
-    });
-
-    const data = await response.json();
+    const data = await publishBackendTemplate(template);
 
     console.log(data);
 

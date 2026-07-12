@@ -229,6 +229,23 @@ Oförändrat i detta steg:
 - publish
 - state ownership
 
+Första Persistence Platform frontend-steg är genomfört:
+
+- publishBackendTemplate finns i templateApi
+- Persistence Platform frontend äger publish API communication
+- App.js delegerar publish HTTP communication till templateApi
+- App.js äger fortsatt publish validation, payload construction och workflow orchestration
+
+Oförändrat i detta steg:
+
+- backend contract
+- payload shape
+- image handling
+- storage paths
+- error behavior
+- Template canonicalization
+- state ownership
+
 ---
 
 # Fas 2 – Arkitekturstädning

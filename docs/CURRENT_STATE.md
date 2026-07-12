@@ -128,6 +128,10 @@ Template Lifecycle äger nu:
 - backend template loading and normalization
 - cellTypes-normalisering till array med längden rows * cols
 
+Persistence Platform frontend äger nu:
+
+- publish API communication via templateApi
+
 Template Lifecycle äger nu template file export.
 
 App.js delegerar export-beteende till templateExport.
@@ -166,11 +170,19 @@ TemplateCanvas och RuntimeLayer får normalized Template data i public play.
 
 Backend error handling är oförändrad i detta steg.
 
-App.js, publish och Runtime ownership är oförändrade i detta steg.
+App.js delegerar publish HTTP communication till templateApi.
+
+App.js äger fortfarande:
+
+- publish validation
+- publish payload construction
+- publish workflow orchestration
+
+Runtime ownership är oförändrad i detta steg.
 
 Backend contract och Runtime behavior är oförändrade i detta steg.
 
-Publish är oförändrat.
+Publish workflow är oförändrat.
 
 State ownership är oförändrat.
 
