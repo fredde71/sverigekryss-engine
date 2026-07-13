@@ -85,6 +85,52 @@ Persistence stores Template.
 
 App orchestrates only.
 
+### Persistence Platform
+
+Persistence Platform is a first-class subsystem.
+
+Persistence stores Templates but does not define Template shape.
+
+Template Lifecycle defines canonical Template v1 shape.
+
+Persistence Platform owns durable storage and backend communication for Templates and persisted assets.
+
+Frontend API:
+
+- loadBackendTemplate(id)
+- publishBackendTemplate(template)
+
+Backend API:
+
+- GET /
+- POST /api/publish
+- GET /api/crossword/:id
+- GET /uploads/...
+
+File-based backend storage:
+
+- backend/templates stores published Template JSON files
+- backend/uploads stores published image assets
+
+Persistence Platform does not own:
+
+- Template shape
+- Template normalization
+- Editor behavior
+- Runtime behavior
+- App workflow
+
+App.js remains the workflow orchestrator.
+
+Runtime and Editor do not own persistence.
+
+Future extension points:
+
+- storage adapters
+- backend validation
+- API configuration
+- persistence regression tests
+
 ### Template Lifecycle helper
 
 Template Lifecycle owns canonical Template v1 construction.

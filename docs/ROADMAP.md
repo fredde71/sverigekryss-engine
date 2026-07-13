@@ -371,6 +371,46 @@ Medel
 
 # Fas 3 – Persistence
 
+Persistence Platform är ett first-class subsystem.
+
+Syfte:
+
+Lagra, läsa och publicera Template-data och tillhörande persistenta assets.
+
+Ansvar:
+
+- frontend API communication med backend persistence API
+- backend API endpoints för publish och load
+- filbaserad lagring av publicerade templates
+- filbaserad lagring av uppladdade/publicerade assets
+
+Frontend API:
+
+- loadBackendTemplate(id)
+- publishBackendTemplate(template)
+
+Backend API:
+
+- GET /
+- POST /api/publish
+- GET /api/crossword/:id
+- GET /uploads/...
+
+Persistence lagrar Templates men definierar inte Template shape.
+
+Template Lifecycle definierar Template v1-formen.
+
+App.js är fortsatt workflow orchestrator.
+
+Runtime och Editor äger inte persistence.
+
+Framtida extension points:
+
+- storage adapters
+- backend validation
+- API configuration
+- persistence regression tests
+
 ## 7. Template-lagring
 
 Mål:
@@ -390,6 +430,16 @@ Prioritet:
 
 Hög
 
+Status:
+
+Backend repository-normalisering är genomförd.
+
+Backend source och dependency manifests är tracked.
+
+Runtime persistence data i backend/templates och backend/uploads ignoreras.
+
+Mapparna behålls med .gitkeep.
+
 ---
 
 ## 8. Återladdning av template
@@ -405,6 +455,14 @@ Persistence
 Prioritet:
 
 Hög
+
+Status:
+
+loadBackendTemplate finns i frontend API.
+
+Backend load API communication går via templateApi.
+
+App.js applicerar fortfarande Template state och workflow.
 
 ---
 

@@ -134,6 +134,59 @@ Framtida Editor-ownership är separat från TemplateCanvas.
 
 ---
 
+## Persistence Platform
+
+Ansvarar för att lagra, läsa och publicera Template-data och tillhörande persistenta assets.
+
+Frontend API:
+
+- loadBackendTemplate(id)
+- publishBackendTemplate(template)
+
+Backend API:
+
+- GET /
+- POST /api/publish
+- GET /api/crossword/:id
+- GET /uploads/...
+
+Backend använder filbaserad lagring:
+
+- backend/templates för publicerade Template JSON-filer
+- backend/uploads för publicerade bilduppladdningar
+
+Persistence Platform äger:
+
+- frontend HTTP communication med backend persistence API
+- backend endpoints för publish och load
+- filbaserad lagring av templates och uppladdade assets
+- runtime persistence directories som repository-normaliserade mappar
+
+Persistence Platform äger inte:
+
+- Template shape
+- Template-normalisering
+- Editor-beteende
+- Runtime-beteende
+- App workflow
+
+Template Lifecycle definierar Template v1-formen.
+
+Persistence lagrar Templates men definierar inte Template shape.
+
+App.js är fortsatt workflow orchestrator.
+
+Runtime och Editor äger inte persistence.
+
+Framtida extension points:
+
+- storage adapters
+- backend validation
+- API configuration
+- persistence regression tests
+
+---
+
 ## Engine
 
 Ansvarar för gemensam logik som inte ska ligga i UI-komponenter.
@@ -268,6 +321,7 @@ Template Lifecycle äger:
 Persistence Platform frontend äger:
 
 - publish API communication via templateApi
+- backend load API communication via templateApi
 
 Template Lifecycle äger template file export.
 

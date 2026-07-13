@@ -131,6 +131,38 @@ Template Lifecycle äger nu:
 Persistence Platform frontend äger nu:
 
 - publish API communication via templateApi
+- backend load API communication via templateApi
+
+Persistence Platform är ett first-class subsystem.
+
+Persistence Platform äger nu:
+
+- frontend API communication för loadBackendTemplate och publishBackendTemplate
+- backend API endpoints för publish och load
+- filbaserad backend-lagring i backend/templates
+- filbaserad backend-assetlagring i backend/uploads
+- repository-normalisering för backend source, dependency manifests och runtime data ignores
+
+Persistence Platform äger inte:
+
+- Template shape
+- Template-normalisering
+- Editor-beteende
+- Runtime-beteende
+- App workflow
+
+Persistence lagrar Templates men definierar inte Template shape.
+
+App.js är fortsatt workflow orchestrator.
+
+Runtime och Editor äger inte persistence.
+
+Framtida Persistence extension points:
+
+- storage adapters
+- backend validation
+- API configuration
+- persistence regression tests
 
 Template Lifecycle äger nu template file export.
 
