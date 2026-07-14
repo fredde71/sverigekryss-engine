@@ -8,6 +8,29 @@ The first priority is protecting demo-critical behavior and the ownership bounda
 
 ---
 
+# Implemented Test Packages
+
+## Template Lifecycle Unit Tests
+
+Status:
+
+Implemented.
+
+Coverage:
+
+- createTemplate returns canonical Template v1 fields
+- createTemplate normalizes cellTypes to rows * cols
+- normalizeTemplate applies defaults and normalizes cellTypes
+- runtime/editor session fields are excluded from Template output
+
+The obsolete CRA default App.test.js test was replaced.
+
+Verification:
+
+- 4 tests pass using the existing CRA/Jest setup
+
+---
+
 # Demo-Critical Subset
 
 These workflows must be prioritized first for automated coverage:

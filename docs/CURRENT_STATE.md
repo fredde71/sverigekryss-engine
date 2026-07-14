@@ -165,6 +165,21 @@ Framtida Persistence extension points:
 - API configuration
 - persistence regression tests
 
+Test Foundation har påbörjats.
+
+Template Lifecycle har nu automated unit tests för:
+
+- createTemplate canonical Template v1 creation
+- createTemplate cellTypes-normalisering till rows * cols
+- normalizeTemplate defaults och cellTypes-normalisering
+- exkludering av runtime/editor session state
+
+Den obsolete CRA default App.test.js-testen är ersatt.
+
+Verifierat:
+
+- 4 tests pass using existing Jest setup
+
 Template Lifecycle äger nu template file export.
 
 App.js delegerar export-beteende till templateExport.

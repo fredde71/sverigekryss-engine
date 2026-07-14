@@ -450,6 +450,31 @@ Mapparna behålls med .gitkeep.
 
 ---
 
+# Fas 3.5 – Test Foundation
+
+## Template Lifecycle unit tests
+
+Status:
+
+Genomfört.
+
+Test Foundation har första automated unit test package.
+
+Täckning:
+
+- createTemplate canonical Template v1 creation
+- createTemplate cellTypes-normalisering till rows * cols
+- normalizeTemplate defaults och cellTypes-normalisering
+- runtime/editor session state exkluderas från Template output
+
+Den obsolete CRA default App.test.js-testen är ersatt.
+
+Verifiering:
+
+- 4 tests pass using existing Jest setup
+
+---
+
 ## 8. Återladdning av template
 
 Mål:
