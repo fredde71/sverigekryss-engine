@@ -31,6 +31,29 @@ Verification:
 
 ---
 
+## Persistence Frontend API Integration Tests
+
+Status:
+
+Implemented.
+
+Coverage:
+
+- loadBackendTemplate uses the configured backend URL
+- loadBackendTemplate returns normalized Template data
+- publishBackendTemplate posts the unchanged payload
+- publishBackendTemplate returns parsed backend JSON
+
+fetch and response.json are mocked.
+
+normalizeTemplate remains real.
+
+Verification:
+
+- total automated tests: 7
+
+---
+
 # Demo-Critical Subset
 
 These workflows must be prioritized first for automated coverage:

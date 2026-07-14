@@ -475,6 +475,30 @@ Verifiering:
 
 ---
 
+## Persistence frontend API integration tests
+
+Status:
+
+Genomfört.
+
+Täckning:
+
+- loadBackendTemplate contract
+- publishBackendTemplate contract
+- backend URL usage
+- template normalization
+- publish request contract
+
+fetch mockas.
+
+normalizeTemplate körs fortsatt real.
+
+Verifiering:
+
+- total automated tests: 7
+
+---
+
 ## 8. Återladdning av template
 
 Mål:

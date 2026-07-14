@@ -180,6 +180,21 @@ Verifierat:
 
 - 4 tests pass using existing Jest setup
 
+Persistence frontend API har nu automated integration tests för:
+
+- loadBackendTemplate backend URL usage
+- loadBackendTemplate normalized Template output
+- publishBackendTemplate request contract
+- publishBackendTemplate parsed backend JSON response
+
+fetch och response.json mockas.
+
+normalizeTemplate körs fortsatt real.
+
+Verifierat:
+
+- total automated tests: 7
+
 Template Lifecycle äger nu template file export.
 
 App.js delegerar export-beteende till templateExport.
