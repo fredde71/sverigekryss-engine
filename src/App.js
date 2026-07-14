@@ -302,6 +302,11 @@ const handleTemplateImport = async (e) => {
 
     console.log(data);
 
+    if (data.success) {
+      const publicUrl = `${window.location.origin}/play/${crosswordId}`;
+      alert(`Publicerad! Öppna: ${publicUrl}`);
+    }
+
   }}
 >
   Publish

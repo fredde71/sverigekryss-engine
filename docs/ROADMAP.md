@@ -236,6 +236,14 @@ Första Persistence Platform frontend-steg är genomfört:
 - App.js delegerar publish HTTP communication till templateApi
 - App.js äger fortsatt publish validation, payload construction och workflow orchestration
 
+Persistence frontend integration är genomförd:
+
+- persistenceConfig finns med shared backend base URL
+- templateApi använder shared backend base URL för load och publish
+- Play.jsx laddar public play templates via loadBackendTemplate
+- Publish visar success feedback med public play URL
+- App.js behåller editor workflow öppet efter publish
+
 Oförändrat i detta steg:
 
 - backend contract

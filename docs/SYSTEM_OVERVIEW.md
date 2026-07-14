@@ -322,6 +322,7 @@ Persistence Platform frontend äger:
 
 - publish API communication via templateApi
 - backend load API communication via templateApi
+- shared backend base URL configuration
 
 Template Lifecycle äger template file export.
 
@@ -347,7 +348,7 @@ App.js är fortsatt application orchestrator och applicerar Template state.
 
 Laddade backend-templates återställer canonical Template v1-fält när de finns, inklusive crosswordId.
 
-Play.jsx använder normalizeTemplate för backend-laddade templates.
+Play.jsx delegerar backend template load till loadBackendTemplate i templateApi.
 
 TemplateCanvas och RuntimeLayer får normalized Template data i public play.
 
@@ -360,6 +361,7 @@ App.js äger fortsatt:
 - publish validation
 - publish payload construction
 - publish workflow orchestration
+- publish success feedback med public play URL
 
 Runtime ownership är oförändrad i detta steg.
 

@@ -163,9 +163,13 @@ App.js remains the application orchestrator and applies Template state.
 
 Persistence Platform frontend owns publish API communication through templateApi.
 
+Persistence Platform frontend owns shared backend base URL configuration.
+
 App.js delegates publish HTTP communication to templateApi.
 
 App.js still owns publish validation, payload construction, and workflow orchestration.
+
+App.js shows publish success feedback with the public play URL.
 
 normalizeTemplate handles canonical Template v1 input.
 
@@ -185,7 +189,7 @@ Imported templates restore canonical Template v1 fields when present.
 
 Loaded backend templates restore canonical Template v1 fields when present, including crosswordId.
 
-Play.jsx uses normalizeTemplate for backend-loaded templates.
+Play.jsx delegates backend template loading to loadBackendTemplate in templateApi.
 
 TemplateCanvas and RuntimeLayer receive normalized Template data in public play.
 

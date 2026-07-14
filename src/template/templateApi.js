@@ -1,7 +1,8 @@
 import { normalizeTemplate } from "./templateModel";
+import { BACKEND_BASE_URL } from "./persistenceConfig";
 
 export async function loadBackendTemplate(id) {
-  const response = await fetch(`http://localhost:5050/api/crossword/${id}`);
+  const response = await fetch(`${BACKEND_BASE_URL}/api/crossword/${id}`);
   const template = await response.json();
 
   return normalizeTemplate(template, {
@@ -19,7 +20,7 @@ export async function loadBackendTemplate(id) {
 }
 
 export async function publishBackendTemplate(template) {
-  const response = await fetch("http://localhost:5050/api/publish", {
+  const response = await fetch(`${BACKEND_BASE_URL}/api/publish`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"

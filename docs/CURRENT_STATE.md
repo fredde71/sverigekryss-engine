@@ -132,6 +132,7 @@ Persistence Platform frontend äger nu:
 
 - publish API communication via templateApi
 - backend load API communication via templateApi
+- shared backend base URL configuration
 
 Persistence Platform är ett first-class subsystem.
 
@@ -196,7 +197,7 @@ App.js är fortsatt application orchestrator och applicerar Template state.
 
 Laddade backend-templates återställer canonical Template v1-fält när de finns, inklusive crosswordId.
 
-Play.jsx använder nu normalizeTemplate för backend-laddade templates.
+Play.jsx delegerar nu backend template load till loadBackendTemplate i templateApi.
 
 TemplateCanvas och RuntimeLayer får normalized Template data i public play.
 
@@ -209,6 +210,7 @@ App.js äger fortfarande:
 - publish validation
 - publish payload construction
 - publish workflow orchestration
+- publish success feedback med public play URL
 
 Runtime ownership är oförändrad i detta steg.
 
