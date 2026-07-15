@@ -54,6 +54,28 @@ Verification:
 
 ---
 
+## Runtime Engine Unit Tests
+
+Status:
+
+Implemented.
+
+Coverage:
+
+- input normalization
+- navigation and direction behavior
+- boundary handling
+- active line behavior
+- double clue behavior
+
+Runtime engine logic now has automated unit coverage.
+
+Verification:
+
+- total automated tests: 19
+
+---
+
 # Demo-Critical Subset
 
 These workflows must be prioritized first for automated coverage:

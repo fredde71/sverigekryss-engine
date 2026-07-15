@@ -195,6 +195,18 @@ Verifierat:
 
 - total automated tests: 7
 
+Runtime engine logic har nu automated unit tests för:
+
+- input normalization
+- navigation och direction
+- boundaries och non-writable cells
+- active line behavior
+- double clue behavior
+
+Verifierat:
+
+- total automated tests: 19
+
 Template Lifecycle äger nu template file export.
 
 App.js delegerar export-beteende till templateExport.

@@ -499,6 +499,26 @@ Verifiering:
 
 ---
 
+## Runtime engine unit tests
+
+Status:
+
+Genomfört.
+
+Täckning:
+
+- input normalization
+- navigation och direction behavior
+- boundaries och non-writable cells
+- active line behavior
+- double clue behavior
+
+Verifiering:
+
+- total automated tests: 19
+
+---
+
 ## 8. Återladdning av template
 
 Mål:
