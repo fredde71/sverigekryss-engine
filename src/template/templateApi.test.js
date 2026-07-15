@@ -14,6 +14,7 @@ afterEach(() => {
 
 function mockJsonResponse(body) {
   global.fetch.mockResolvedValue({
+    ok: true,
     json: jest.fn().mockResolvedValue(body)
   });
 }
@@ -64,6 +65,21 @@ test("loadBackendTemplate returns normalized Template data", async () => {
     imageSrc: "",
     metadata: undefined
   });
+});
+
+test("loadBackendTemplate does not normalize backend 404 into a Template", async () => {
+  global.fetch.mockResolvedValue({
+    ok: false,
+    status: 404,
+    json: jest.fn().mockResolvedValue({
+      success: false,
+      error: "Template not found"
+    })
+  });
+
+  await expect(loadBackendTemplate("missing-template"))
+    .rejects
+    .toThrow("Template not found");
 });
 
 test("publishBackendTemplate posts unchanged payload and returns parsed backend JSON", async () => {

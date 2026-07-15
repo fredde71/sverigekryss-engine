@@ -5,6 +5,10 @@ export async function loadBackendTemplate(id) {
   const response = await fetch(`${BACKEND_BASE_URL}/api/crossword/${id}`);
   const template = await response.json();
 
+  if (!response.ok) {
+    throw new Error(template?.error || "Failed to load template");
+  }
+
   return normalizeTemplate(template, {
     crosswordId: id,
     rows: 25,

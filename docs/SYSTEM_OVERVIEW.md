@@ -366,7 +366,13 @@ Play.jsx delegerar backend template load till loadBackendTemplate i templateApi.
 
 TemplateCanvas och RuntimeLayer får normalized Template data i public play.
 
-Backend error handling är oförändrad i detta steg.
+Persistence load respekterar non-OK backend responses innan Template-normalisering.
+
+404/error JSON normaliseras inte till Template.
+
+Public Play visar ett tydligt load error state när backend template load misslyckas.
+
+Successful TemplateCanvas -> RuntimeLayer flow är oförändrat.
 
 App.js delegerar publish HTTP communication till templateApi.
 

@@ -545,6 +545,13 @@ Backend load API communication går via templateApi.
 
 App.js applicerar fortfarande Template state och workflow.
 
+Production error handling:
+
+- Persistence load respekterar non-OK backend responses
+- 404/error JSON normaliseras inte till Template
+- Public Play visar tydligt load error state
+- successful TemplateCanvas -> RuntimeLayer flow är oförändrat
+
 ---
 
 # Fas 4 – Produktfunktioner
