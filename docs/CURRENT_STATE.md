@@ -50,6 +50,18 @@ TemplateCanvas äger inte:
 - Runtime-beteende
 - state, navigation eller workflow
 
+Public Play använder nu responsive TemplateCanvas-skalning.
+
+Intern coordinate system är fortsatt 1200x1200.
+
+Image och Runtime overlay skalar tillsammans i public play.
+
+Editor behavior är oförändrat.
+
+Runtime logic och gridArea shape är oförändrade.
+
+PlayCell styling är oförändrad i detta steg eftersom nuvarande scaling är tillräcklig.
+
 App.js äger fortsatt:
 
 - applikationsskal

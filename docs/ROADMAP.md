@@ -597,6 +597,15 @@ Responsive Public Runtime är ett Version 1.0-krav.
 
 Responsive-arbete ska inte blandas med Template Lifecycle eller Editor ownership changes.
 
+Första Responsive Public Runtime-steget är genomfört:
+
+- Public Play använder responsive TemplateCanvas-skalning
+- internal coordinate system är fortsatt 1200x1200
+- image och Runtime overlay skalar tillsammans
+- Editor behavior är oförändrat
+- Runtime logic och gridArea shape är oförändrade
+- PlayCell styling är oförändrad eftersom nuvarande scaling är tillräcklig
+
 Ownership:
 
 Runtime / TemplateCanvas

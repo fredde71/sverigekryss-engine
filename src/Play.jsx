@@ -27,7 +27,7 @@ function Play() {
   }
 
   return (
-    <TemplateCanvas template={data}>
+    <TemplateCanvas template={data} responsive>
       <RuntimeLayer data={data} />
     </TemplateCanvas>
   );

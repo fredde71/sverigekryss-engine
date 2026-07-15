@@ -99,6 +99,15 @@ Responsive Public Runtime is a Version 1.0 requirement.
 
 Responsive work must not be mixed with Template Lifecycle or Editor ownership changes.
 
+First responsive package:
+
+- Public Play uses responsive TemplateCanvas scaling
+- internal coordinate system remains 1200x1200
+- image and Runtime overlay scale together
+- Editor behavior is unchanged
+- Runtime logic and gridArea shape are unchanged
+- PlayCell styling is unchanged because current scaling is sufficient
+
 ---
 
 # Top 10 E2E Regression Workflows
