@@ -210,6 +210,8 @@ Exempel:
 - gridArea
 - input-normalisering
 
+Automated unit coverage protects Engine pure functions, including grid movement and keyboard navigation.
+
 ---
 
 ## Shared Components

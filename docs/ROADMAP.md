@@ -512,10 +512,14 @@ Täckning:
 - boundaries och non-writable cells
 - active line behavior
 - double clue behavior
+- grid movement
+- keyboard navigation
 
 Verifiering:
 
-- total automated tests: 19
+- moveGridArea är skyddad
+- getArrowNextIndex är skyddad
+- total automated tests: 24
 
 ---
 

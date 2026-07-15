@@ -1,6 +1,7 @@
 import { getActiveCells } from "./activeLine";
 import {
   getDirection,
+  getArrowNextIndex,
   getNextCell
 } from "./navigation";
 import { normalizeInputValue } from "./input";
@@ -144,6 +145,42 @@ describe("getNextCell", () => {
         "write", "double", "write"
       ]
     })).toBeUndefined();
+  });
+});
+
+describe("getArrowNextIndex", () => {
+  test("handles arrow keys", () => {
+    expect(getArrowNextIndex({
+      currentIndex: 4,
+      key: "ArrowRight",
+      cols: 3
+    })).toBe(5);
+
+    expect(getArrowNextIndex({
+      currentIndex: 4,
+      key: "ArrowLeft",
+      cols: 3
+    })).toBe(3);
+
+    expect(getArrowNextIndex({
+      currentIndex: 4,
+      key: "ArrowDown",
+      cols: 3
+    })).toBe(7);
+
+    expect(getArrowNextIndex({
+      currentIndex: 4,
+      key: "ArrowUp",
+      cols: 3
+    })).toBe(1);
+  });
+
+  test("returns null for unknown keys", () => {
+    expect(getArrowNextIndex({
+      currentIndex: 4,
+      key: "Enter",
+      cols: 3
+    })).toBeNull();
   });
 });
 

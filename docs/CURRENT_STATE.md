@@ -214,10 +214,14 @@ Runtime engine logic har nu automated unit tests för:
 - boundaries och non-writable cells
 - active line behavior
 - double clue behavior
+- grid movement
+- keyboard navigation
 
 Verifierat:
 
-- total automated tests: 19
+- moveGridArea är skyddad
+- getArrowNextIndex är skyddad
+- total automated tests: 24
 
 Template Lifecycle äger nu template file export.
 

@@ -67,12 +67,16 @@ Coverage:
 - boundary handling
 - active line behavior
 - double clue behavior
+- grid movement
+- keyboard navigation
 
 Runtime engine logic now has automated unit coverage.
 
 Verification:
 
-- total automated tests: 19
+- moveGridArea is protected
+- getArrowNextIndex is protected
+- total automated tests: 24
 
 ---
 
