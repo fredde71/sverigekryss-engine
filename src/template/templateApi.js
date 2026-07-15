@@ -32,5 +32,10 @@ export async function publishBackendTemplate(template) {
     body: JSON.stringify(template)
   });
 
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data?.error || "Failed to publish template");
+  }
+
   return response.json();
 }

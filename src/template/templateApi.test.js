@@ -117,3 +117,27 @@ test("publishBackendTemplate posts unchanged payload and returns parsed backend 
   );
   expect(result).toEqual(responseBody);
 });
+
+test("publishBackendTemplate throws backend error for non-OK publish response", async () => {
+  const payload = {
+    crosswordId: "TT-2026-0002",
+    rows: 25,
+    cols: 25,
+    cellTypes: ["write"],
+    gridArea: {},
+    imageSrc: "/grid.png"
+  };
+
+  global.fetch.mockResolvedValue({
+    ok: false,
+    status: 500,
+    json: jest.fn().mockResolvedValue({
+      success: false,
+      error: "Failed to save template"
+    })
+  });
+
+  await expect(publishBackendTemplate(payload))
+    .rejects
+    .toThrow("Failed to save template");
+});

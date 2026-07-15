@@ -167,9 +167,17 @@ Persistence Platform frontend owns shared backend base URL configuration.
 
 App.js delegates publish HTTP communication to templateApi.
 
+Publish API rejects non-OK backend responses.
+
+Backend error text is preserved when available.
+
+App.js shows clear feedback for network and backend publish failures.
+
 App.js still owns publish validation, payload construction, and workflow orchestration.
 
 App.js shows publish success feedback with the public play URL.
+
+Successful publish URL feedback is unchanged.
 
 normalizeTemplate handles canonical Template v1 input.
 

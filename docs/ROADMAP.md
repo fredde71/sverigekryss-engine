@@ -235,6 +235,10 @@ Första Persistence Platform frontend-steg är genomfört:
 - Persistence Platform frontend äger publish API communication
 - App.js delegerar publish HTTP communication till templateApi
 - App.js äger fortsatt publish validation, payload construction och workflow orchestration
+- publish API avvisar non-OK backend responses
+- backend error text bevaras när den finns
+- App.js visar tydlig feedback för network och backend publish failures
+- successful publish URL feedback är oförändrat
 
 Persistence frontend integration är genomförd:
 

@@ -44,6 +44,8 @@ Coverage:
 - loadBackendTemplate rejects non-OK backend responses before normalization
 - publishBackendTemplate posts the unchanged payload
 - publishBackendTemplate returns parsed backend JSON
+- publishBackendTemplate rejects non-OK backend responses with backend error text
+- publish failure and success user-facing messages are protected
 - Public Play shows a clear load error state on load failure
 
 fetch and response.json are mocked.
@@ -54,7 +56,8 @@ Verification:
 
 - 404/error JSON is no longer normalized into a Template
 - successful TemplateCanvas -> RuntimeLayer flow is unchanged
-- total automated tests: 26
+- successful publish URL feedback is unchanged
+- total automated tests: 29
 
 ---
 

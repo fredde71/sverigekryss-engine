@@ -12,6 +12,10 @@ import {
   loadBackendTemplate,
   publishBackendTemplate
 } from "./template/templateApi";
+import {
+  getPublishFailureMessage,
+  getPublishSuccessMessage
+} from "./template/publishMessages";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -298,13 +302,20 @@ const handleTemplateImport = async (e) => {
       cols
     };
 
-    const data = await publishBackendTemplate(template);
+    try {
+      const data = await publishBackendTemplate(template);
 
-    console.log(data);
+      console.log(data);
 
-    if (data.success) {
-      const publicUrl = `${window.location.origin}/play/${crosswordId}`;
-      alert(`Publicerad! Öppna: ${publicUrl}`);
+      if (data.success) {
+        const publicUrl = `${window.location.origin}/play/${crosswordId}`;
+        alert(getPublishSuccessMessage(publicUrl));
+        return;
+      }
+
+      alert(data.error || "Publicering misslyckades.");
+    } catch (err) {
+      alert(getPublishFailureMessage(err));
     }
 
   }}

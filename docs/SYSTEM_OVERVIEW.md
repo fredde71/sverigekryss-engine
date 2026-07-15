@@ -376,12 +376,20 @@ Successful TemplateCanvas -> RuntimeLayer flow är oförändrat.
 
 App.js delegerar publish HTTP communication till templateApi.
 
+Publish API avvisar non-OK backend responses.
+
+Backend error text bevaras när den finns.
+
+App.js visar tydlig feedback för network och backend publish failures.
+
 App.js äger fortsatt:
 
 - publish validation
 - publish payload construction
 - publish workflow orchestration
 - publish success feedback med public play URL
+
+Successful publish URL feedback är oförändrat.
 
 Runtime ownership är oförändrad i detta steg.
 
