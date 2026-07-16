@@ -153,7 +153,11 @@ Deployment Platform har första environment configuration foundation:
 - public asset/backend URL är konfigurerbar via PUBLIC_BACKEND_BASE_URL
 - lokala defaults är oförändrade
 - .env.example och backend/.env.example dokumenterar required variables
-- storage, CORS, routes, payloads, Runtime och deployment provider är oförändrade
+- backend storage directories är konfigurerbara via TEMPLATE_STORAGE_DIR och UPLOAD_STORAGE_DIR
+- lokala storage defaults är backend/templates och backend/uploads
+- production kan använda persistent disk paths som /var/data/templates och /var/data/uploads
+- backend skapar storage directories vid startup
+- API routes, payloads, image URLs, CORS, frontend, Template shape, Runtime och deployment provider är oförändrade
 
 Persistence Platform är ett first-class subsystem.
 

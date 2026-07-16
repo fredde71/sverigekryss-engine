@@ -119,7 +119,11 @@ Deployment configuration:
 - public asset/backend URL is configurable through PUBLIC_BACKEND_BASE_URL
 - local defaults remain unchanged
 - .env.example and backend/.env.example document required variables
-- storage, CORS, routes, payloads, Runtime, and deployment provider are unchanged
+- backend storage directories are configurable through TEMPLATE_STORAGE_DIR and UPLOAD_STORAGE_DIR
+- local storage defaults remain backend/templates and backend/uploads
+- production can use persistent disk paths such as /var/data/templates and /var/data/uploads
+- backend creates storage directories at startup
+- API routes, payloads, image URLs, CORS, frontend, Template shape, Runtime, and deployment provider are unchanged
 
 Persistence Platform does not own:
 
