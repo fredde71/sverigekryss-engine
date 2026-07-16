@@ -664,7 +664,7 @@ Beslut:
 
 Status:
 
-Domain-model foundation, första TemplateCanvas crop-rendering package, cropArea state plumbing, Editor crop overlay package och crop move interaction package är genomförda.
+Domain-model foundation, första TemplateCanvas crop-rendering package, cropArea state plumbing, Editor crop overlay package, crop move interaction package och crop resize interaction package är genomförda.
 
 - cropArea är nu canonical Template v1-data
 - cropArea använder original 1200x1200 source coordinates
@@ -673,16 +673,23 @@ Domain-model foundation, första TemplateCanvas crop-rendering package, cropArea
 - App.js äger cropArea med canonical full-canvas default tills Template state flyttas
 - cropArea deltar i import, export, publish och backend load state flow
 - EditorWorkspace äger crop movement mode
+- EditorWorkspace äger crop resize mode
 - EditorViewport äger crop drag interaction
+- EditorViewport äger crop resize interaction
 - EditorLayer renderar cropArea som distinct editor overlay
 - EditorLayer startar crop movement från crop move affordance
-- crop resize affordance är synlig men inte interaktiv ännu
+- EditorLayer startar crop resize från crop resize affordance
 - crop movement uppdaterar endast cropArea top/left
 - crop width/height är oförändrade
 - crop movement clamped till 1200x1200 source surface
+- crop resize uppdaterar endast cropArea width/height
+- crop resize behåller cropArea top/left oförändrade
+- crop resize clamped mellan minimum editor size och 1200x1200 source surface
 - gridArea är fortsatt separat och oförändrad
 - grid overlay behavior är oförändrat
 - existing grid interaction är oförändrad
+- crop move och grid editing fortsätter fungera oberoende
+- Puzzle Crop Version 1 är functionally complete
 - TemplateCanvas rendering, Runtime, gridArea semantics och backend contract är oförändrade
 - Runtime, TemplateCanvas, persistence och App ownership är oförändrade
 - manual verification bekräftade crop, alignment, input, direction och responsive behavior

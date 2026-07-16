@@ -26,10 +26,13 @@ Coverage:
 - legacy Templates without cropArea receive the full-canvas default
 - backend-loaded Templates preserve cropArea during state plumbing
 - EditorLayer renders cropArea as a distinct editor overlay
-- crop resize affordance renders but is not interactive yet
 - crop move updates only top/left
 - crop width/height remain unchanged
 - crop movement clamps to the 1200x1200 source surface
+- crop resize updates only width/height
+- crop top/left remain unchanged during resize
+- crop resize clamps between minimum editor size and the 1200x1200 source surface
+- crop move and grid editing continue to work independently
 - gridArea and existing grid interaction remain unchanged
 - grid overlay behavior remains unchanged
 - runtime/editor session fields are excluded from Template output
@@ -38,7 +41,7 @@ The obsolete CRA default App.test.js test was replaced.
 
 Verification:
 
-- total automated tests: 46
+- total automated tests: 50
 
 ---
 

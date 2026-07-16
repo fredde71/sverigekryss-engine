@@ -38,6 +38,7 @@ EditorWorkspace äger editor composition:
 - pendingRows state
 - pendingCols state
 - crop movement mode
+- crop resize mode
 
 Editor interaction/UI ownership är slutförd.
 
@@ -57,6 +58,7 @@ EditorViewport äger editor grid placement interaction:
 - musbaserad gridförflyttning och resize
 - tangentbordsstyrd gridförflyttning och resize
 - crop drag interaction
+- crop resize interaction
 - cell click mapping
 - cell type updates baserat på activeTool
 
@@ -66,7 +68,7 @@ EditorLayer äger:
 - editor overlay controls för move/resize
 - cropArea-rendering som distinct editor overlay
 - crop movement start från crop move affordance
-- crop resize affordance som är synlig men ännu inte interaktiv
+- crop resize start från crop resize affordance
 
 App.js renderar inte längre EditorGrid direkt.
 
@@ -160,13 +162,20 @@ Planned Version 1 capability:
 - cropArea deltar i import, export, publish och backend load state flow
 - Editor definierar och justerar cropArea
 - EditorWorkspace äger crop movement mode
+- EditorWorkspace äger crop resize mode
 - EditorViewport äger crop drag interaction
+- EditorViewport äger crop resize interaction
 - EditorLayer renderar cropArea som distinct editor overlay
 - EditorLayer startar crop movement från crop move affordance
-- crop resize affordance är synlig men inte interaktiv ännu
+- EditorLayer startar crop resize från crop resize affordance
 - crop movement uppdaterar endast cropArea top/left
 - crop width/height är oförändrade
 - crop movement clamped till 1200x1200 source surface
+- crop resize uppdaterar endast cropArea width/height
+- crop resize behåller cropArea top/left oförändrade
+- crop resize clamped mellan minimum editor size och 1200x1200 source surface
+- crop move och grid editing fortsätter fungera oberoende
+- Puzzle Crop Version 1 är functionally complete
 - TemplateCanvas renderar cropArea som visible viewport
 - intern source surface är fortsatt 1200x1200
 - image och overlay översätts tillsammans i en delad surface
@@ -177,7 +186,7 @@ Planned Version 1 capability:
 - TemplateCanvas rendering, Runtime, gridArea semantics och backend contract är oförändrade i cropArea state plumbing
 - grid overlay behavior är oförändrat i Editor crop overlay package
 - gridArea och existing grid interaction är oförändrade i crop move interaction package
-- Runtime, TemplateCanvas, persistence och App ownership är oförändrade i Editor crop overlay package
+- Runtime, TemplateCanvas, persistence och App ownership är oförändrade i Editor crop overlay, crop move och crop resize interaction packages
 - manual verification bekräftade crop, alignment, input, direction och responsive behavior
 
 App.js väljer fortsatt workflow och monterar rätt subsystem i TemplateCanvas.

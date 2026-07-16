@@ -77,6 +77,14 @@ export default function EditorViewport({
           movementY
         ));
       }
+
+      if (cropMode === "resize") {
+        setCropArea(prev => resizeCropArea(
+          prev,
+          movementX,
+          movementY
+        ));
+      }
     };
 
     const stopDrag = () => {
@@ -152,6 +160,14 @@ function moveCropArea(cropArea, movementX, movementY) {
     ...cropArea,
     top: clamp(cropArea.top + movementY, 0, 1200 - cropArea.height),
     left: clamp(cropArea.left + movementX, 0, 1200 - cropArea.width)
+  };
+}
+
+function resizeCropArea(cropArea, movementX, movementY) {
+  return {
+    ...cropArea,
+    width: clamp(cropArea.width + movementX, 100, 1200 - cropArea.left),
+    height: clamp(cropArea.height + movementY, 100, 1200 - cropArea.top)
   };
 }
 

@@ -54,6 +54,15 @@ test("starts crop movement from crop move affordance", () => {
   expect(baseProps.setMode).not.toHaveBeenCalled();
 });
 
+test("starts crop resize from crop resize handle", () => {
+  render(<EditorLayer {...baseProps} />);
+
+  fireEvent.mouseDown(screen.getByTestId("editor-crop-resize-handle"));
+
+  expect(baseProps.setCropMode).toHaveBeenCalledWith("resize");
+  expect(baseProps.setMode).not.toHaveBeenCalled();
+});
+
 test("keeps existing grid overlay move and resize behavior", () => {
   render(<EditorLayer {...baseProps} />);
 

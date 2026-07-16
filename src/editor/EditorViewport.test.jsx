@@ -50,6 +50,10 @@ function EditorViewportHarness({
               onMouseDown={() => setCropMode("move")}
             />
             <button
+              data-testid="start-crop-resize"
+              onMouseDown={() => setCropMode("resize")}
+            />
+            <button
               data-testid="start-grid-move"
               onMouseDown={() => setMode("move")}
             />
@@ -94,6 +98,52 @@ test("crop movement clamps to source boundaries", () => {
     left: 300,
     width: 900,
     height: 700
+  });
+});
+
+test("crop resize updates width and height only", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-crop-resize"));
+  movePointer(50, -20);
+
+  expect(readState("crop-state")).toEqual({
+    top: 100,
+    left: 80,
+    width: 950,
+    height: 680
+  });
+});
+
+test("crop resize does not mutate gridArea", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-crop-resize"));
+  movePointer(50, -20);
+
+  expect(readState("grid-state")).toEqual(initialGridArea);
+});
+
+test("crop resize clamps to minimum and source boundaries", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-crop-resize"));
+  movePointer(1000, 1000);
+
+  expect(readState("crop-state")).toEqual({
+    top: 100,
+    left: 80,
+    width: 1120,
+    height: 1100
+  });
+
+  movePointer(-2000, -2000);
+
+  expect(readState("crop-state")).toEqual({
+    top: 100,
+    left: 80,
+    width: 100,
+    height: 100
   });
 });
 

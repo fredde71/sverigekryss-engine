@@ -66,8 +66,12 @@ export default function EditorLayer({
 
         <div
           data-testid="editor-crop-resize-handle"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            setCropMode("resize");
+          }}
           style={{
-            pointerEvents: "none",
+            pointerEvents: "auto",
             position: "absolute",
             right: -6,
             bottom: -6,
