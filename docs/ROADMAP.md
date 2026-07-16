@@ -644,6 +644,41 @@ Hög inför Version 1.0
 
 ---
 
+## 12. Puzzle Crop / Source Crop
+
+Mål:
+
+Public Play ska visa endast korsordsytan, inte hela PDF-sidan.
+
+Beslut:
+
+- cropArea är separat från gridArea
+- Template Lifecycle äger cropArea data
+- Editor definierar och justerar cropArea
+- TemplateCanvas renderar den croppade ytan
+- Runtime är omedvetet om source-page cropping
+
+Status:
+
+Domain-model foundation genomförd.
+
+- cropArea är nu canonical Template v1-data
+- cropArea använder original 1200x1200 source coordinates
+- missing cropArea defaultar till full canvas
+- legacy Templates är fortsatt kompatibla
+- gridArea är fortsatt separat och oförändrad
+- ingen Editor, TemplateCanvas, Runtime, backend eller visual crop behavior ändrades
+
+Ownership:
+
+Template Lifecycle / Editor / TemplateCanvas
+
+Prioritet:
+
+Hög inför Version 1.0
+
+---
+
 # Fas 5 – Plattform
 
 ## 12. Backend

@@ -20,14 +20,17 @@ Coverage:
 
 - createTemplate returns canonical Template v1 fields
 - createTemplate normalizes cellTypes to rows * cols
+- createTemplate includes and preserves cropArea
 - normalizeTemplate applies defaults and normalizes cellTypes
+- normalizeTemplate preserves cropArea
+- legacy Templates without cropArea receive the full-canvas default
 - runtime/editor session fields are excluded from Template output
 
 The obsolete CRA default App.test.js test was replaced.
 
 Verification:
 
-- 4 tests pass using the existing CRA/Jest setup
+- total automated tests: 33
 
 ---
 

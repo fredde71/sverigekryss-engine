@@ -139,6 +139,12 @@ Template Lifecycle äger nu:
 - JSON template parsing and normalization
 - backend template loading and normalization
 - cellTypes-normalisering till array med längden rows * cols
+- cropArea som canonical Template v1-data i original 1200x1200 source coordinates
+- full-canvas default cropArea för legacy Templates utan cropArea
+
+gridArea är fortsatt separat och oförändrad.
+
+Ingen Editor, TemplateCanvas, Runtime, backend eller visual crop behavior ändrades i cropArea domain-model foundation.
 
 Persistence Platform frontend äger nu:
 

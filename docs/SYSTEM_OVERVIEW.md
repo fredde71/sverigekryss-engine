@@ -140,6 +140,22 @@ Runtime logic och gridArea shape är oförändrade.
 
 PlayCell styling är oförändrad eftersom nuvarande canvas-skalning är tillräcklig i detta steg.
 
+Planned Version 1 capability:
+
+- Puzzle Crop / Source Crop
+- Public Play should show only the crossword area, not the full PDF page
+- cropArea är canonical Template v1-data
+- cropArea använder original 1200x1200 source coordinates
+- missing cropArea defaultar till full canvas
+- legacy Templates är fortsatt kompatibla
+- cropArea är separat från gridArea
+- gridArea är fortsatt separat och oförändrad
+- Template Lifecycle äger cropArea data
+- Editor definierar och justerar cropArea
+- TemplateCanvas renderar den croppade ytan
+- Runtime är omedvetet om source-page cropping
+- ingen Editor, TemplateCanvas, Runtime, backend eller visual crop behavior ändrades i domain-model foundation
+
 App.js väljer fortsatt workflow och monterar rätt subsystem i TemplateCanvas.
 
 Framtida Editor-ownership är separat från TemplateCanvas.

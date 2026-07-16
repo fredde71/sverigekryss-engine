@@ -62,6 +62,12 @@ test("loadBackendTemplate returns normalized Template data", async () => {
       width: 1200,
       height: 1200
     },
+    cropArea: {
+      top: 0,
+      left: 0,
+      width: 1200,
+      height: 1200
+    },
     imageSrc: "",
     metadata: undefined
   });

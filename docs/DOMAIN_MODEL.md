@@ -31,6 +31,7 @@ A Template contains no runtime state.
 - cols
 - cellTypes
 - gridArea
+- cropArea
 - imageSrc
 
 ### Field rules
@@ -51,7 +52,37 @@ Supported v1 cell types:
 - write
 - empty
 
-gridArea represents the placement of the interactive grid over the digitized printed puzzle image.
+gridArea represents the placement of the interactive grid over the rendered puzzle surface.
+
+cropArea is canonical Template v1 data.
+
+cropArea represents the source-page crop used to show only the crossword area from the digitized printed source.
+
+cropArea is stored in the original 1200x1200 source coordinate space.
+
+When cropArea is missing, Template Lifecycle defaults it to the full canvas:
+
+- top: 0
+- left: 0
+- width: 1200
+- height: 1200
+
+Legacy Templates without cropArea remain compatible.
+
+cropArea is separate from gridArea:
+
+- cropArea defines which part of the source page is visible
+- gridArea defines where the interactive grid sits on the rendered puzzle surface
+
+Template Lifecycle owns cropArea data.
+
+Editor will define and adjust cropArea.
+
+TemplateCanvas will render the cropped surface.
+
+Runtime remains unaware of source-page cropping.
+
+No Editor, TemplateCanvas, Runtime, backend, or visual crop behavior changed when cropArea became canonical Template data.
 
 imageSrc references the digitized printed puzzle image.
 

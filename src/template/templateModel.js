@@ -12,6 +12,7 @@ export function createTemplate(input) {
       cols
     }),
     gridArea: input.gridArea,
+    cropArea: normalizeCropArea(input.cropArea),
     imageSrc: input.imageSrc,
     metadata: input.metadata
   };
@@ -31,8 +32,18 @@ export function normalizeTemplate(input, defaults = {}) {
       cols
     }),
     gridArea: input.gridArea ?? defaults.gridArea,
+    cropArea: normalizeCropArea(input.cropArea ?? defaults.cropArea),
     imageSrc: input.imageSrc ?? defaults.imageSrc,
     metadata: input.metadata ?? defaults.metadata
+  };
+}
+
+function normalizeCropArea(cropArea) {
+  return cropArea ?? {
+    top: 0,
+    left: 0,
+    width: 1200,
+    height: 1200
   };
 }
 
