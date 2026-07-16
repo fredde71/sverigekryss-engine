@@ -8,9 +8,11 @@ export default function EditorWorkspace({
   cols,
   cellTypes,
   gridArea,
+  cropArea,
   setRows,
   setCols,
   setGridArea,
+  setCropArea,
   setCellTypes,
   isPublicRuntime,
   children
@@ -64,7 +66,9 @@ export default function EditorWorkspace({
   if (typeof children === "function") {
     return children({
       toolbar,
-      editor
+      editor,
+      cropArea,
+      setCropArea
     });
   }
 

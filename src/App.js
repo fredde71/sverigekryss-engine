@@ -60,6 +60,7 @@ useEffect(() => {
       setCellTypes(data.cellTypes);
       setImageSrc(data.imageSrc);
       setGridArea(data.gridArea);
+      setCropArea(data.cropArea);
 
       setRows(data.rows);
       setCols(data.cols);
@@ -80,6 +81,13 @@ useEffect(() => {
   const [crosswordId, setCrosswordId] = useState("");
 
   const [gridArea, setGridArea] = useState({
+    top: 0,
+    left: 0,
+    width: 1200,
+    height: 1200
+  });
+
+  const [cropArea, setCropArea] = useState({
     top: 0,
     left: 0,
     width: 1200,
@@ -149,6 +157,7 @@ const handleTemplateImport = async (e) => {
     rows,
     cols,
     gridArea,
+    cropArea,
     imageSrc
   });
 
@@ -161,6 +170,10 @@ const handleTemplateImport = async (e) => {
 
   if (data.gridArea) {
     setGridArea(data.gridArea);
+  }
+
+  if (data.cropArea) {
+    setCropArea(data.cropArea);
   }
 
   if (data.cellTypes) {
@@ -178,6 +191,7 @@ const handleTemplateImport = async (e) => {
       rows,
       cols,
       gridArea,
+      cropArea,
       cellTypes,
       imageSrc
     });
@@ -216,6 +230,8 @@ const handleTemplateImport = async (e) => {
       setRows={setRows}
       setCols={setCols}
       setGridArea={setGridArea}
+      cropArea={cropArea}
+      setCropArea={setCropArea}
       setCellTypes={setCellTypes}
       isPublicRuntime={isPublicRuntime}
     >
@@ -296,6 +312,7 @@ const handleTemplateImport = async (e) => {
     const template = {
       crosswordId,
       gridArea,
+      cropArea,
       cellTypes,
       imageSrc,
       rows,
@@ -341,7 +358,8 @@ const handleTemplateImport = async (e) => {
           cols,
           cellTypes,
           imageSrc,
-          gridArea
+          gridArea,
+          cropArea
         }}
       >
 

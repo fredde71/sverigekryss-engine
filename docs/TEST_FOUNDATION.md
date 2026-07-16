@@ -24,13 +24,14 @@ Coverage:
 - normalizeTemplate applies defaults and normalizes cellTypes
 - normalizeTemplate preserves cropArea
 - legacy Templates without cropArea receive the full-canvas default
+- backend-loaded Templates preserve cropArea during state plumbing
 - runtime/editor session fields are excluded from Template output
 
 The obsolete CRA default App.test.js test was replaced.
 
 Verification:
 
-- total automated tests: 37
+- total automated tests: 38
 
 ---
 

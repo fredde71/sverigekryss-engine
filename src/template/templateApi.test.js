@@ -73,6 +73,29 @@ test("loadBackendTemplate returns normalized Template data", async () => {
   });
 });
 
+test("loadBackendTemplate preserves backend cropArea", async () => {
+  const cropArea = {
+    top: 100,
+    left: 80,
+    width: 900,
+    height: 700
+  };
+
+  mockJsonResponse({
+    crosswordId: "TT-2026-0002",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    gridArea: {},
+    cropArea,
+    imageSrc: ""
+  });
+
+  const template = await loadBackendTemplate("TT-2026-0002");
+
+  expect(template.cropArea).toEqual(cropArea);
+});
+
 test("loadBackendTemplate does not normalize backend 404 into a Template", async () => {
   global.fetch.mockResolvedValue({
     ok: false,

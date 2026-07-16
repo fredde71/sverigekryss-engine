@@ -157,10 +157,13 @@ Template Lifecycle äger nu:
 - cellTypes-normalisering till array med längden rows * cols
 - cropArea som canonical Template v1-data i original 1200x1200 source coordinates
 - full-canvas default cropArea för legacy Templates utan cropArea
+- App.js äger cropArea med canonical full-canvas default tills Template state flyttas
+- cropArea deltar i import, export, publish och backend load state flow
+- EditorWorkspace tar emot cropArea/setCropArea men editerar inte cropArea ännu
 
 gridArea är fortsatt separat och oförändrad.
 
-Ingen Editor, TemplateCanvas, Runtime, backend eller visual crop behavior ändrades i cropArea domain-model foundation.
+TemplateCanvas rendering, Runtime, gridArea semantics och backend contract är oförändrade i cropArea state plumbing.
 
 Persistence Platform frontend äger nu:
 
