@@ -101,6 +101,7 @@ EditorWorkspace äger nu:
 - activeTool state
 - pendingRows state
 - pendingCols state
+- crop movement mode
 
 App.js monterar inte längre editor-komponenter direkt.
 
@@ -122,6 +123,7 @@ EditorViewport äger nu:
 - move/resize drag mode
 - musbaserad gridförflyttning och resize
 - tangentbordsstyrd gridförflyttning och resize
+- crop drag interaction
 - cell click mapping
 - cell type updates baserat på activeTool
 
@@ -130,7 +132,8 @@ EditorLayer äger nu:
 - EditorGrid-rendering
 - editor overlay controls för move/resize
 - cropArea-rendering som distinct editor overlay
-- crop move/resize affordances som är synliga men ännu inte interaktiva
+- crop movement start från crop move affordance
+- crop resize affordance som är synlig men ännu inte interaktiv
 
 Crop overlay coordinates ligger kvar i 1200x1200 source space.
 
@@ -163,7 +166,12 @@ Template Lifecycle äger nu:
 - full-canvas default cropArea för legacy Templates utan cropArea
 - App.js äger cropArea med canonical full-canvas default tills Template state flyttas
 - cropArea deltar i import, export, publish och backend load state flow
-- EditorWorkspace tar emot cropArea/setCropArea men editerar inte cropArea ännu
+- EditorWorkspace äger crop movement mode
+- EditorViewport äger crop drag interaction
+- EditorLayer startar crop movement från crop move affordance
+- crop movement uppdaterar endast cropArea top/left
+- crop width/height är oförändrade
+- crop movement clamped till 1200x1200 source surface
 
 gridArea är fortsatt separat och oförändrad.
 
@@ -171,11 +179,13 @@ TemplateCanvas rendering, Runtime, gridArea semantics och backend contract är o
 
 EditorLayer renderar nu cropArea som en distinct editor overlay.
 
-Crop move/resize affordances är synliga men inte interaktiva ännu.
+Crop resize affordance är synlig men inte interaktiv ännu.
 
 Grid overlay behavior är oförändrat.
 
-Runtime, TemplateCanvas, persistence och App ownership är oförändrade i Editor crop overlay package.
+gridArea och existing grid interaction är oförändrade i crop move interaction package.
+
+Runtime, TemplateCanvas, persistence och App ownership är oförändrade i Editor crop overlay och crop move interaction packages.
 
 Persistence Platform frontend äger nu:
 

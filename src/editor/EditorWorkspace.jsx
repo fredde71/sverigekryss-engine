@@ -20,6 +20,7 @@ export default function EditorWorkspace({
   const [activeTool, setActiveTool] = useState("image");
   const [pendingRows, setPendingRows] = useState(25);
   const [pendingCols, setPendingCols] = useState(25);
+  const [cropMode, setCropMode] = useState(null);
 
   const createGrid = () => {
     setRows(pendingRows);
@@ -43,6 +44,9 @@ export default function EditorWorkspace({
     <EditorViewport
       gridArea={gridArea}
       setGridArea={setGridArea}
+      setCropArea={setCropArea}
+      cropMode={cropMode}
+      setCropMode={setCropMode}
       rows={rows}
       cols={cols}
       activeTool={activeTool}
@@ -58,6 +62,7 @@ export default function EditorWorkspace({
             isPublicRuntime={isPublicRuntime}
             gridArea={gridArea}
             cropArea={cropArea}
+            setCropMode={setCropMode}
           />
         </>
       )}

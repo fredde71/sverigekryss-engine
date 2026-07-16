@@ -4,6 +4,9 @@ import { moveGridArea } from "../engine/gridArea";
 export default function EditorViewport({
   gridArea,
   setGridArea,
+  setCropArea,
+  cropMode,
+  setCropMode,
   rows,
   cols,
   activeTool,
@@ -46,12 +49,15 @@ export default function EditorViewport({
 
   useEffect(() => {
     const handleMouseMove = (e) => {
+      const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
+      const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
+
       if (mode === "move") {
         setGridArea(
           prev => moveGridArea(
             prev,
-            e.movementX,
-            e.movementY
+            movementX,
+            movementY
           )
         );
       }
@@ -59,13 +65,24 @@ export default function EditorViewport({
       if (mode === "resize") {
         setGridArea(prev => ({
           ...prev,
-          width: Math.max(100, prev.width + e.movementX),
-          height: Math.max(100, prev.height + e.movementY)
+          width: Math.max(100, prev.width + movementX),
+          height: Math.max(100, prev.height + movementY)
         }));
+      }
+
+      if (cropMode === "move") {
+        setCropArea(prev => moveCropArea(
+          prev,
+          movementX,
+          movementY
+        ));
       }
     };
 
-    const stopDrag = () => setMode(null);
+    const stopDrag = () => {
+      setMode(null);
+      setCropMode(null);
+    };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", stopDrag);
@@ -74,7 +91,7 @@ export default function EditorViewport({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", stopDrag);
     };
-  }, [mode, setGridArea]);
+  }, [mode, cropMode, setGridArea, setCropArea, setCropMode]);
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -125,7 +142,22 @@ export default function EditorViewport({
         height: gridArea.height
       }}
     >
-      {typeof children === "function" ? children({ setMode }) : children}
+      {typeof children === "function" ? children({ setMode, setCropMode }) : children}
     </div>
+  );
+}
+
+function moveCropArea(cropArea, movementX, movementY) {
+  return {
+    ...cropArea,
+    top: clamp(cropArea.top + movementY, 0, 1200 - cropArea.height),
+    left: clamp(cropArea.left + movementX, 0, 1200 - cropArea.width)
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.min(
+    Math.max(value, min),
+    Math.max(min, max)
   );
 }

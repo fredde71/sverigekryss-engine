@@ -8,7 +8,8 @@ export default function EditorLayer({
   setMode,
   isPublicRuntime,
   gridArea,
-  cropArea
+  cropArea,
+  setCropMode
 }) {
   if (isPublicRuntime) {
     return null;
@@ -47,7 +48,12 @@ export default function EditorLayer({
       >
         <div
           data-testid="editor-crop-move-affordance"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            setCropMode("move");
+          }}
           style={{
+            pointerEvents: "auto",
             position: "absolute",
             top: 0,
             left: 0,
@@ -61,6 +67,7 @@ export default function EditorLayer({
         <div
           data-testid="editor-crop-resize-handle"
           style={{
+            pointerEvents: "none",
             position: "absolute",
             right: -6,
             bottom: -6,

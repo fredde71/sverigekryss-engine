@@ -6,6 +6,7 @@ const baseProps = {
   cols: 2,
   cellTypes: ["write", "blocked", "double", "empty"],
   setMode: jest.fn(),
+  setCropMode: jest.fn(),
   isPublicRuntime: false,
   gridArea: {
     top: 20,
@@ -42,6 +43,15 @@ test("renders crop move affordance and resize handle", () => {
 
   expect(screen.getByTestId("editor-crop-move-affordance")).toBeInTheDocument();
   expect(screen.getByTestId("editor-crop-resize-handle")).toBeInTheDocument();
+});
+
+test("starts crop movement from crop move affordance", () => {
+  render(<EditorLayer {...baseProps} />);
+
+  fireEvent.mouseDown(screen.getByTestId("editor-crop-move-affordance"));
+
+  expect(baseProps.setCropMode).toHaveBeenCalledWith("move");
+  expect(baseProps.setMode).not.toHaveBeenCalled();
 });
 
 test("keeps existing grid overlay move and resize behavior", () => {

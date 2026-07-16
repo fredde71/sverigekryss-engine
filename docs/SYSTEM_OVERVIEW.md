@@ -37,6 +37,7 @@ EditorWorkspace äger editor composition:
 - activeTool state
 - pendingRows state
 - pendingCols state
+- crop movement mode
 
 Editor interaction/UI ownership är slutförd.
 
@@ -55,6 +56,7 @@ EditorViewport äger editor grid placement interaction:
 - move/resize-drag
 - musbaserad gridförflyttning och resize
 - tangentbordsstyrd gridförflyttning och resize
+- crop drag interaction
 - cell click mapping
 - cell type updates baserat på activeTool
 
@@ -63,7 +65,8 @@ EditorLayer äger:
 - EditorGrid-rendering
 - editor overlay controls för move/resize
 - cropArea-rendering som distinct editor overlay
-- crop move/resize affordances som är synliga men ännu inte interaktiva
+- crop movement start från crop move affordance
+- crop resize affordance som är synlig men ännu inte interaktiv
 
 App.js renderar inte längre EditorGrid direkt.
 
@@ -156,9 +159,14 @@ Planned Version 1 capability:
 - App.js äger cropArea med canonical full-canvas default tills Template state flyttas
 - cropArea deltar i import, export, publish och backend load state flow
 - Editor definierar och justerar cropArea
-- EditorWorkspace tar emot cropArea/setCropArea men editerar inte cropArea ännu
+- EditorWorkspace äger crop movement mode
+- EditorViewport äger crop drag interaction
 - EditorLayer renderar cropArea som distinct editor overlay
-- crop move/resize affordances är synliga men inte interaktiva ännu
+- EditorLayer startar crop movement från crop move affordance
+- crop resize affordance är synlig men inte interaktiv ännu
+- crop movement uppdaterar endast cropArea top/left
+- crop width/height är oförändrade
+- crop movement clamped till 1200x1200 source surface
 - TemplateCanvas renderar cropArea som visible viewport
 - intern source surface är fortsatt 1200x1200
 - image och overlay översätts tillsammans i en delad surface
@@ -168,6 +176,7 @@ Planned Version 1 capability:
 - ingen Editor, TemplateCanvas, Runtime, backend eller visual crop behavior ändrades i domain-model foundation
 - TemplateCanvas rendering, Runtime, gridArea semantics och backend contract är oförändrade i cropArea state plumbing
 - grid overlay behavior är oförändrat i Editor crop overlay package
+- gridArea och existing grid interaction är oförändrade i crop move interaction package
 - Runtime, TemplateCanvas, persistence och App ownership är oförändrade i Editor crop overlay package
 - manual verification bekräftade crop, alignment, input, direction och responsive behavior
 
