@@ -664,7 +664,7 @@ Beslut:
 
 Status:
 
-Domain-model foundation, första TemplateCanvas crop-rendering package och cropArea state plumbing är genomförda.
+Domain-model foundation, första TemplateCanvas crop-rendering package, cropArea state plumbing och Editor crop overlay package är genomförda.
 
 - cropArea är nu canonical Template v1-data
 - cropArea använder original 1200x1200 source coordinates
@@ -673,8 +673,12 @@ Domain-model foundation, första TemplateCanvas crop-rendering package och cropA
 - App.js äger cropArea med canonical full-canvas default tills Template state flyttas
 - cropArea deltar i import, export, publish och backend load state flow
 - EditorWorkspace tar emot cropArea/setCropArea men editerar inte cropArea ännu
+- EditorLayer renderar cropArea som distinct editor overlay
+- crop move/resize affordances är synliga men inte interaktiva ännu
 - gridArea är fortsatt separat och oförändrad
+- grid overlay behavior är oförändrat
 - TemplateCanvas rendering, Runtime, gridArea semantics och backend contract är oförändrade
+- Runtime, TemplateCanvas, persistence och App ownership är oförändrade
 - manual verification bekräftade crop, alignment, input, direction och responsive behavior
 
 Ownership:

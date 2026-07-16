@@ -57,6 +57,7 @@ export default function EditorWorkspace({
             setMode={setMode}
             isPublicRuntime={isPublicRuntime}
             gridArea={gridArea}
+            cropArea={cropArea}
           />
         </>
       )}

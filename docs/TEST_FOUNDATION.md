@@ -25,13 +25,16 @@ Coverage:
 - normalizeTemplate preserves cropArea
 - legacy Templates without cropArea receive the full-canvas default
 - backend-loaded Templates preserve cropArea during state plumbing
+- EditorLayer renders cropArea as a distinct editor overlay
+- crop move/resize affordances render but are not interactive yet
+- grid overlay behavior remains unchanged
 - runtime/editor session fields are excluded from Template output
 
 The obsolete CRA default App.test.js test was replaced.
 
 Verification:
 
-- total automated tests: 38
+- total automated tests: 41
 
 ---
 

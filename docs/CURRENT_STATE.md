@@ -129,6 +129,10 @@ EditorLayer äger nu:
 
 - EditorGrid-rendering
 - editor overlay controls för move/resize
+- cropArea-rendering som distinct editor overlay
+- crop move/resize affordances som är synliga men ännu inte interaktiva
+
+Crop overlay coordinates ligger kvar i 1200x1200 source space.
 
 App.js renderar inte längre EditorGrid direkt.
 
@@ -164,6 +168,14 @@ Template Lifecycle äger nu:
 gridArea är fortsatt separat och oförändrad.
 
 TemplateCanvas rendering, Runtime, gridArea semantics och backend contract är oförändrade i cropArea state plumbing.
+
+EditorLayer renderar nu cropArea som en distinct editor overlay.
+
+Crop move/resize affordances är synliga men inte interaktiva ännu.
+
+Grid overlay behavior är oförändrat.
+
+Runtime, TemplateCanvas, persistence och App ownership är oförändrade i Editor crop overlay package.
 
 Persistence Platform frontend äger nu:
 

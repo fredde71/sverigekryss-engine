@@ -62,6 +62,8 @@ EditorLayer äger:
 
 - EditorGrid-rendering
 - editor overlay controls för move/resize
+- cropArea-rendering som distinct editor overlay
+- crop move/resize affordances som är synliga men ännu inte interaktiva
 
 App.js renderar inte längre EditorGrid direkt.
 
@@ -155,6 +157,8 @@ Planned Version 1 capability:
 - cropArea deltar i import, export, publish och backend load state flow
 - Editor definierar och justerar cropArea
 - EditorWorkspace tar emot cropArea/setCropArea men editerar inte cropArea ännu
+- EditorLayer renderar cropArea som distinct editor overlay
+- crop move/resize affordances är synliga men inte interaktiva ännu
 - TemplateCanvas renderar cropArea som visible viewport
 - intern source surface är fortsatt 1200x1200
 - image och overlay översätts tillsammans i en delad surface
@@ -163,6 +167,8 @@ Planned Version 1 capability:
 - Runtime är omedvetet om source-page cropping
 - ingen Editor, TemplateCanvas, Runtime, backend eller visual crop behavior ändrades i domain-model foundation
 - TemplateCanvas rendering, Runtime, gridArea semantics och backend contract är oförändrade i cropArea state plumbing
+- grid overlay behavior är oförändrat i Editor crop overlay package
+- Runtime, TemplateCanvas, persistence och App ownership är oförändrade i Editor crop overlay package
 - manual verification bekräftade crop, alignment, input, direction och responsive behavior
 
 App.js väljer fortsatt workflow och monterar rätt subsystem i TemplateCanvas.
