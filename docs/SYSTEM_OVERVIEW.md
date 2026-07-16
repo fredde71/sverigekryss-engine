@@ -167,6 +167,15 @@ Backend använder filbaserad lagring:
 - backend/templates för publicerade Template JSON-filer
 - backend/uploads för publicerade bilduppladdningar
 
+Deployment configuration:
+
+- frontend backend URL konfigureras via REACT_APP_BACKEND_BASE_URL
+- backend port konfigureras via PORT
+- public asset/backend URL konfigureras via PUBLIC_BACKEND_BASE_URL
+- lokala defaults är oförändrade
+- .env.example och backend/.env.example dokumenterar required variables
+- storage, CORS, routes, payloads, Runtime och provider är oförändrade
+
 Persistence Platform äger:
 
 - frontend HTTP communication med backend persistence API

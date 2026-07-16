@@ -112,6 +112,15 @@ File-based backend storage:
 - backend/templates stores published Template JSON files
 - backend/uploads stores published image assets
 
+Deployment configuration:
+
+- frontend backend URL is configurable through REACT_APP_BACKEND_BASE_URL
+- backend port is configurable through PORT
+- public asset/backend URL is configurable through PUBLIC_BACKEND_BASE_URL
+- local defaults remain unchanged
+- .env.example and backend/.env.example document required variables
+- storage, CORS, routes, payloads, Runtime, and deployment provider are unchanged
+
 Persistence Platform does not own:
 
 - Template shape

@@ -5,6 +5,9 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
+const PORT = process.env.PORT || 5050;
+const PUBLIC_BACKEND_BASE_URL =
+  process.env.PUBLIC_BACKEND_BASE_URL || "http://localhost:5050";
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
@@ -38,7 +41,7 @@ app.post("/api/publish", (req, res) => {
 
   fs.writeFileSync(imagePath, base64Data, "base64");
 
-  template.imageSrc = `http://localhost:5050/uploads/${crosswordId}.png`;
+  template.imageSrc = `${PUBLIC_BACKEND_BASE_URL}/uploads/${crosswordId}.png`;
 
 }
 
@@ -115,8 +118,6 @@ app.get("/api/crossword/:id", (req, res) => {
   }
 
 });
-
-const PORT = 5050;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

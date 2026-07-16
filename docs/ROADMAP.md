@@ -248,6 +248,15 @@ Persistence frontend integration är genomförd:
 - Publish visar success feedback med public play URL
 - App.js behåller editor workflow öppet efter publish
 
+Första Deployment Platform configuration package är genomfört:
+
+- frontend backend URL är konfigurerbar via REACT_APP_BACKEND_BASE_URL
+- backend port är konfigurerbar via PORT
+- public asset/backend URL är konfigurerbar via PUBLIC_BACKEND_BASE_URL
+- lokala defaults är oförändrade
+- .env.example files dokumenterar required variables
+- storage, CORS, routes, payloads, Runtime och deployment provider är oförändrade
+
 Oförändrat i detta steg:
 
 - backend contract

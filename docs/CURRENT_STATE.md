@@ -146,6 +146,15 @@ Persistence Platform frontend äger nu:
 - backend load API communication via templateApi
 - shared backend base URL configuration
 
+Deployment Platform har första environment configuration foundation:
+
+- frontend backend URL är konfigurerbar via REACT_APP_BACKEND_BASE_URL
+- backend port är konfigurerbar via PORT
+- public asset/backend URL är konfigurerbar via PUBLIC_BACKEND_BASE_URL
+- lokala defaults är oförändrade
+- .env.example och backend/.env.example dokumenterar required variables
+- storage, CORS, routes, payloads, Runtime och deployment provider är oförändrade
+
 Persistence Platform är ett first-class subsystem.
 
 Persistence Platform äger nu:

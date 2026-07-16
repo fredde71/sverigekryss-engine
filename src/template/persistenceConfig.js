@@ -1,1 +1,2 @@
-export const BACKEND_BASE_URL = "http://localhost:5050";
+export const BACKEND_BASE_URL =
+  process.env.REACT_APP_BACKEND_BASE_URL || "http://localhost:5050";
