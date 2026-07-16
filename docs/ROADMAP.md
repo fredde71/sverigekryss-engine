@@ -655,19 +655,23 @@ Beslut:
 - cropArea är separat från gridArea
 - Template Lifecycle äger cropArea data
 - Editor definierar och justerar cropArea
-- TemplateCanvas renderar den croppade ytan
+- TemplateCanvas renderar cropArea som visible viewport
+- intern source surface är fortsatt 1200x1200
+- image och overlay översätts tillsammans i en delad surface
+- responsive scaling använder cropped aspect ratio
+- RuntimeLayer och gridArea semantics är oförändrade
 - Runtime är omedvetet om source-page cropping
 
 Status:
 
-Domain-model foundation genomförd.
+Domain-model foundation och första TemplateCanvas crop-rendering package genomförda.
 
 - cropArea är nu canonical Template v1-data
 - cropArea använder original 1200x1200 source coordinates
 - missing cropArea defaultar till full canvas
 - legacy Templates är fortsatt kompatibla
 - gridArea är fortsatt separat och oförändrad
-- ingen Editor, TemplateCanvas, Runtime, backend eller visual crop behavior ändrades
+- manual verification bekräftade crop, alignment, input, direction och responsive behavior
 
 Ownership:
 

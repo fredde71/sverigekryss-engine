@@ -152,9 +152,14 @@ Planned Version 1 capability:
 - gridArea är fortsatt separat och oförändrad
 - Template Lifecycle äger cropArea data
 - Editor definierar och justerar cropArea
-- TemplateCanvas renderar den croppade ytan
+- TemplateCanvas renderar cropArea som visible viewport
+- intern source surface är fortsatt 1200x1200
+- image och overlay översätts tillsammans i en delad surface
+- responsive scaling använder cropped aspect ratio
+- RuntimeLayer och gridArea semantics är oförändrade
 - Runtime är omedvetet om source-page cropping
 - ingen Editor, TemplateCanvas, Runtime, backend eller visual crop behavior ändrades i domain-model foundation
+- manual verification bekräftade crop, alignment, input, direction och responsive behavior
 
 App.js väljer fortsatt workflow och monterar rätt subsystem i TemplateCanvas.
 

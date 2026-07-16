@@ -7,6 +7,12 @@ export default function TemplateCanvas({
 }) {
   const wrapperRef = React.useRef(null);
   const [scale, setScale] = React.useState(1);
+  const cropArea = template.cropArea || {
+    top: 0,
+    left: 0,
+    width: 1200,
+    height: 1200
+  };
 
   React.useEffect(() => {
     if (!responsive || !wrapperRef.current) {
@@ -15,8 +21,8 @@ export default function TemplateCanvas({
     }
 
     const updateScale = () => {
-      const width = wrapperRef.current?.clientWidth || 1200;
-      setScale(width / 1200);
+      const width = wrapperRef.current?.clientWidth || cropArea.width;
+      setScale(width / cropArea.width);
     };
 
     updateScale();
@@ -27,53 +33,19 @@ export default function TemplateCanvas({
     return () => {
       observer.disconnect();
     };
-  }, [responsive]);
+  }, [responsive, cropArea.width]);
 
-  if (responsive) {
-    return (
-      <div
-        ref={wrapperRef}
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: "1200px",
-          aspectRatio: "1 / 1",
-          margin: "0 auto"
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "1200px",
-            height: "1200px",
-            transform: `scale(${scale})`,
-            transformOrigin: "top left"
-          }}
-        >
-          <img
-            src={template.imageSrc}
-            alt="grid"
-            style={{
-              width: "1200px",
-              display: "block"
-            }}
-          />
-
-          {children}
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  const sourceSurface = (
     <div
+      data-testid="template-canvas-source"
       style={{
-        position: "relative",
+        position: "absolute",
+        top: 0,
+        left: 0,
         width: "1200px",
         height: "1200px",
-        margin: "0 auto"
+        transform: `translate(${-cropArea.left}px, ${-cropArea.top}px)`,
+        transformOrigin: "top left"
       }}
     >
       <img
@@ -86,6 +58,53 @@ export default function TemplateCanvas({
       />
 
       {children}
+    </div>
+  );
+
+  if (responsive) {
+    return (
+      <div
+        ref={wrapperRef}
+        data-testid="template-canvas-responsive-wrapper"
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: `${cropArea.width}px`,
+          aspectRatio: `${cropArea.width} / ${cropArea.height}`,
+          margin: "0 auto"
+        }}
+      >
+        <div
+          data-testid="template-canvas-viewport"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: `${cropArea.width}px`,
+            height: `${cropArea.height}px`,
+            overflow: "hidden",
+            transform: `scale(${scale})`,
+            transformOrigin: "top left"
+          }}
+        >
+          {sourceSurface}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-testid="template-canvas-viewport"
+      style={{
+        position: "relative",
+        width: `${cropArea.width}px`,
+        height: `${cropArea.height}px`,
+        overflow: "hidden",
+        margin: "0 auto"
+      }}
+    >
+      {sourceSurface}
     </div>
   );
 }

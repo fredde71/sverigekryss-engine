@@ -30,7 +30,7 @@ The obsolete CRA default App.test.js test was replaced.
 
 Verification:
 
-- total automated tests: 33
+- total automated tests: 37
 
 ---
 
@@ -121,6 +121,21 @@ First responsive package:
 - Editor behavior is unchanged
 - Runtime logic and gridArea shape are unchanged
 - PlayCell styling is unchanged because current scaling is sufficient
+
+Planned Version 1 capability:
+
+- Puzzle Crop / Source Crop
+- Public Play should show only the crossword area, not the full PDF page
+- cropArea is separate from gridArea
+- Template Lifecycle owns cropArea data
+- Editor will define and adjust cropArea
+- TemplateCanvas renders cropArea as a visible viewport
+- the internal source surface remains 1200x1200
+- image and overlay are translated together in one shared surface
+- responsive scaling uses the cropped aspect ratio
+- RuntimeLayer and gridArea semantics remain unchanged
+- Runtime remains unaware of source-page cropping
+- manual verification confirmed crop, alignment, input, direction, and responsive behavior
 
 ---
 

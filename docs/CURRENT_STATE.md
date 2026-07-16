@@ -62,6 +62,22 @@ Runtime logic och gridArea shape är oförändrade.
 
 PlayCell styling är oförändrad i detta steg eftersom nuvarande scaling är tillräcklig.
 
+Planned Version 1 capability:
+
+- Puzzle Crop / Source Crop
+- Public Play ska visa endast korsordsytan, inte hela PDF-sidan
+- cropArea är separat från gridArea
+- Template Lifecycle äger cropArea data
+- Editor definierar och justerar cropArea
+- TemplateCanvas renderar cropArea som visible viewport
+- intern source surface är fortsatt 1200x1200
+- image och overlay översätts tillsammans i en delad surface
+- responsive scaling använder cropped aspect ratio
+- RuntimeLayer och gridArea semantics är oförändrade
+- Runtime är omedvetet om source-page cropping
+
+Manual verification bekräftade crop, alignment, input, direction och responsive behavior.
+
 App.js äger fortsatt:
 
 - applikationsskal
