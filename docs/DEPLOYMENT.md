@@ -180,11 +180,19 @@ Uploaded/public puzzle images are stored in:
 /var/data/uploads
 ```
 
-The public image URL format remains:
+Published image data URLs support PNG, JPEG, and WebP. The backend stores the
+decoded image with the extension that matches the submitted MIME type:
 
 ```text
 <PUBLIC_BACKEND_BASE_URL>/uploads/<crosswordId>.png
+<PUBLIC_BACKEND_BASE_URL>/uploads/<crosswordId>.jpg
+<PUBLIC_BACKEND_BASE_URL>/uploads/<crosswordId>.webp
 ```
+
+Malformed image data URLs, unsupported image MIME types, empty payloads, and
+invalid base64 payloads are rejected before image or template files are written.
+Existing non-data image URLs are preserved unchanged. Existing corrupt stored
+assets are not automatically repaired; they must be republished or replaced.
 
 ---
 

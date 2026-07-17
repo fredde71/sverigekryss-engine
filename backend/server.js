@@ -7,6 +7,7 @@ const {
   getCrosswordIdValidationError,
   normalizeCrosswordId
 } = require("./crosswordIdValidation");
+const { parseImageDataUrl } = require("./imageDataUrl");
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -58,20 +59,28 @@ function createPublishHandler({
 
     template.crosswordId = crosswordId;
 
-    if (template.imageSrc?.startsWith("data:image")) {
+    let parsedImage = null;
 
-  const base64Data = template.imageSrc.replace(
-    /^data:image\/png;base64,/,
-    ""
-  );
+    try {
+      parsedImage = parseImageDataUrl(template.imageSrc);
+    } catch (err) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid image data"
+      });
+    }
 
-  const imagePath = pathModule.join(uploadStorageDir, `${crosswordId}.png`);
+    if (parsedImage) {
+      const imagePath = pathModule.join(
+        uploadStorageDir,
+        `${crosswordId}.${parsedImage.extension}`
+      );
 
-  fsModule.writeFileSync(imagePath, base64Data, "base64");
+      fsModule.writeFileSync(imagePath, parsedImage.buffer);
 
-  template.imageSrc = `${publicBackendBaseUrl}/uploads/${crosswordId}.png`;
-
-}
+      template.imageSrc =
+        `${publicBackendBaseUrl}/uploads/${crosswordId}.${parsedImage.extension}`;
+    }
 
     const filePath = pathModule.join(templateStorageDir, `${crosswordId}.json`);
 
