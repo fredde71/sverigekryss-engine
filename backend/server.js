@@ -1,8 +1,8 @@
 const express = require("express");
-const cors = require("cors");
 
 const fs = require("fs");
 const path = require("path");
+const { createCorsMiddleware } = require("./corsConfig");
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -16,7 +16,7 @@ const UPLOAD_STORAGE_DIR =
 fs.mkdirSync(TEMPLATE_STORAGE_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_STORAGE_DIR, { recursive: true });
 
-app.use(cors());
+app.use(createCorsMiddleware());
 app.use(express.json({ limit: "50mb" }));
 
 app.use("/uploads", express.static(UPLOAD_STORAGE_DIR));
