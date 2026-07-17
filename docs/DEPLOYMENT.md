@@ -89,6 +89,40 @@ Requests without an `Origin` header are still allowed so server-to-server checks
 
 CORS is not authentication. It does not secure `POST /api/publish`; it only controls which browser origins are allowed to call the backend from a page.
 
+---
+
+## Public Crossword IDs
+
+`crosswordId` is a public slug used in:
+
+- template filenames
+- uploaded image filenames
+- public play URLs such as `/play/<crosswordId>`
+
+Canonical rules:
+
+- required string
+- surrounding whitespace is trimmed before validation
+- maximum length: 64 characters
+- allowed characters only:
+  - `A-Z`
+  - `a-z`
+  - `0-9`
+  - hyphen: `-`
+  - underscore: `_`
+
+Canonical regex:
+
+```text
+^[A-Za-z0-9_-]+$
+```
+
+Invalid IDs are rejected before backend file paths are constructed or any template/image writes occur.
+
+Existing stored templates with incompatible IDs would need migration or renaming before they can be loaded under these production rules.
+
+This validation is not authentication and does not restrict who can publish with a valid ID.
+
 `PORT` can be omitted on Render if Render provides it. Local default remains:
 
 ```text

@@ -3,6 +3,10 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const { createCorsMiddleware } = require("./corsConfig");
+const {
+  getCrosswordIdValidationError,
+  normalizeCrosswordId
+} = require("./crosswordIdValidation");
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -25,13 +29,34 @@ app.get("/", (req, res) => {
   res.send("Crossword backend running");
 });
 
-app.post("/api/publish", (req, res) => {
+app.post("/api/publish", createPublishHandler());
 
+app.get("/api/crossword/:id", createLoadHandler());
+
+function createPublishHandler({
+  fsModule = fs,
+  pathModule = path,
+  templateStorageDir = TEMPLATE_STORAGE_DIR,
+  uploadStorageDir = UPLOAD_STORAGE_DIR,
+  publicBackendBaseUrl = PUBLIC_BACKEND_BASE_URL
+} = {}) {
+  return (req, res) => {
   try {
 
     const template = req.body;
 
-    const crosswordId = template.crosswordId;
+    const validationError = getCrosswordIdValidationError(template.crosswordId);
+
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        error: validationError
+      });
+    }
+
+    const crosswordId = normalizeCrosswordId(template.crosswordId);
+
+    template.crosswordId = crosswordId;
 
     if (template.imageSrc?.startsWith("data:image")) {
 
@@ -40,24 +65,17 @@ app.post("/api/publish", (req, res) => {
     ""
   );
 
-  const imagePath = path.join(UPLOAD_STORAGE_DIR, `${crosswordId}.png`);
+  const imagePath = pathModule.join(uploadStorageDir, `${crosswordId}.png`);
 
-  fs.writeFileSync(imagePath, base64Data, "base64");
+  fsModule.writeFileSync(imagePath, base64Data, "base64");
 
-  template.imageSrc = `${PUBLIC_BACKEND_BASE_URL}/uploads/${crosswordId}.png`;
+  template.imageSrc = `${publicBackendBaseUrl}/uploads/${crosswordId}.png`;
 
 }
 
-    if (!crosswordId) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing crosswordId"
-      });
-    }
+    const filePath = pathModule.join(templateStorageDir, `${crosswordId}.json`);
 
-    const filePath = path.join(TEMPLATE_STORAGE_DIR, `${crosswordId}.json`);
-
-    fs.writeFileSync(
+    fsModule.writeFileSync(
       filePath,
       JSON.stringify(template, null, 2)
     );
@@ -78,24 +96,38 @@ app.post("/api/publish", (req, res) => {
 
   }
 
-});
+  };
+}
 
-app.get("/api/crossword/:id", (req, res) => {
-
+function createLoadHandler({
+  fsModule = fs,
+  pathModule = path,
+  templateStorageDir = TEMPLATE_STORAGE_DIR
+} = {}) {
+  return (req, res) => {
   try {
 
-    const crosswordId = req.params.id;
+    const validationError = getCrosswordIdValidationError(req.params.id);
 
-    const filePath = path.join(TEMPLATE_STORAGE_DIR, `${crosswordId}.json`);
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        error: validationError
+      });
+    }
 
-    if (!fs.existsSync(filePath)) {
+    const crosswordId = normalizeCrosswordId(req.params.id);
+
+    const filePath = pathModule.join(templateStorageDir, `${crosswordId}.json`);
+
+    if (!fsModule.existsSync(filePath)) {
       return res.status(404).json({
         success: false,
         error: "Template not found"
       });
     }
 
-    const fileData = fs.readFileSync(filePath, "utf8");
+    const fileData = fsModule.readFileSync(filePath, "utf8");
 
     const template = JSON.parse(fileData);
 
@@ -112,8 +144,17 @@ app.get("/api/crossword/:id", (req, res) => {
 
   }
 
-});
+  };
+}
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = {
+  app,
+  createPublishHandler,
+  createLoadHandler
+};
