@@ -10,6 +10,12 @@ import TemplateCanvas from "./template/TemplateCanvas";
 import { exportTemplateFile } from "./template/templateExport";
 import { importTemplateFile } from "./template/templateImport";
 import {
+  DEFAULT_DOCUMENT_SIZE,
+  getDocumentSizeForDimensions,
+  getFullDocumentArea,
+  loadImageDocumentSize
+} from "./template/documentGeometry";
+import {
   loadBackendTemplate,
   publishBackendTemplate
 } from "./template/templateApi";
@@ -42,6 +48,7 @@ function App() {
       setImageSrc(parsed.imageSrc || "");
 
       setGridArea(parsed.gridArea);
+      setDocumentSize(parsed.documentSize || DEFAULT_DOCUMENT_SIZE);
 
       setModeView("play");
 
@@ -62,6 +69,7 @@ useEffect(() => {
       setImageSrc(data.imageSrc);
       setGridArea(data.gridArea);
       setCropArea(data.cropArea);
+      setDocumentSize(data.documentSize);
 
       setRows(data.rows);
       setCols(data.cols);
@@ -94,6 +102,8 @@ useEffect(() => {
     width: 1200,
     height: 1200
   });
+
+  const [documentSize, setDocumentSize] = useState(DEFAULT_DOCUMENT_SIZE);
 
   const [imageSrc, setImageSrc] = useState("/grid.png");
 
@@ -130,8 +140,14 @@ await page.render({
 }).promise;
 
 const image = canvas.toDataURL("image/png");
+const documentSize = getDocumentSizeForDimensions({
+  width: viewport.width,
+  height: viewport.height
+});
 
 setImageSrc(image);
+setDocumentSize(documentSize);
+setCropArea(getFullDocumentArea(documentSize));
 
 e.target.value = "";
 
@@ -140,8 +156,13 @@ return;
 
   const reader = new FileReader();
 
-  reader.onload = () => {
-    setImageSrc(reader.result);
+  reader.onload = async () => {
+    const image = reader.result;
+    const documentSize = await loadImageDocumentSize(image);
+
+    setImageSrc(image);
+    setDocumentSize(documentSize);
+    setCropArea(getFullDocumentArea(documentSize));
   };
 
   reader.readAsDataURL(file);
@@ -157,6 +178,7 @@ const handleTemplateImport = async (e) => {
     crosswordId,
     rows,
     cols,
+    documentSize,
     gridArea,
     cropArea,
     imageSrc
@@ -171,6 +193,10 @@ const handleTemplateImport = async (e) => {
 
   if (data.gridArea) {
     setGridArea(data.gridArea);
+  }
+
+  if (data.documentSize) {
+    setDocumentSize(data.documentSize);
   }
 
   if (data.cropArea) {
@@ -191,6 +217,7 @@ const handleTemplateImport = async (e) => {
       crosswordId,
       rows,
       cols,
+      documentSize,
       gridArea,
       cropArea,
       cellTypes,
@@ -314,6 +341,7 @@ const handleTemplateImport = async (e) => {
       crosswordId,
       gridArea,
       cropArea,
+      documentSize,
       cellTypes,
       imageSrc,
       rows,
@@ -361,6 +389,7 @@ const handleTemplateImport = async (e) => {
               cols,
               cellTypes,
               imageSrc,
+              documentSize,
               gridArea,
               cropArea
             }}
@@ -376,6 +405,7 @@ const handleTemplateImport = async (e) => {
           cols,
           cellTypes,
           imageSrc,
+          documentSize,
           gridArea,
           cropArea
         }}

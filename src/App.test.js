@@ -8,6 +8,7 @@ const requiredTemplateFields = [
   "rows",
   "cols",
   "cellTypes",
+  "documentSize",
   "gridArea",
   "cropArea",
   "imageSrc",
@@ -17,6 +18,11 @@ const requiredTemplateFields = [
 const defaultCropArea = {
   top: 0,
   left: 0,
+  width: 1200,
+  height: 1200
+};
+
+const defaultDocumentSize = {
   width: 1200,
   height: 1200
 };
@@ -45,6 +51,7 @@ test("createTemplate returns canonical Template v1 fields", () => {
       width: 300,
       height: 200
     },
+    documentSize: defaultDocumentSize,
     cropArea: defaultCropArea,
     imageSrc: "/grid.png",
     metadata: {
@@ -57,6 +64,7 @@ test("createTemplate returns canonical Template v1 fields", () => {
     crosswordId: "TT-2026-0001",
     rows: 2,
     cols: 3,
+    documentSize: defaultDocumentSize,
     gridArea: {
       top: 1,
       left: 2,
@@ -68,6 +76,38 @@ test("createTemplate returns canonical Template v1 fields", () => {
       title: "Test puzzle"
     }
   });
+});
+
+test("createTemplate includes default documentSize", () => {
+  const template = createTemplate({
+    crosswordId: "TT-2026-0001",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  expect(template.documentSize).toEqual(defaultDocumentSize);
+});
+
+test("createTemplate preserves provided documentSize", () => {
+  const documentSize = {
+    width: 1200,
+    height: 1697
+  };
+
+  const template = createTemplate({
+    crosswordId: "TT-2026-0001",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    documentSize,
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  expect(template.documentSize).toEqual(documentSize);
 });
 
 test("createTemplate includes default cropArea", () => {
@@ -140,6 +180,10 @@ test("normalizeTemplate applies defaults and normalizes cellTypes", () => {
       width: 400,
       height: 400
     },
+    documentSize: {
+      width: 1200,
+      height: 1697
+    },
     cropArea: {
       top: 5,
       left: 6,
@@ -168,6 +212,10 @@ test("normalizeTemplate applies defaults and normalizes cellTypes", () => {
       width: 400,
       height: 400
     },
+    documentSize: {
+      width: 1200,
+      height: 1697
+    },
     cropArea: {
       top: 5,
       left: 6,
@@ -178,6 +226,60 @@ test("normalizeTemplate applies defaults and normalizes cellTypes", () => {
     metadata: {
       source: "defaults"
     }
+  });
+});
+
+test("normalizeTemplate preserves provided documentSize", () => {
+  const documentSize = {
+    width: 1200,
+    height: 900
+  };
+
+  const template = normalizeTemplate({
+    crosswordId: "TT-2026-0002",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    documentSize,
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  expect(template.documentSize).toEqual(documentSize);
+});
+
+test("legacy Template without documentSize receives default documentSize", () => {
+  const template = normalizeTemplate({
+    crosswordId: "TT-2026-0002",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  expect(template.documentSize).toEqual(defaultDocumentSize);
+});
+
+test("missing cropArea defaults to full documentSize", () => {
+  const template = createTemplate({
+    crosswordId: "TT-2026-0001",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    documentSize: {
+      width: 1200,
+      height: 1697
+    },
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  expect(template.cropArea).toEqual({
+    top: 0,
+    left: 0,
+    width: 1200,
+    height: 1697
   });
 });
 

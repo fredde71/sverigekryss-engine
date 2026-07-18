@@ -1,4 +1,5 @@
 import { normalizeTemplate } from "./templateModel";
+import { DEFAULT_DOCUMENT_SIZE } from "./documentGeometry";
 import { BACKEND_BASE_URL } from "./persistenceConfig";
 
 export async function loadBackendTemplate(id) {
@@ -19,6 +20,7 @@ export async function loadBackendTemplate(id) {
       width: 1200,
       height: 1200
     },
+    documentSize: DEFAULT_DOCUMENT_SIZE,
     imageSrc: ""
   });
 }

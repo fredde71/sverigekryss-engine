@@ -62,6 +62,10 @@ test("loadBackendTemplate returns normalized Template data", async () => {
       width: 1200,
       height: 1200
     },
+    documentSize: {
+      width: 1200,
+      height: 1200
+    },
     cropArea: {
       top: 0,
       left: 0,
@@ -96,6 +100,27 @@ test("loadBackendTemplate preserves backend cropArea", async () => {
   expect(template.cropArea).toEqual(cropArea);
 });
 
+test("loadBackendTemplate preserves backend documentSize", async () => {
+  const documentSize = {
+    width: 1200,
+    height: 1697
+  };
+
+  mockJsonResponse({
+    crosswordId: "TT-2026-0002",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    documentSize,
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  const template = await loadBackendTemplate("TT-2026-0002");
+
+  expect(template.documentSize).toEqual(documentSize);
+});
+
 test("loadBackendTemplate does not normalize backend 404 into a Template", async () => {
   global.fetch.mockResolvedValue({
     ok: false,
@@ -122,6 +147,10 @@ test("publishBackendTemplate posts unchanged payload and returns parsed backend 
       left: 2,
       width: 300,
       height: 300
+    },
+    documentSize: {
+      width: 1200,
+      height: 1697
     },
     imageSrc: "/grid.png"
   };

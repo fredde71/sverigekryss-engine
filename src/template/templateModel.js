@@ -1,6 +1,12 @@
+import {
+  getFullDocumentArea,
+  normalizeDocumentSize
+} from "./documentGeometry";
+
 export function createTemplate(input) {
   const rows = input.rows;
   const cols = input.cols;
+  const documentSize = normalizeDocumentSize(input.documentSize);
 
   return {
     crosswordId: input.crosswordId,
@@ -11,8 +17,9 @@ export function createTemplate(input) {
       rows,
       cols
     }),
+    documentSize,
     gridArea: input.gridArea,
-    cropArea: normalizeCropArea(input.cropArea),
+    cropArea: normalizeCropArea(input.cropArea, documentSize),
     imageSrc: input.imageSrc,
     metadata: input.metadata
   };
@@ -21,6 +28,9 @@ export function createTemplate(input) {
 export function normalizeTemplate(input, defaults = {}) {
   const rows = input.rows ?? defaults.rows;
   const cols = input.cols ?? defaults.cols;
+  const documentSize = normalizeDocumentSize(
+    input.documentSize ?? defaults.documentSize
+  );
 
   return {
     crosswordId: input.crosswordId ?? defaults.crosswordId,
@@ -31,20 +41,19 @@ export function normalizeTemplate(input, defaults = {}) {
       rows,
       cols
     }),
+    documentSize,
     gridArea: input.gridArea ?? defaults.gridArea,
-    cropArea: normalizeCropArea(input.cropArea ?? defaults.cropArea),
+    cropArea: normalizeCropArea(
+      input.cropArea ?? defaults.cropArea,
+      documentSize
+    ),
     imageSrc: input.imageSrc ?? defaults.imageSrc,
     metadata: input.metadata ?? defaults.metadata
   };
 }
 
-function normalizeCropArea(cropArea) {
-  return cropArea ?? {
-    top: 0,
-    left: 0,
-    width: 1200,
-    height: 1200
-  };
+function normalizeCropArea(cropArea, documentSize) {
+  return cropArea ?? getFullDocumentArea(documentSize);
 }
 
 function normalizeCellTypes({
