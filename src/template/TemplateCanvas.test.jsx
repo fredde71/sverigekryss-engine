@@ -16,11 +16,12 @@ const baseTemplate = {
   imageSrc: "/grid.png"
 };
 
-test("renders full-canvas viewport by default", () => {
+test("renders legacy full-canvas viewport by default", () => {
   render(<TemplateCanvas template={baseTemplate} />);
 
   const viewport = screen.getByTestId("template-canvas-viewport");
   const source = screen.getByTestId("template-canvas-source");
+  const image = screen.getByAltText("grid");
 
   expect(viewport).toHaveStyle({
     width: "1200px",
@@ -32,6 +33,39 @@ test("renders full-canvas viewport by default", () => {
     height: "1200px",
     transform: "translate(0px, 0px)"
   });
+  expect(image).toHaveStyle({
+    width: "1200px",
+    height: "1200px"
+  });
+});
+
+test("uses documentSize for the editor source surface", () => {
+  render(
+    <TemplateCanvas
+      template={{
+        ...baseTemplate,
+        documentSize: {
+          width: 1200,
+          height: 1697
+        }
+      }}
+    />
+  );
+
+  expect(screen.getByTestId("template-canvas-viewport")).toHaveStyle({
+    width: "1200px",
+    height: "1697px",
+    overflow: "hidden"
+  });
+  expect(screen.getByTestId("template-canvas-source")).toHaveStyle({
+    width: "1200px",
+    height: "1697px",
+    transform: "translate(0px, 0px)"
+  });
+  expect(screen.getByAltText("grid")).toHaveStyle({
+    width: "1200px",
+    height: "1697px"
+  });
 });
 
 test("renders the full source page by default even when cropArea exists", () => {
@@ -39,6 +73,10 @@ test("renders the full source page by default even when cropArea exists", () => 
     <TemplateCanvas
       template={{
         ...baseTemplate,
+        documentSize: {
+          width: 1200,
+          height: 1697
+        },
         cropArea: {
           top: 100,
           left: 80,
@@ -51,7 +89,7 @@ test("renders the full source page by default even when cropArea exists", () => 
 
   expect(screen.getByTestId("template-canvas-viewport")).toHaveStyle({
     width: "1200px",
-    height: "1200px",
+    height: "1697px",
     overflow: "hidden"
   });
   expect(screen.getByTestId("template-canvas-source")).toHaveStyle({
@@ -65,6 +103,10 @@ test("uses cropArea dimensions for the viewport in cropped mode", () => {
       cropped
       template={{
         ...baseTemplate,
+        documentSize: {
+          width: 1200,
+          height: 1697
+        },
         cropArea: {
           top: 100,
           left: 80,
@@ -88,6 +130,10 @@ test("translates the internal source surface by cropArea offset in cropped mode"
       cropped
       template={{
         ...baseTemplate,
+        documentSize: {
+          width: 1200,
+          height: 1697
+        },
         cropArea: {
           top: 100,
           left: 80,

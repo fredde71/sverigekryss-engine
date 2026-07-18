@@ -1,4 +1,5 @@
 import React from "react";
+import { normalizeDocumentSize } from "./documentGeometry";
 
 export default function TemplateCanvas({
   template,
@@ -8,17 +9,18 @@ export default function TemplateCanvas({
 }) {
   const wrapperRef = React.useRef(null);
   const [scale, setScale] = React.useState(1);
+  const documentSize = normalizeDocumentSize(template.documentSize);
   const cropArea = template.cropArea || {
     top: 0,
     left: 0,
-    width: 1200,
-    height: 1200
+    width: documentSize.width,
+    height: documentSize.height
   };
   const viewportArea = cropped ? cropArea : {
     top: 0,
     left: 0,
-    width: 1200,
-    height: 1200
+    width: documentSize.width,
+    height: documentSize.height
   };
 
   React.useEffect(() => {
@@ -49,8 +51,8 @@ export default function TemplateCanvas({
         position: "absolute",
         top: 0,
         left: 0,
-        width: "1200px",
-        height: "1200px",
+        width: `${documentSize.width}px`,
+        height: `${documentSize.height}px`,
         transform: `translate(${-viewportArea.left}px, ${-viewportArea.top}px)`,
         transformOrigin: "top left"
       }}
@@ -59,7 +61,8 @@ export default function TemplateCanvas({
         src={template.imageSrc}
         alt="grid"
         style={{
-          width: "1200px",
+          width: `${documentSize.width}px`,
+          height: `${documentSize.height}px`,
           display: "block"
         }}
       />
