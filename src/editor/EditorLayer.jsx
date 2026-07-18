@@ -6,6 +6,7 @@ export default function EditorLayer({
   cols,
   cellTypes,
   setMode,
+  handleGridClick,
   isPublicRuntime,
   gridArea,
   cropArea,
@@ -25,21 +26,24 @@ export default function EditorLayer({
   return (
     <div
       data-testid="editor-layer"
-  style={{
-  width: "100%",
-  height: "100%",
-  pointerEvents: "none"
-}}
->
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "1200px",
+        height: "1200px",
+        pointerEvents: "none"
+      }}
+    >
       <div
         data-testid="editor-crop-overlay"
         style={{
           position: "absolute",
-          top: safeCropArea.top - gridArea.top,
-          left: safeCropArea.left - gridArea.left,
+          top: safeCropArea.top,
+          left: safeCropArea.left,
           width: safeCropArea.width,
           height: safeCropArea.height,
-          zIndex: 10,
+          zIndex: 30,
           pointerEvents: "none",
           border: "2px dashed rgba(255, 140, 0, 0.95)",
           background: "rgba(255, 180, 0, 0.08)",
@@ -84,45 +88,59 @@ export default function EditorLayer({
       </div>
 
       <div
-  data-testid="editor-grid-move-affordance"
-  onMouseDown={() => setMode("move")}
-  style={{
-    pointerEvents: "auto",
-    position: "absolute",
-    top: -30,
-    left: 0,
-    right: 0,
-    height: "30px",
-    zIndex: 20,
-    background: "rgba(0,0,255,0.15)",
-    cursor: "move"
-  }}
-/>
-
-      <div
-        data-testid="editor-grid-resize-handle"
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          setMode("resize");
-        }}
+        data-testid="editor-grid-frame"
+        onClick={handleGridClick}
         style={{
           pointerEvents: "auto",
           position: "absolute",
-          right: -6,
-          zIndex: 20,
-          bottom: -6,
-          width: "12px",
-          height: "12px",
-          background: "blue",
-          cursor: "nwse-resize"
+          top: gridArea.top,
+          left: gridArea.left,
+          width: gridArea.width,
+          height: gridArea.height,
+          zIndex: 20
         }}
-      />
+      >
+        <div
+          data-testid="editor-grid-move-affordance"
+          onMouseDown={() => setMode("move")}
+          style={{
+            pointerEvents: "auto",
+            position: "absolute",
+            top: -30,
+            left: 0,
+            right: 0,
+            height: "30px",
+            zIndex: 20,
+            background: "rgba(0,0,255,0.15)",
+            cursor: "move"
+          }}
+        />
 
-      <EditorGrid
-  rows={rows}
-  cols={cols}
-  cellTypes={cellTypes}
-/>
+        <div
+          data-testid="editor-grid-resize-handle"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            setMode("resize");
+          }}
+          style={{
+            pointerEvents: "auto",
+            position: "absolute",
+            right: -6,
+            zIndex: 20,
+            bottom: -6,
+            width: "12px",
+            height: "12px",
+            background: "blue",
+            cursor: "nwse-resize"
+          }}
+        />
+
+        <EditorGrid
+          rows={rows}
+          cols={cols}
+          cellTypes={cellTypes}
+        />
+      </div>
     </div>
   );
 }

@@ -141,16 +141,21 @@ export default function EditorViewport({
 
   return (
     <div
-      onClick={handleGridClick}
+      data-testid="editor-viewport"
       style={{
         position: "absolute",
-        top: gridArea.top,
-        left: gridArea.left,
-        width: gridArea.width,
-        height: gridArea.height
+        top: 0,
+        left: 0,
+        width: "1200px",
+        height: "1200px",
+        pointerEvents: "none"
       }}
     >
-      {typeof children === "function" ? children({ setMode, setCropMode }) : children}
+      {typeof children === "function" ? children({
+        setMode,
+        setCropMode,
+        handleGridClick
+      }) : children}
     </div>
   );
 }

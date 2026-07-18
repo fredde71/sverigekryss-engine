@@ -52,13 +52,14 @@ export default function EditorWorkspace({
       activeTool={activeTool}
       setCellTypes={setCellTypes}
     >
-      {({ setMode }) => (
+      {({ setMode, handleGridClick }) => (
         <>
           <EditorLayer
             rows={rows}
             cols={cols}
             cellTypes={cellTypes}
             setMode={setMode}
+            handleGridClick={handleGridClick}
             isPublicRuntime={isPublicRuntime}
             gridArea={gridArea}
             cropArea={cropArea}

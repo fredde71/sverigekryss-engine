@@ -64,6 +64,17 @@ function EditorViewportHarness({
   );
 }
 
+test("renders the full 1200 source interaction surface", () => {
+  render(<EditorViewportHarness />);
+
+  expect(screen.getByTestId("editor-viewport")).toHaveStyle({
+    top: "0px",
+    left: "0px",
+    width: "1200px",
+    height: "1200px"
+  });
+});
+
 test("crop move updates top and left only", () => {
   render(<EditorViewportHarness />);
 

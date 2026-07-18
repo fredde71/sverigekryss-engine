@@ -7,6 +7,7 @@ const baseProps = {
   cellTypes: ["write", "blocked", "double", "empty"],
   setMode: jest.fn(),
   setCropMode: jest.fn(),
+  handleGridClick: jest.fn(),
   isPublicRuntime: false,
   gridArea: {
     top: 20,
@@ -30,11 +31,49 @@ test("renders crop rectangle in source coordinate space", () => {
   render(<EditorLayer {...baseProps} />);
 
   expect(screen.getByTestId("editor-crop-overlay")).toHaveStyle({
-    top: "80px",
-    left: "50px",
+    top: "100px",
+    left: "80px",
     width: "900px",
     height: "700px",
     border: "2px dashed rgba(255, 140, 0, 0.95)"
+  });
+});
+
+test("renders grid frame in source coordinate space", () => {
+  render(<EditorLayer {...baseProps} />);
+
+  expect(screen.getByTestId("editor-grid-frame")).toHaveStyle({
+    top: "20px",
+    left: "30px",
+    width: "400px",
+    height: "300px"
+  });
+});
+
+test("crop overlay no longer depends on grid position", () => {
+  const { rerender } = render(<EditorLayer {...baseProps} />);
+
+  rerender(
+    <EditorLayer
+      {...baseProps}
+      gridArea={{
+        top: 250,
+        left: 300,
+        width: 400,
+        height: 300
+      }}
+    />
+  );
+
+  expect(screen.getByTestId("editor-crop-overlay")).toHaveStyle({
+    top: "100px",
+    left: "80px",
+    width: "900px",
+    height: "700px"
+  });
+  expect(screen.getByTestId("editor-grid-frame")).toHaveStyle({
+    top: "250px",
+    left: "300px"
   });
 });
 
@@ -71,4 +110,12 @@ test("keeps existing grid overlay move and resize behavior", () => {
 
   expect(baseProps.setMode).toHaveBeenCalledWith("move");
   expect(baseProps.setMode).toHaveBeenCalledWith("resize");
+});
+
+test("grid frame preserves cell editing click handling", () => {
+  render(<EditorLayer {...baseProps} />);
+
+  fireEvent.click(screen.getByTestId("editor-grid-frame"));
+
+  expect(baseProps.handleGridClick).toHaveBeenCalled();
 });
