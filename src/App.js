@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import EditorWorkspace from "./editor/EditorWorkspace";
+import EditorScrollWorkspace from "./editor/EditorScrollWorkspace";
 import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import RuntimeLayer from "./runtime/RuntimeLayer";
@@ -351,7 +352,24 @@ const handleTemplateImport = async (e) => {
       )} 
 
       {/* CANVAS */}
-      <TemplateCanvas
+      {modeView === "edit" ? (
+        <EditorScrollWorkspace>
+          <TemplateCanvas
+            template={{
+              crosswordId,
+              rows,
+              cols,
+              cellTypes,
+              imageSrc,
+              gridArea,
+              cropArea
+            }}
+          >
+            {editor}
+          </TemplateCanvas>
+        </EditorScrollWorkspace>
+      ) : (
+        <TemplateCanvas
         template={{
           crosswordId,
           rows,
@@ -362,24 +380,17 @@ const handleTemplateImport = async (e) => {
           cropArea
         }}
       >
-
- {modeView === "edit" && (
-   editor
-  )}
-
-{modeView === "play" && (
-<RuntimeLayer
-  data={{
-    cellTypes,
-    rows,
-    cols,
-    gridArea,
-    imageSrc
-  }}
-/>
-                    )}
-
-      </TemplateCanvas>
+          <RuntimeLayer
+            data={{
+              cellTypes,
+              rows,
+              cols,
+              gridArea,
+              imageSrc
+            }}
+          />
+        </TemplateCanvas>
+      )}
 
     </div>
       )}
