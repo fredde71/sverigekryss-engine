@@ -34,9 +34,35 @@ test("renders full-canvas viewport by default", () => {
   });
 });
 
-test("uses cropArea dimensions for the viewport", () => {
+test("renders the full source page by default even when cropArea exists", () => {
   render(
     <TemplateCanvas
+      template={{
+        ...baseTemplate,
+        cropArea: {
+          top: 100,
+          left: 80,
+          width: 900,
+          height: 700
+        }
+      }}
+    />
+  );
+
+  expect(screen.getByTestId("template-canvas-viewport")).toHaveStyle({
+    width: "1200px",
+    height: "1200px",
+    overflow: "hidden"
+  });
+  expect(screen.getByTestId("template-canvas-source")).toHaveStyle({
+    transform: "translate(0px, 0px)"
+  });
+});
+
+test("uses cropArea dimensions for the viewport in cropped mode", () => {
+  render(
+    <TemplateCanvas
+      cropped
       template={{
         ...baseTemplate,
         cropArea: {
@@ -56,9 +82,10 @@ test("uses cropArea dimensions for the viewport", () => {
   });
 });
 
-test("translates the internal source surface by cropArea offset", () => {
+test("translates the internal source surface by cropArea offset in cropped mode", () => {
   render(
     <TemplateCanvas
+      cropped
       template={{
         ...baseTemplate,
         cropArea: {
