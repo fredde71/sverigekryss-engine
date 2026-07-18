@@ -9,6 +9,10 @@ const baseProps = {
   setCropMode: jest.fn(),
   handleGridClick: jest.fn(),
   isPublicRuntime: false,
+  documentSize: {
+    width: 1200,
+    height: 1200
+  },
   gridArea: {
     top: 20,
     left: 30,
@@ -36,6 +40,43 @@ test("renders crop rectangle in source coordinate space", () => {
     width: "900px",
     height: "700px",
     border: "2px dashed rgba(255, 140, 0, 0.95)"
+  });
+});
+
+test("renders editor overlay with documentSize dimensions", () => {
+  render(
+    <EditorLayer
+      {...baseProps}
+      documentSize={{
+        width: 1200,
+        height: 1697
+      }}
+    />
+  );
+
+  expect(screen.getByTestId("editor-layer")).toHaveStyle({
+    width: "1200px",
+    height: "1697px"
+  });
+});
+
+test("missing cropArea defaults to full documentSize", () => {
+  render(
+    <EditorLayer
+      {...baseProps}
+      documentSize={{
+        width: 1200,
+        height: 1697
+      }}
+      cropArea={undefined}
+    />
+  );
+
+  expect(screen.getByTestId("editor-crop-overlay")).toHaveStyle({
+    top: "0px",
+    left: "0px",
+    width: "1200px",
+    height: "1697px"
   });
 });
 

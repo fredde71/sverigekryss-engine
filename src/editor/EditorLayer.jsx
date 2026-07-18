@@ -1,5 +1,6 @@
 import React from "react";
 import EditorGrid from "./EditorGrid";
+import { normalizeDocumentSize } from "../template/documentGeometry";
 
 export default function EditorLayer({
   rows,
@@ -8,6 +9,7 @@ export default function EditorLayer({
   setMode,
   handleGridClick,
   isPublicRuntime,
+  documentSize,
   gridArea,
   cropArea,
   setCropMode
@@ -16,11 +18,12 @@ export default function EditorLayer({
     return null;
   }
 
+  const safeDocumentSize = normalizeDocumentSize(documentSize);
   const safeCropArea = cropArea || {
     top: 0,
     left: 0,
-    width: 1200,
-    height: 1200
+    width: safeDocumentSize.width,
+    height: safeDocumentSize.height
   };
 
   return (
@@ -30,8 +33,8 @@ export default function EditorLayer({
         position: "absolute",
         top: 0,
         left: 0,
-        width: "1200px",
-        height: "1200px",
+        width: `${safeDocumentSize.width}px`,
+        height: `${safeDocumentSize.height}px`,
         pointerEvents: "none"
       }}
     >

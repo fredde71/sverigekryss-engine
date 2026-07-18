@@ -63,6 +63,7 @@ export default function EditorWorkspace({
             setMode={setMode}
             handleGridClick={handleGridClick}
             isPublicRuntime={isPublicRuntime}
+            documentSize={documentSize}
             gridArea={gridArea}
             cropArea={cropArea}
             setCropMode={setCropMode}
