@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { normalizeDocumentSize } from "../template/documentGeometry";
 
 export default function EditorViewport({
@@ -15,11 +15,14 @@ export default function EditorViewport({
   children
 }) {
   const [gridDrag, setGridDrag] = useState(null);
+  const gridDragMovedRef = useRef(false);
   const safeDocumentSize = normalizeDocumentSize(documentSize);
   const documentWidth = safeDocumentSize.width;
   const documentHeight = safeDocumentSize.height;
 
   const startGridMove = (e) => {
+    gridDragMovedRef.current = false;
+
     setGridDrag({
       mode: "move",
       startClientX: e.clientX,
@@ -30,6 +33,7 @@ export default function EditorViewport({
 
   const startGridResize = (e) => {
     e.stopPropagation();
+    gridDragMovedRef.current = false;
 
     setGridDrag({
       mode: "resize",
@@ -40,6 +44,11 @@ export default function EditorViewport({
   };
 
   const handleGridClick = (e) => {
+    if (gridDragMovedRef.current) {
+      gridDragMovedRef.current = false;
+      return;
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -80,6 +89,10 @@ export default function EditorViewport({
         const dx = e.clientX - gridDrag.startClientX;
         const dy = e.clientY - gridDrag.startClientY;
 
+        if (dx !== 0 || dy !== 0) {
+          gridDragMovedRef.current = true;
+        }
+
         setGridArea({
           ...gridDrag.startGridArea,
           top: gridDrag.startGridArea.top + dy,
@@ -90,6 +103,10 @@ export default function EditorViewport({
       if (gridDrag?.mode === "resize") {
         const dx = e.clientX - gridDrag.startClientX;
         const dy = e.clientY - gridDrag.startClientY;
+
+        if (dx !== 0 || dy !== 0) {
+          gridDragMovedRef.current = true;
+        }
 
         setGridArea({
           ...gridDrag.startGridArea,

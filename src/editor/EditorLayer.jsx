@@ -93,6 +93,7 @@ export default function EditorLayer({
 
       <div
         data-testid="editor-grid-frame"
+        onMouseDown={startGridMove}
         onClick={handleGridClick}
         style={{
           pointerEvents: "auto",
@@ -106,7 +107,7 @@ export default function EditorLayer({
       >
         <div
           data-testid="editor-grid-move-affordance"
-          onMouseDown={startGridMove}
+          onClick={(e) => e.stopPropagation()}
           style={{
             pointerEvents: "auto",
             position: "absolute",
@@ -122,7 +123,11 @@ export default function EditorLayer({
 
         <div
           data-testid="editor-grid-resize-handle"
-          onMouseDown={startGridResize}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            startGridResize(e);
+          }}
+          onClick={(e) => e.stopPropagation()}
           style={{
             pointerEvents: "auto",
             position: "absolute",

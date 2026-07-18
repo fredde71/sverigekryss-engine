@@ -28,6 +28,7 @@ function EditorViewportHarness({
 }) {
   const [currentCropArea, setCropArea] = useState(cropArea);
   const [currentGridArea, setGridArea] = useState(gridArea);
+  const [currentCellTypes, setCellTypes] = useState(Array(4).fill("empty"));
   const [cropMode, setCropMode] = useState(null);
 
   return (
@@ -37,6 +38,9 @@ function EditorViewportHarness({
       </div>
       <div data-testid="grid-state">
         {JSON.stringify(currentGridArea)}
+      </div>
+      <div data-testid="cell-state">
+        {JSON.stringify(currentCellTypes)}
       </div>
       <EditorViewport
         gridArea={currentGridArea}
@@ -48,10 +52,15 @@ function EditorViewportHarness({
         rows={2}
         cols={2}
         activeTool="write"
-        setCellTypes={() => {}}
+        setCellTypes={setCellTypes}
       >
-        {({ startGridMove, startGridResize, setCropMode }) => (
+        {({ startGridMove, startGridResize, setCropMode, handleGridClick }) => (
           <>
+            <div
+              data-testid="grid-frame"
+              onMouseDown={startGridMove}
+              onClick={handleGridClick}
+            />
             <button
               data-testid="start-crop-move"
               onMouseDown={() => setCropMode("move")}
@@ -286,6 +295,66 @@ test("grid movement is based on client coordinates from drag start", () => {
   });
 });
 
+test("dragging grid frame updates top and left", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("grid-frame"), {
+    clientX: 100,
+    clientY: 100
+  });
+  moveClientPointer(135, 125);
+
+  expect(readState("grid-state")).toEqual({
+    top: 45,
+    left: 65,
+    width: 400,
+    height: 300
+  });
+});
+
+test("dragging grid frame does not trigger cell editing", () => {
+  render(<EditorViewportHarness />);
+
+  const gridFrame = screen.getByTestId("grid-frame");
+  mockGridFrameRect(gridFrame);
+
+  fireEvent.mouseDown(gridFrame, {
+    clientX: 100,
+    clientY: 100
+  });
+  moveClientPointer(135, 125);
+  fireEvent.click(gridFrame, {
+    clientX: 135,
+    clientY: 125
+  });
+
+  expect(readState("cell-state")).toEqual([
+    "empty",
+    "empty",
+    "empty",
+    "empty"
+  ]);
+});
+
+test("click without drag still edits cells", () => {
+  render(<EditorViewportHarness />);
+
+  const gridFrame = screen.getByTestId("grid-frame");
+  mockGridFrameRect(gridFrame);
+
+  fireEvent.click(gridFrame, {
+    clientX: 10,
+    clientY: 10
+  });
+
+  expect(readState("cell-state")).toEqual([
+    "write",
+    "empty",
+    "empty",
+    "empty"
+  ]);
+});
+
 test("grid resize preserves top and left", () => {
   render(<EditorViewportHarness />);
 
@@ -367,4 +436,15 @@ function movePointerWithClientCoordinates({
   });
 
   fireEvent(window, event);
+}
+
+function mockGridFrameRect(element) {
+  element.getBoundingClientRect = () => ({
+    top: 0,
+    left: 0,
+    right: 400,
+    bottom: 300,
+    width: 400,
+    height: 300
+  });
 }

@@ -156,6 +156,23 @@ test("keeps existing grid overlay move and resize behavior", () => {
   expect(baseProps.startGridResize).toHaveBeenCalledTimes(1);
 });
 
+test("starts grid movement from the grid frame", () => {
+  render(<EditorLayer {...baseProps} />);
+
+  fireEvent.mouseDown(screen.getByTestId("editor-grid-frame"));
+
+  expect(baseProps.startGridMove).toHaveBeenCalledTimes(1);
+});
+
+test("resize handle does not start grid movement", () => {
+  render(<EditorLayer {...baseProps} />);
+
+  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-handle"));
+
+  expect(baseProps.startGridResize).toHaveBeenCalledTimes(1);
+  expect(baseProps.startGridMove).not.toHaveBeenCalled();
+});
+
 test("grid frame preserves cell editing click handling", () => {
   render(<EditorLayer {...baseProps} />);
 
