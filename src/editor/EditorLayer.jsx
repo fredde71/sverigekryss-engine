@@ -6,7 +6,8 @@ export default function EditorLayer({
   rows,
   cols,
   cellTypes,
-  setMode,
+  startGridMove,
+  startGridResize,
   handleGridClick,
   isPublicRuntime,
   documentSize,
@@ -105,7 +106,7 @@ export default function EditorLayer({
       >
         <div
           data-testid="editor-grid-move-affordance"
-          onMouseDown={() => setMode("move")}
+          onMouseDown={startGridMove}
           style={{
             pointerEvents: "auto",
             position: "absolute",
@@ -121,10 +122,7 @@ export default function EditorLayer({
 
         <div
           data-testid="editor-grid-resize-handle"
-          onMouseDown={(e) => {
-            e.stopPropagation();
-            setMode("resize");
-          }}
+          onMouseDown={startGridResize}
           style={{
             pointerEvents: "auto",
             position: "absolute",

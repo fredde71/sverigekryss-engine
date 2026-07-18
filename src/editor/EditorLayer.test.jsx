@@ -5,7 +5,8 @@ const baseProps = {
   rows: 2,
   cols: 2,
   cellTypes: ["write", "blocked", "double", "empty"],
-  setMode: jest.fn(),
+  startGridMove: jest.fn(),
+  startGridResize: jest.fn(),
   setCropMode: jest.fn(),
   handleGridClick: jest.fn(),
   isPublicRuntime: false,
@@ -131,7 +132,8 @@ test("starts crop movement from crop move affordance", () => {
   fireEvent.mouseDown(screen.getByTestId("editor-crop-move-affordance"));
 
   expect(baseProps.setCropMode).toHaveBeenCalledWith("move");
-  expect(baseProps.setMode).not.toHaveBeenCalled();
+  expect(baseProps.startGridMove).not.toHaveBeenCalled();
+  expect(baseProps.startGridResize).not.toHaveBeenCalled();
 });
 
 test("starts crop resize from crop resize handle", () => {
@@ -140,7 +142,8 @@ test("starts crop resize from crop resize handle", () => {
   fireEvent.mouseDown(screen.getByTestId("editor-crop-resize-handle"));
 
   expect(baseProps.setCropMode).toHaveBeenCalledWith("resize");
-  expect(baseProps.setMode).not.toHaveBeenCalled();
+  expect(baseProps.startGridMove).not.toHaveBeenCalled();
+  expect(baseProps.startGridResize).not.toHaveBeenCalled();
 });
 
 test("keeps existing grid overlay move and resize behavior", () => {
@@ -149,8 +152,8 @@ test("keeps existing grid overlay move and resize behavior", () => {
   fireEvent.mouseDown(screen.getByTestId("editor-grid-move-affordance"));
   fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-handle"));
 
-  expect(baseProps.setMode).toHaveBeenCalledWith("move");
-  expect(baseProps.setMode).toHaveBeenCalledWith("resize");
+  expect(baseProps.startGridMove).toHaveBeenCalledTimes(1);
+  expect(baseProps.startGridResize).toHaveBeenCalledTimes(1);
 });
 
 test("grid frame preserves cell editing click handling", () => {

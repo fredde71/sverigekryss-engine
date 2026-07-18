@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { moveGridArea } from "../engine/gridArea";
 import { normalizeDocumentSize } from "../template/documentGeometry";
 
 export default function EditorViewport({
@@ -15,10 +14,30 @@ export default function EditorViewport({
   setCellTypes,
   children
 }) {
-  const [mode, setMode] = useState(null);
+  const [gridDrag, setGridDrag] = useState(null);
   const safeDocumentSize = normalizeDocumentSize(documentSize);
   const documentWidth = safeDocumentSize.width;
   const documentHeight = safeDocumentSize.height;
+
+  const startGridMove = (e) => {
+    setGridDrag({
+      mode: "move",
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startGridArea: gridArea
+    });
+  };
+
+  const startGridResize = (e) => {
+    e.stopPropagation();
+
+    setGridDrag({
+      mode: "resize",
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startGridArea: gridArea
+    });
+  };
 
   const handleGridClick = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -57,22 +76,26 @@ export default function EditorViewport({
       const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
       const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
 
-      if (mode === "move") {
-        setGridArea(
-          prev => moveGridArea(
-            prev,
-            movementX,
-            movementY
-          )
-        );
+      if (gridDrag?.mode === "move") {
+        const dx = e.clientX - gridDrag.startClientX;
+        const dy = e.clientY - gridDrag.startClientY;
+
+        setGridArea({
+          ...gridDrag.startGridArea,
+          top: gridDrag.startGridArea.top + dy,
+          left: gridDrag.startGridArea.left + dx
+        });
       }
 
-      if (mode === "resize") {
-        setGridArea(prev => ({
-          ...prev,
-          width: Math.max(100, prev.width + movementX),
-          height: Math.max(100, prev.height + movementY)
-        }));
+      if (gridDrag?.mode === "resize") {
+        const dx = e.clientX - gridDrag.startClientX;
+        const dy = e.clientY - gridDrag.startClientY;
+
+        setGridArea({
+          ...gridDrag.startGridArea,
+          width: Math.max(100, gridDrag.startGridArea.width + dx),
+          height: Math.max(100, gridDrag.startGridArea.height + dy)
+        });
       }
 
       if (cropMode === "move") {
@@ -101,7 +124,7 @@ export default function EditorViewport({
     };
 
     const stopDrag = () => {
-      setMode(null);
+      setGridDrag(null);
       setCropMode(null);
     };
 
@@ -113,7 +136,7 @@ export default function EditorViewport({
       window.removeEventListener("mouseup", stopDrag);
     };
   }, [
-    mode,
+    gridDrag,
     cropMode,
     setGridArea,
     setCropArea,
@@ -173,7 +196,8 @@ export default function EditorViewport({
       }}
     >
       {typeof children === "function" ? children({
-        setMode,
+        startGridMove,
+        startGridResize,
         setCropMode,
         handleGridClick
       }) : children}

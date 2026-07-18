@@ -50,7 +50,7 @@ function EditorViewportHarness({
         activeTool="write"
         setCellTypes={() => {}}
       >
-        {({ setMode, setCropMode }) => (
+        {({ startGridMove, startGridResize, setCropMode }) => (
           <>
             <button
               data-testid="start-crop-move"
@@ -62,7 +62,11 @@ function EditorViewportHarness({
             />
             <button
               data-testid="start-grid-move"
-              onMouseDown={() => setMode("move")}
+              onMouseDown={startGridMove}
+            />
+            <button
+              data-testid="start-grid-resize"
+              onMouseDown={startGridResize}
             />
           </>
         )}
@@ -228,8 +232,11 @@ test("crop resize clamps to documentSize boundaries", () => {
 test("existing grid move remains protected", () => {
   render(<EditorViewportHarness />);
 
-  fireEvent.mouseDown(screen.getByTestId("start-grid-move"));
-  movePointer(25, -10);
+  fireEvent.mouseDown(screen.getByTestId("start-grid-move"), {
+    clientX: 100,
+    clientY: 100
+  });
+  moveClientPointer(125, 90);
 
   expect(readState("grid-state")).toEqual({
     top: 10,
@@ -240,13 +247,116 @@ test("existing grid move remains protected", () => {
   expect(readState("crop-state")).toEqual(initialCropArea);
 });
 
+test("grid movement supports diagonal dragging", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-grid-move"), {
+    clientX: 100,
+    clientY: 100
+  });
+  moveClientPointer(130, 140);
+
+  expect(readState("grid-state")).toEqual({
+    top: 60,
+    left: 60,
+    width: 400,
+    height: 300
+  });
+});
+
+test("grid movement is based on client coordinates from drag start", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-grid-move"), {
+    clientX: 100,
+    clientY: 100
+  });
+  movePointerWithClientCoordinates({
+    clientX: 110,
+    clientY: 115,
+    movementX: 999,
+    movementY: 999
+  });
+
+  expect(readState("grid-state")).toEqual({
+    top: 35,
+    left: 40,
+    width: 400,
+    height: 300
+  });
+});
+
+test("grid resize preserves top and left", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-grid-resize"), {
+    clientX: 100,
+    clientY: 100
+  });
+  moveClientPointer(130, 140);
+
+  expect(readState("grid-state")).toEqual({
+    top: 20,
+    left: 30,
+    width: 430,
+    height: 340
+  });
+});
+
+test("grid resize changes only width and height", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-grid-resize"), {
+    clientX: 100,
+    clientY: 100
+  });
+  movePointerWithClientCoordinates({
+    clientX: 150,
+    clientY: 120,
+    movementX: -500,
+    movementY: -500
+  });
+
+  expect(readState("grid-state")).toEqual({
+    top: 20,
+    left: 30,
+    width: 450,
+    height: 320
+  });
+});
+
 function readState(testId) {
   return JSON.parse(screen.getByTestId(testId).textContent);
 }
 
 function movePointer(movementX, movementY) {
+  movePointerWithClientCoordinates({
+    clientX: 0,
+    clientY: 0,
+    movementX,
+    movementY
+  });
+}
+
+function moveClientPointer(clientX, clientY) {
+  movePointerWithClientCoordinates({
+    clientX,
+    clientY,
+    movementX: 0,
+    movementY: 0
+  });
+}
+
+function movePointerWithClientCoordinates({
+  clientX,
+  clientY,
+  movementX,
+  movementY
+}) {
   const event = new MouseEvent("mousemove", {
-    bubbles: true
+    bubbles: true,
+    clientX,
+    clientY
   });
 
   Object.defineProperty(event, "movementX", {
