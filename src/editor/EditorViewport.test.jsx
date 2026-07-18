@@ -16,9 +16,15 @@ const initialCropArea = {
   height: 700
 };
 
+const defaultDocumentSize = {
+  width: 1200,
+  height: 1200
+};
+
 function EditorViewportHarness({
   cropArea = initialCropArea,
-  gridArea = initialGridArea
+  gridArea = initialGridArea,
+  documentSize = defaultDocumentSize
 }) {
   const [currentCropArea, setCropArea] = useState(cropArea);
   const [currentGridArea, setGridArea] = useState(gridArea);
@@ -34,6 +40,7 @@ function EditorViewportHarness({
       </div>
       <EditorViewport
         gridArea={currentGridArea}
+        documentSize={documentSize}
         setGridArea={setGridArea}
         setCropArea={setCropArea}
         cropMode={cropMode}
@@ -75,6 +82,24 @@ test("renders the full 1200 source interaction surface", () => {
   });
 });
 
+test("renders a document-sized source interaction surface", () => {
+  render(
+    <EditorViewportHarness
+      documentSize={{
+        width: 1200,
+        height: 1697
+      }}
+    />
+  );
+
+  expect(screen.getByTestId("editor-viewport")).toHaveStyle({
+    top: "0px",
+    left: "0px",
+    width: "1200px",
+    height: "1697px"
+  });
+});
+
 test("crop move updates top and left only", () => {
   render(<EditorViewportHarness />);
 
@@ -106,6 +131,27 @@ test("crop movement clamps to source boundaries", () => {
 
   expect(readState("crop-state")).toEqual({
     top: 500,
+    left: 300,
+    width: 900,
+    height: 700
+  });
+});
+
+test("crop movement clamps to documentSize boundaries", () => {
+  render(
+    <EditorViewportHarness
+      documentSize={{
+        width: 1200,
+        height: 1697
+      }}
+    />
+  );
+
+  fireEvent.mouseDown(screen.getByTestId("start-crop-move"));
+  movePointer(1000, 1000);
+
+  expect(readState("crop-state")).toEqual({
+    top: 997,
     left: 300,
     width: 900,
     height: 700
@@ -155,6 +201,27 @@ test("crop resize clamps to minimum and source boundaries", () => {
     left: 80,
     width: 100,
     height: 100
+  });
+});
+
+test("crop resize clamps to documentSize boundaries", () => {
+  render(
+    <EditorViewportHarness
+      documentSize={{
+        width: 1200,
+        height: 1697
+      }}
+    />
+  );
+
+  fireEvent.mouseDown(screen.getByTestId("start-crop-resize"));
+  movePointer(1000, 1000);
+
+  expect(readState("crop-state")).toEqual({
+    top: 100,
+    left: 80,
+    width: 1120,
+    height: 1597
   });
 });
 

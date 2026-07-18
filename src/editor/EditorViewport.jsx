@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { moveGridArea } from "../engine/gridArea";
+import { normalizeDocumentSize } from "../template/documentGeometry";
 
 export default function EditorViewport({
   gridArea,
+  documentSize,
   setGridArea,
   setCropArea,
   cropMode,
@@ -14,6 +16,9 @@ export default function EditorViewport({
   children
 }) {
   const [mode, setMode] = useState(null);
+  const safeDocumentSize = normalizeDocumentSize(documentSize);
+  const documentWidth = safeDocumentSize.width;
+  const documentHeight = safeDocumentSize.height;
 
   const handleGridClick = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -74,7 +79,11 @@ export default function EditorViewport({
         setCropArea(prev => moveCropArea(
           prev,
           movementX,
-          movementY
+          movementY,
+          {
+            width: documentWidth,
+            height: documentHeight
+          }
         ));
       }
 
@@ -82,7 +91,11 @@ export default function EditorViewport({
         setCropArea(prev => resizeCropArea(
           prev,
           movementX,
-          movementY
+          movementY,
+          {
+            width: documentWidth,
+            height: documentHeight
+          }
         ));
       }
     };
@@ -99,7 +112,15 @@ export default function EditorViewport({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", stopDrag);
     };
-  }, [mode, cropMode, setGridArea, setCropArea, setCropMode]);
+  }, [
+    mode,
+    cropMode,
+    setGridArea,
+    setCropArea,
+    setCropMode,
+    documentWidth,
+    documentHeight
+  ]);
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -146,8 +167,8 @@ export default function EditorViewport({
         position: "absolute",
         top: 0,
         left: 0,
-        width: "1200px",
-        height: "1200px",
+        width: `${documentWidth}px`,
+        height: `${documentHeight}px`,
         pointerEvents: "none"
       }}
     >
@@ -160,19 +181,19 @@ export default function EditorViewport({
   );
 }
 
-function moveCropArea(cropArea, movementX, movementY) {
+function moveCropArea(cropArea, movementX, movementY, documentSize) {
   return {
     ...cropArea,
-    top: clamp(cropArea.top + movementY, 0, 1200 - cropArea.height),
-    left: clamp(cropArea.left + movementX, 0, 1200 - cropArea.width)
+    top: clamp(cropArea.top + movementY, 0, documentSize.height - cropArea.height),
+    left: clamp(cropArea.left + movementX, 0, documentSize.width - cropArea.width)
   };
 }
 
-function resizeCropArea(cropArea, movementX, movementY) {
+function resizeCropArea(cropArea, movementX, movementY, documentSize) {
   return {
     ...cropArea,
-    width: clamp(cropArea.width + movementX, 100, 1200 - cropArea.left),
-    height: clamp(cropArea.height + movementY, 100, 1200 - cropArea.top)
+    width: clamp(cropArea.width + movementX, 100, documentSize.width - cropArea.left),
+    height: clamp(cropArea.height + movementY, 100, documentSize.height - cropArea.top)
   };
 }
 

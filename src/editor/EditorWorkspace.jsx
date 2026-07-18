@@ -8,6 +8,7 @@ export default function EditorWorkspace({
   cols,
   cellTypes,
   gridArea,
+  documentSize,
   cropArea,
   setRows,
   setCols,
@@ -43,6 +44,7 @@ export default function EditorWorkspace({
   const editor = (
     <EditorViewport
       gridArea={gridArea}
+      documentSize={documentSize}
       setGridArea={setGridArea}
       setCropArea={setCropArea}
       cropMode={cropMode}

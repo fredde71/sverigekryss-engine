@@ -258,6 +258,7 @@ const handleTemplateImport = async (e) => {
       setRows={setRows}
       setCols={setCols}
       setGridArea={setGridArea}
+      documentSize={documentSize}
       cropArea={cropArea}
       setCropArea={setCropArea}
       setCellTypes={setCellTypes}
