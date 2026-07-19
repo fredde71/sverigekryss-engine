@@ -145,14 +145,20 @@ test("starts crop resize from crop resize handle", () => {
 
 test("uses the purple top edge for top grid resize", () => {
   render(<EditorLayer {...baseProps} />);
+  const topEdge = screen.getByTestId("editor-grid-move-affordance");
 
-  fireEvent.mouseDown(screen.getByTestId("editor-grid-move-affordance"));
+  fireEvent.mouseDown(topEdge);
 
   expect(baseProps.startGridResize).toHaveBeenCalledTimes(1);
   expect(baseProps.startGridResize).toHaveBeenCalledWith(
     expect.anything(),
     "top"
   );
+  expect(topEdge).toHaveStyle({
+    top: "0px",
+    height: "24px",
+    borderTop: "2px solid rgba(90,0,180,0.8)"
+  });
 });
 
 test("bottom-right resize handle does not trigger top-edge behavior", () => {

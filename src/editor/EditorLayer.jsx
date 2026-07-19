@@ -113,12 +113,14 @@ export default function EditorLayer({
           style={{
             pointerEvents: "auto",
             position: "absolute",
-            top: -30,
+            top: 0,
             left: 0,
             right: 0,
-            height: "30px",
+            height: "24px",
             zIndex: 20,
-            background: "rgba(0,0,255,0.15)",
+            borderTop: "2px solid rgba(90,0,180,0.8)",
+            background: "rgba(90,0,180,0.12)",
+            boxSizing: "border-box",
             cursor: "ns-resize"
           }}
         />

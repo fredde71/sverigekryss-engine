@@ -257,6 +257,7 @@ test("horizontal drag on top edge moves only left", () => {
 
 test("vertical drag on top edge updates top and height while keeping bottom fixed", () => {
   render(<EditorViewportHarness />);
+  const startBottom = initialGridArea.top + initialGridArea.height;
 
   fireEvent.mouseDown(screen.getByTestId("start-grid-top-resize"), {
     clientX: 100,
@@ -270,10 +271,13 @@ test("vertical drag on top edge updates top and height while keeping bottom fixe
     width: 400,
     height: 260
   });
+  const result = readState("grid-state");
+  expect(result.top + result.height).toBe(startBottom);
 });
 
 test("diagonal drag on top edge combines horizontal movement and top resize", () => {
   render(<EditorViewportHarness />);
+  const startBottom = initialGridArea.top + initialGridArea.height;
 
   fireEvent.mouseDown(screen.getByTestId("start-grid-top-resize"), {
     clientX: 100,
@@ -292,6 +296,8 @@ test("diagonal drag on top edge combines horizontal movement and top resize", ()
     width: 400,
     height: 285
   });
+  const result = readState("grid-state");
+  expect(result.top + result.height).toBe(startBottom);
 });
 
 test("top-edge resize enforces minimum grid height", () => {
