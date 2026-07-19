@@ -325,10 +325,6 @@ const handleTemplateImport = async (e) => {
         flexDirection: "row",
         gap: "20px",
         padding: "20px",
-        width: "100vw",
-        maxWidth: "100vw",
-        boxSizing: "border-box",
-        overflow: "hidden",
         userSelect: "none"
       }}
     >
@@ -337,8 +333,6 @@ const handleTemplateImport = async (e) => {
       {!window.location.search.includes("data=") && (
       <div style={{
         width: "220px",
-        flex: "0 0 220px",
-        boxSizing: "border-box",
         background: "#f1f5f9",
         padding: "14px",
         border: "1px solid #d8dee9",
@@ -469,15 +463,8 @@ const handleTemplateImport = async (e) => {
       )} 
 
       {/* CANVAS */}
-      <div
-        style={{
-          flex: "1 1 auto",
-          minWidth: 0,
-          maxWidth: "100%"
-        }}
-      >
       {modeView === "edit" ? (
-        <EditorScrollWorkspace>
+        <EditorScrollWorkspace documentSize={documentSize}>
           <TemplateCanvas
             template={{
               crosswordId,
@@ -510,7 +497,6 @@ const handleTemplateImport = async (e) => {
           onSubmitAnswers={() => {}}
         />
       )}
-      </div>
 
     </div>
       )}

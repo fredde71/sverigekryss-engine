@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { normalizeDocumentSize } from "../template/documentGeometry";
+import { useEditorWorkspaceScale } from "./EditorScrollWorkspace";
 
 export default function EditorViewport({
   gridArea,
@@ -18,6 +19,8 @@ export default function EditorViewport({
 }) {
   const [gridDrag, setGridDrag] = useState(null);
   const gridDragMovedRef = useRef(false);
+  const workspaceScale = useEditorWorkspaceScale();
+  const pointerScale = workspaceScale || 1;
   const safeDocumentSize = normalizeDocumentSize(documentSize);
   const documentWidth = safeDocumentSize.width;
   const documentHeight = safeDocumentSize.height;
@@ -91,8 +94,8 @@ export default function EditorViewport({
       const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
 
       if (gridDrag?.mode === "resize") {
-        const dx = e.clientX - gridDrag.startClientX;
-        const dy = e.clientY - gridDrag.startClientY;
+        const dx = (e.clientX - gridDrag.startClientX) / pointerScale;
+        const dy = (e.clientY - gridDrag.startClientY) / pointerScale;
 
         if (dx !== 0 || dy !== 0) {
           gridDragMovedRef.current = true;
@@ -109,8 +112,8 @@ export default function EditorViewport({
       if (cropMode === "move") {
         setCropArea(prev => moveCropArea(
           prev,
-          movementX,
-          movementY,
+          movementX / pointerScale,
+          movementY / pointerScale,
           {
             width: documentWidth,
             height: documentHeight
@@ -121,8 +124,8 @@ export default function EditorViewport({
       if (cropMode === "resize") {
         setCropArea(prev => resizeCropArea(
           prev,
-          movementX,
-          movementY,
+          movementX / pointerScale,
+          movementY / pointerScale,
           {
             width: documentWidth,
             height: documentHeight
@@ -149,6 +152,7 @@ export default function EditorViewport({
     setGridArea,
     setCropArea,
     setCropMode,
+    pointerScale,
     documentWidth,
     documentHeight
   ]);

@@ -1,6 +1,21 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import EditorLayer from "./EditorLayer";
-import EditorScrollWorkspace from "./EditorScrollWorkspace";
+import EditorScrollWorkspace, { getEditorFitScale } from "./EditorScrollWorkspace";
+
+let resizeObserverCallback;
+
+beforeEach(() => {
+  resizeObserverCallback = null;
+  global.ResizeObserver = class ResizeObserver {
+    constructor(callback) {
+      resizeObserverCallback = callback;
+    }
+
+    observe() {}
+
+    disconnect() {}
+  };
+});
 
 const editorLayerProps = {
   rows: 2,
@@ -26,6 +41,7 @@ const editorLayerProps = {
 
 afterEach(() => {
   jest.clearAllMocks();
+  delete global.ResizeObserver;
 });
 
 test("editor workspace is horizontally and vertically scrollable", () => {
@@ -37,8 +53,7 @@ test("editor workspace is horizontally and vertically scrollable", () => {
 
   expect(screen.getByTestId("editor-scroll-workspace")).toHaveStyle({
     overflow: "auto",
-    width: "100%",
-    maxWidth: "100%",
+    maxWidth: "calc(100vw - 220px)",
     maxHeight: "calc(100vh - 40px)"
   });
 });
@@ -52,8 +67,82 @@ test("source frame remains fixed at 1200 by 1200", () => {
 
   expect(screen.getByTestId("editor-scroll-source-frame")).toHaveStyle({
     width: "1200px",
-    height: "1200px"
+    height: "1200px",
+    transform: "scale(1)"
   });
+});
+
+test("fit frame scales the source surface to available workspace", () => {
+  render(
+    <EditorScrollWorkspace>
+      <div />
+    </EditorScrollWorkspace>
+  );
+
+  act(() => {
+    resizeObserverCallback([
+      {
+        contentRect: {
+          width: 600,
+          height: 900
+        }
+      }
+    ]);
+  });
+
+  expect(screen.getByTestId("editor-scroll-fit-frame")).toHaveStyle({
+    width: "600px",
+    height: "600px"
+  });
+  expect(screen.getByTestId("editor-scroll-source-frame")).toHaveStyle({
+    width: "1200px",
+    height: "1200px",
+    transform: "scale(0.5)"
+  });
+});
+
+test("fit frame respects documentSize aspect ratio", () => {
+  render(
+    <EditorScrollWorkspace
+      documentSize={{
+        width: 1200,
+        height: 1697
+      }}
+    >
+      <div />
+    </EditorScrollWorkspace>
+  );
+
+  act(() => {
+    resizeObserverCallback([
+      {
+        contentRect: {
+          width: 600,
+          height: 1200
+        }
+      }
+    ]);
+  });
+
+  expect(screen.getByTestId("editor-scroll-fit-frame")).toHaveStyle({
+    width: "600px",
+    height: "848.5px"
+  });
+  expect(screen.getByTestId("editor-scroll-source-frame")).toHaveStyle({
+    width: "1200px",
+    height: "1697px",
+    transform: "scale(0.5)"
+  });
+});
+
+test("fit scale never enlarges the source surface", () => {
+  expect(getEditorFitScale({
+    width: 1200,
+    height: 1200
+  }, {
+    width: 2000,
+    height: 2000
+  })).toBe(1);
 });
 
 test("grid and crop coordinates do not change when workspace scrolls", () => {
