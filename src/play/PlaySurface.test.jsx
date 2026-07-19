@@ -1,5 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import PlaySurface from "./PlaySurface";
+import { submitCompetitionEntry } from "../template/templateApi";
+
+jest.mock("../template/templateApi", () => ({
+  submitCompetitionEntry: jest.fn()
+}));
 
 jest.mock("../template/TemplateCanvas", () => {
   const React = require("react");
@@ -42,6 +47,10 @@ jest.mock("../runtime/RuntimeLayer", () => {
       "Runtime"
     );
   };
+});
+
+beforeEach(() => {
+  submitCompetitionEntry.mockReset();
 });
 
 const template = {
@@ -93,8 +102,11 @@ test("button opens submission dialog", () => {
   expect(onSubmitAnswers).not.toHaveBeenCalled();
 });
 
-test("submission dialog forwards valid payload", () => {
+test("submission dialog posts valid payload with templateId", async () => {
   const onSubmitAnswers = jest.fn();
+  submitCompetitionEntry.mockResolvedValue({
+    success: true
+  });
 
   render(
     <PlaySurface template={template} onSubmitAnswers={onSubmitAnswers} />
@@ -112,6 +124,18 @@ test("submission dialog forwards valid payload", () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "Skicka" }));
 
+  await waitFor(() => {
+    expect(submitCompetitionEntry).toHaveBeenCalledWith({
+      templateId: "TT-2026-0001",
+      solution: "      ",
+      name: "Fredrik",
+      email: "fredrik@example.com",
+      phone: "0701234567"
+    });
+  });
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "Ditt tävlingsbidrag har skickats in."
+  );
   expect(onSubmitAnswers).toHaveBeenCalledWith({
     solution: "      ",
     name: "Fredrik",
@@ -170,8 +194,11 @@ test("autofills partial competition words and leaves missing cells blank", () =>
   expect(screen.getByLabelText("Lösningsord position 3")).toHaveValue("R");
 });
 
-test("manual edits override autofilled letters", () => {
+test("manual edits override autofilled letters", async () => {
   const onSubmitAnswers = jest.fn();
+  submitCompetitionEntry.mockResolvedValue({
+    success: true
+  });
 
   render(
     <PlaySurface
@@ -202,9 +229,59 @@ test("manual edits override autofilled letters", () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "Skicka" }));
 
+  await waitFor(() => {
+    expect(submitCompetitionEntry).toHaveBeenCalledWith(expect.objectContaining({
+      solution: "XB    "
+    }));
+  });
   expect(onSubmitAnswers).toHaveBeenCalledWith(expect.objectContaining({
     solution: "XB    "
   }));
+});
+
+test("prevents double submission while request is loading", async () => {
+  let resolveSubmission;
+  submitCompetitionEntry.mockReturnValue(new Promise(resolve => {
+    resolveSubmission = resolve;
+  }));
+
+  render(<PlaySurface template={template} onSubmitAnswers={() => {}} />);
+
+  openValidSubmissionDialog();
+  const submitButton = screen.getByRole("button", { name: "Skicka" });
+
+  fireEvent.click(submitButton);
+  fireEvent.click(submitButton);
+
+  expect(screen.getByRole("button", { name: "Skickar..." })).toBeDisabled();
+  expect(submitCompetitionEntry).toHaveBeenCalledTimes(1);
+
+  resolveSubmission({
+    success: true
+  });
+
+  await waitFor(() => {
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Ditt tävlingsbidrag har skickats in."
+    );
+  });
+});
+
+test("keeps dialog open and shows error when submission fails", async () => {
+  submitCompetitionEntry.mockRejectedValue(new Error("Invalid solution"));
+
+  render(<PlaySurface template={template} onSubmitAnswers={() => {}} />);
+
+  openValidSubmissionDialog();
+  fireEvent.click(screen.getByRole("button", { name: "Skicka" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Invalid solution"
+  );
+  expect(
+    screen.getByRole("dialog", { name: "Skicka in tävlingsbidrag" })
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Skicka" })).toBeEnabled();
 });
 
 test("local PlaySurface mode is cropped without responsive mode", () => {
@@ -238,3 +315,16 @@ test("public PlaySurface mode is responsive and cropped", () => {
     "true"
   );
 });
+
+function openValidSubmissionDialog() {
+  fireEvent.click(screen.getByRole("button", { name: "Skicka in svar" }));
+  fireEvent.change(screen.getByLabelText("Namn *"), {
+    target: { value: "Fredrik" }
+  });
+  fireEvent.change(screen.getByLabelText("E-post *"), {
+    target: { value: "fredrik@example.com" }
+  });
+  fireEvent.change(screen.getByLabelText("Telefonnummer *"), {
+    target: { value: "0701234567" }
+  });
+}

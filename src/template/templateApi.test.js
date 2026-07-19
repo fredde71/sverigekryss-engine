@@ -1,6 +1,7 @@
 import {
   loadBackendTemplate,
-  publishBackendTemplate
+  publishBackendTemplate,
+  submitCompetitionEntry
 } from "./templateApi";
 import { BACKEND_BASE_URL } from "./persistenceConfig";
 
@@ -239,4 +240,54 @@ test("publishBackendTemplate throws backend error for non-OK publish response", 
   await expect(publishBackendTemplate(payload))
     .rejects
     .toThrow("Failed to save template");
+});
+
+test("submitCompetitionEntry posts submission payload and returns parsed backend JSON", async () => {
+  const payload = {
+    templateId: "TT-2026-0002",
+    name: "Fredrik",
+    email: "fredrik@example.com",
+    phone: "0701234567",
+    solution: "ABCDEF"
+  };
+  const responseBody = {
+    success: true
+  };
+
+  mockJsonResponse(responseBody);
+
+  const result = await submitCompetitionEntry(payload);
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    `${BACKEND_BASE_URL}/api/submissions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }
+  );
+  expect(result).toEqual(responseBody);
+});
+
+test("submitCompetitionEntry throws backend error for failed submission", async () => {
+  global.fetch.mockResolvedValue({
+    ok: false,
+    status: 400,
+    json: jest.fn().mockResolvedValue({
+      success: false,
+      error: "Invalid solution"
+    })
+  });
+
+  await expect(submitCompetitionEntry({
+    templateId: "TT-2026-0002",
+    name: "Fredrik",
+    email: "fredrik@example.com",
+    phone: "0701234567",
+    solution: "ABCDE"
+  }))
+    .rejects
+    .toThrow("Invalid solution");
 });

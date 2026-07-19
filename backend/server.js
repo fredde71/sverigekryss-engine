@@ -17,9 +17,12 @@ const TEMPLATE_STORAGE_DIR =
   process.env.TEMPLATE_STORAGE_DIR || path.join(__dirname, "templates");
 const UPLOAD_STORAGE_DIR =
   process.env.UPLOAD_STORAGE_DIR || path.join(__dirname, "uploads");
+const SUBMISSION_STORAGE_DIR =
+  process.env.SUBMISSION_STORAGE_DIR || path.join(__dirname, "submissions");
 
 fs.mkdirSync(TEMPLATE_STORAGE_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_STORAGE_DIR, { recursive: true });
+fs.mkdirSync(SUBMISSION_STORAGE_DIR, { recursive: true });
 
 app.use(createCorsMiddleware());
 app.use(express.json({ limit: "50mb" }));
@@ -31,6 +34,8 @@ app.get("/", (req, res) => {
 });
 
 app.post("/api/publish", createPublishHandler());
+
+app.post("/api/submissions", createSubmissionHandler());
 
 app.get("/api/crossword/:id", createLoadHandler());
 
@@ -156,6 +161,121 @@ function createLoadHandler({
   };
 }
 
+function createSubmissionHandler({
+  fsModule = fs,
+  pathModule = path,
+  submissionStorageDir = SUBMISSION_STORAGE_DIR,
+  now = () => new Date()
+} = {}) {
+  return (req, res) => {
+    try {
+      const validation = validateSubmission(req.body);
+
+      if (validation.error) {
+        return res.status(400).json({
+          success: false,
+          error: validation.error
+        });
+      }
+
+      const submission = {
+        ...validation.submission,
+        submittedAt: now().toISOString()
+      };
+      const filePath = pathModule.join(
+        submissionStorageDir,
+        `${submission.templateId}.json`
+      );
+      const existingSubmissions = readSubmissions(fsModule, filePath);
+      const submissions = [
+        ...existingSubmissions,
+        submission
+      ];
+
+      fsModule.writeFileSync(
+        filePath,
+        JSON.stringify(submissions, null, 2)
+      );
+
+      res.json({
+        success: true
+      });
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        success: false,
+        error: "Failed to save submission"
+      });
+    }
+  };
+}
+
+function validateSubmission(input = {}) {
+  const templateIdError = getCrosswordIdValidationError(input.templateId);
+
+  if (templateIdError) {
+    return {
+      error: templateIdError === "Missing crosswordId"
+        ? "Missing templateId"
+        : "Invalid templateId"
+    };
+  }
+
+  const templateId = normalizeCrosswordId(input.templateId);
+  const name = normalizeRequiredString(input.name);
+  const email = normalizeRequiredString(input.email);
+  const phone = normalizeRequiredString(input.phone);
+  const solution = normalizeRequiredString(input.solution);
+
+  if (!name) {
+    return { error: "Missing name" };
+  }
+
+  if (!email) {
+    return { error: "Missing email" };
+  }
+
+  if (!phone) {
+    return { error: "Missing phone" };
+  }
+
+  if (!solution) {
+    return { error: "Missing solution" };
+  }
+
+  if (solution.length !== 6) {
+    return { error: "Invalid solution" };
+  }
+
+  return {
+    submission: {
+      templateId,
+      name,
+      email,
+      phone,
+      solution
+    }
+  };
+}
+
+function normalizeRequiredString(value) {
+  if (typeof value !== "string") return "";
+
+  return value.trim();
+}
+
+function readSubmissions(fsModule, filePath) {
+  if (!fsModule.existsSync?.(filePath)) {
+    return [];
+  }
+
+  const fileData = fsModule.readFileSync(filePath, "utf8");
+  const parsed = JSON.parse(fileData);
+
+  return Array.isArray(parsed) ? parsed : [];
+}
+
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
@@ -165,5 +285,6 @@ if (require.main === module) {
 module.exports = {
   app,
   createPublishHandler,
-  createLoadHandler
+  createLoadHandler,
+  createSubmissionHandler
 };

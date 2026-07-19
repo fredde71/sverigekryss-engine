@@ -168,3 +168,64 @@ test("Skicka calls onSubmit with submission payload", () => {
     phone: "0701234567"
   });
 });
+
+test("shows loading state and prevents submit while submitting", () => {
+  render(
+    <SubmissionDialog
+      isSubmitting
+      onClose={() => {}}
+      onSubmit={() => {}}
+    />
+  );
+
+  fireEvent.change(screen.getByLabelText("Namn *"), {
+    target: { value: "Fredrik" }
+  });
+  fireEvent.change(screen.getByLabelText("E-post *"), {
+    target: { value: "fredrik@example.com" }
+  });
+  fireEvent.change(screen.getByLabelText("Telefonnummer *"), {
+    target: { value: "0701234567" }
+  });
+
+  expect(screen.getByRole("button", { name: "Skickar..." })).toBeDisabled();
+});
+
+test("shows submission error message", () => {
+  render(
+    <SubmissionDialog
+      errorMessage="Det gick inte att skicka tävlingsbidraget."
+      onClose={() => {}}
+      onSubmit={() => {}}
+    />
+  );
+
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Det gick inte att skicka tävlingsbidraget."
+  );
+});
+
+test("shows success message and disables submit", () => {
+  render(
+    <SubmissionDialog
+      successMessage="Ditt tävlingsbidrag har skickats in."
+      onClose={() => {}}
+      onSubmit={() => {}}
+    />
+  );
+
+  fireEvent.change(screen.getByLabelText("Namn *"), {
+    target: { value: "Fredrik" }
+  });
+  fireEvent.change(screen.getByLabelText("E-post *"), {
+    target: { value: "fredrik@example.com" }
+  });
+  fireEvent.change(screen.getByLabelText("Telefonnummer *"), {
+    target: { value: "0701234567" }
+  });
+
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Ditt tävlingsbidrag har skickats in."
+  );
+  expect(screen.getByRole("button", { name: "Skicka" })).toBeDisabled();
+});

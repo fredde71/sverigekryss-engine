@@ -41,3 +41,20 @@ export async function publishBackendTemplate(template) {
 
   return response.json();
 }
+
+export async function submitCompetitionEntry(submission) {
+  const response = await fetch(`${BACKEND_BASE_URL}/api/submissions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(submission)
+  });
+  const data = await response.json();
+
+  if (!response.ok || data?.success === false) {
+    throw new Error(data?.error || "Failed to submit competition entry");
+  }
+
+  return data;
+}

@@ -17,6 +17,9 @@ function serializeSolution(values) {
 
 export default function SubmissionDialog({
   initialSolution = "",
+  isSubmitting = false,
+  errorMessage = "",
+  successMessage = "",
   onClose,
   onSubmit
 }) {
@@ -36,6 +39,7 @@ export default function SubmissionDialog({
       phone.trim()
     );
   }, [email, name, phone]);
+  const canSubmit = isValid && !isSubmitting && !successMessage;
 
   useEffect(() => {
     dialogRef.current?.focus();
@@ -107,7 +111,7 @@ export default function SubmissionDialog({
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (!isValid) return;
+    if (!canSubmit) return;
 
     onSubmit({
       solution: serializeSolution(solution),
@@ -232,6 +236,34 @@ export default function SubmissionDialog({
           />
         </label>
 
+        {errorMessage && (
+          <div
+            role="alert"
+            style={{
+              color: "#9f1239",
+              background: "#fff1f2",
+              border: "1px solid #fecdd3",
+              padding: "8px"
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
+
+        {successMessage && (
+          <div
+            role="status"
+            style={{
+              color: "#14532d",
+              background: "#dcfce7",
+              border: "1px solid #bbf7d0",
+              padding: "8px"
+            }}
+          >
+            {successMessage}
+          </div>
+        )}
+
         <div
           style={{
             display: "flex",
@@ -239,8 +271,8 @@ export default function SubmissionDialog({
             gap: "8px"
           }}
         >
-          <button type="submit" disabled={!isValid}>
-            Skicka
+          <button type="submit" disabled={!canSubmit}>
+            {isSubmitting ? "Skickar..." : "Skicka"}
           </button>
           <button type="button" onClick={onClose}>
             Avbryt
