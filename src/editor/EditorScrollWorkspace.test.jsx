@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import EditorLayer from "./EditorLayer";
 import EditorScrollWorkspace, { getEditorFitScale } from "./EditorScrollWorkspace";
@@ -221,6 +222,36 @@ test("fit control restores the current fit scale", () => {
   expect(screen.getByTestId("editor-scroll-source-frame")).toHaveStyle({
     transform: "scale(0.5)"
   });
+});
+
+test("controlled zoom level is preserved after workspace remount", () => {
+  function ControlledWorkspaceHarness({ visible }) {
+    const [zoomState, setZoomState] = useState({
+      fitScale: 1,
+      scale: 1,
+      zoomMode: "fit"
+    });
+
+    return visible ? (
+      <EditorScrollWorkspace
+        zoomState={zoomState}
+        setZoomState={setZoomState}
+      >
+        <div />
+      </EditorScrollWorkspace>
+    ) : null;
+  }
+
+  const { rerender } = render(<ControlledWorkspaceHarness visible />);
+
+  fireEvent.click(screen.getByRole("button", { name: "-" }));
+
+  expect(screen.getByTestId("editor-zoom-value")).toHaveTextContent("90 %");
+
+  rerender(<ControlledWorkspaceHarness visible={false} />);
+  rerender(<ControlledWorkspaceHarness visible />);
+
+  expect(screen.getByTestId("editor-zoom-value")).toHaveTextContent("90 %");
 });
 
 test("grid and crop coordinates do not change when workspace scrolls", () => {

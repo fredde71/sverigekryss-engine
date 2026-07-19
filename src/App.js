@@ -110,12 +110,21 @@ useEffect(() => {
   const [documentSize, setDocumentSize] = useState(DEFAULT_DOCUMENT_SIZE);
 
   const [imageSrc, setImageSrc] = useState("/grid.png");
+  const [imageFileName, setImageFileName] = useState("");
+  const [templateFileName, setTemplateFileName] = useState("");
+  const [editorZoomState, setEditorZoomState] = useState({
+    fitScale: 1,
+    scale: 1,
+    zoomMode: "fit"
+  });
 
   const handleImageUpload = async (e) => {
 
   const file = e.target.files?.[0];
 
   if (!file) return;
+
+  setImageFileName(file.name);
 
   console.log(file);
 
@@ -179,6 +188,8 @@ const handleTemplateImport = async (e) => {
   const file = e.target.files?.[0];
 
   if (!file) return;
+
+  setTemplateFileName(file.name);
 
   const data = await importTemplateFile(file, {
     crosswordId,
@@ -307,6 +318,19 @@ const handleTemplateImport = async (e) => {
     alignItems: "center"
   };
 
+  const fileControlStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px"
+  };
+
+  const fileStatusStyle = {
+    padding: "0 2px",
+    fontSize: "12px",
+    lineHeight: 1.35,
+    color: "#64748b"
+  };
+
   const hiddenFileInputStyle = {
     width: 1,
     height: 1,
@@ -398,26 +422,36 @@ const handleTemplateImport = async (e) => {
 
         <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Filer</h5>
-          <label style={fileInputButtonStyle}>
-            Ladda upp bild
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              onChange={handleImageUpload}
-              style={hiddenFileInputStyle}
-            />
-          </label>
+          <div style={fileControlStyle}>
+            <label style={fileInputButtonStyle}>
+              Ladda upp bild
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleImageUpload}
+                style={hiddenFileInputStyle}
+              />
+            </label>
+            <span style={fileStatusStyle}>
+              {imageFileName || "Ingen fil vald"}
+            </span>
+          </div>
 
-          <label style={fileInputButtonStyle}>
-            Importera mall
-            <input
-              key={imageSrc}
-              type="file"
-              accept=".json"
-              onChange={handleTemplateImport}
-              style={hiddenFileInputStyle}
-            />
-          </label>
+          <div style={fileControlStyle}>
+            <label style={fileInputButtonStyle}>
+              Importera mall
+              <input
+                key={imageSrc}
+                type="file"
+                accept=".json"
+                onChange={handleTemplateImport}
+                style={hiddenFileInputStyle}
+              />
+            </label>
+            <span style={fileStatusStyle}>
+              {templateFileName || "Ingen fil vald"}
+            </span>
+          </div>
 
           <button onClick={exportTemplate} style={sidebarButtonStyle}>
             Exportera mall
@@ -479,7 +513,11 @@ const handleTemplateImport = async (e) => {
 
       {/* CANVAS */}
       {modeView === "edit" ? (
-        <EditorScrollWorkspace documentSize={documentSize}>
+        <EditorScrollWorkspace
+          documentSize={documentSize}
+          zoomState={editorZoomState}
+          setZoomState={setEditorZoomState}
+        >
           <TemplateCanvas
             template={{
               crosswordId,

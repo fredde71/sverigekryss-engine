@@ -26,21 +26,36 @@ function clampZoom(value) {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
 }
 
-export default function EditorScrollWorkspace({ children, documentSize }) {
+const defaultZoomState = {
+  fitScale: 1,
+  scale: 1,
+  zoomMode: "fit"
+};
+
+export default function EditorScrollWorkspace({
+  children,
+  documentSize,
+  zoomState,
+  setZoomState
+}) {
   const workspaceRef = useRef(null);
   const safeDocumentSize = useMemo(() => (
     normalizeDocumentSize(documentSize)
   ), [documentSize]);
   const documentWidth = safeDocumentSize.width;
   const documentHeight = safeDocumentSize.height;
-  const [fitScale, setFitScale] = useState(1);
-  const [scale, setScale] = useState(1);
-  const [zoomMode, setZoomMode] = useState("fit");
+  const [localZoomState, setLocalZoomState] = useState(defaultZoomState);
+  const currentZoomState = zoomState || localZoomState;
+  const updateZoomState = setZoomState || setLocalZoomState;
+  const { scale } = currentZoomState;
 
   useEffect(() => {
     if (!workspaceRef.current || typeof ResizeObserver === "undefined") {
-      setFitScale(1);
-      setScale(1);
+      updateZoomState(currentState => ({
+        ...currentState,
+        fitScale: 1,
+        scale: currentState.zoomMode === "fit" ? 1 : currentState.scale
+      }));
       return;
     }
 
@@ -50,11 +65,11 @@ export default function EditorScrollWorkspace({ children, documentSize }) {
         height: entry?.contentRect?.height || workspaceRef.current?.clientHeight
       });
 
-      setFitScale(nextFitScale);
-
-      if (zoomMode === "fit") {
-        setScale(nextFitScale);
-      }
+      updateZoomState(currentState => ({
+        ...currentState,
+        fitScale: nextFitScale,
+        scale: currentState.zoomMode === "fit" ? nextFitScale : currentState.scale
+      }));
     };
     const observer = new ResizeObserver(entries => {
       updateScale(entries[0]);
@@ -65,21 +80,30 @@ export default function EditorScrollWorkspace({ children, documentSize }) {
     return () => {
       observer.disconnect();
     };
-  }, [documentWidth, documentHeight, safeDocumentSize, zoomMode]);
+  }, [documentWidth, documentHeight, safeDocumentSize, updateZoomState]);
 
   const zoomOut = () => {
-    setZoomMode("manual");
-    setScale(currentScale => clampZoom(currentScale - ZOOM_STEP));
+    updateZoomState(currentState => ({
+      ...currentState,
+      zoomMode: "manual",
+      scale: clampZoom(currentState.scale - ZOOM_STEP)
+    }));
   };
 
   const zoomIn = () => {
-    setZoomMode("manual");
-    setScale(currentScale => clampZoom(currentScale + ZOOM_STEP));
+    updateZoomState(currentState => ({
+      ...currentState,
+      zoomMode: "manual",
+      scale: clampZoom(currentState.scale + ZOOM_STEP)
+    }));
   };
 
   const fitToWorkspace = () => {
-    setZoomMode("fit");
-    setScale(fitScale);
+    updateZoomState(currentState => ({
+      ...currentState,
+      zoomMode: "fit",
+      scale: currentState.fitScale
+    }));
   };
 
   const zoomControlStyle = {
