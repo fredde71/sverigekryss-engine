@@ -143,6 +143,50 @@ test("starts crop resize from crop resize handle", () => {
   expect(baseProps.startGridResize).not.toHaveBeenCalled();
 });
 
+test("crop affordances stay active outside competition mode", () => {
+  render(<EditorLayer {...baseProps} activeTool="write" />);
+
+  expect(screen.getByTestId("editor-crop-move-affordance")).toHaveStyle({
+    pointerEvents: "auto"
+  });
+  expect(screen.getByTestId("editor-crop-resize-handle")).toHaveStyle({
+    pointerEvents: "auto"
+  });
+});
+
+test("crop affordances do not intercept cell clicks while competition tool is active", () => {
+  render(<EditorLayer {...baseProps} activeTool="competition" />);
+
+  expect(screen.getByTestId("editor-crop-move-affordance")).toHaveStyle({
+    pointerEvents: "none"
+  });
+  expect(screen.getByTestId("editor-crop-resize-handle")).toHaveStyle({
+    pointerEvents: "none"
+  });
+});
+
+test("grid affordances stay active outside competition mode", () => {
+  render(<EditorLayer {...baseProps} activeTool="write" />);
+
+  expect(screen.getByTestId("editor-grid-move-affordance")).toHaveStyle({
+    pointerEvents: "auto"
+  });
+  expect(screen.getByTestId("editor-grid-resize-handle")).toHaveStyle({
+    pointerEvents: "auto"
+  });
+});
+
+test("grid affordances do not intercept cell clicks while competition tool is active", () => {
+  render(<EditorLayer {...baseProps} activeTool="competition" />);
+
+  expect(screen.getByTestId("editor-grid-move-affordance")).toHaveStyle({
+    pointerEvents: "none"
+  });
+  expect(screen.getByTestId("editor-grid-resize-handle")).toHaveStyle({
+    pointerEvents: "none"
+  });
+});
+
 test("uses the purple top edge for top grid resize", () => {
   render(<EditorLayer {...baseProps} />);
   const topEdge = screen.getByTestId("editor-grid-move-affordance");

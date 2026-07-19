@@ -168,6 +168,7 @@ export default function EditorWorkspace({
             startGridResize={startGridResize}
             handleGridClick={handleGridClick}
             isPublicRuntime={isPublicRuntime}
+            activeTool={activeTool}
             documentSize={documentSize}
             gridArea={gridArea}
             cropArea={cropArea}

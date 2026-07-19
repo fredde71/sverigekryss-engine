@@ -10,6 +10,7 @@ export default function EditorLayer({
   startGridResize,
   handleGridClick,
   isPublicRuntime,
+  activeTool,
   documentSize,
   gridArea,
   cropArea,
@@ -26,6 +27,7 @@ export default function EditorLayer({
     width: safeDocumentSize.width,
     height: safeDocumentSize.height
   };
+  const isCompetitionToolActive = activeTool === "competition";
 
   return (
     <div
@@ -61,7 +63,7 @@ export default function EditorLayer({
             setCropMode("move");
           }}
           style={{
-            pointerEvents: "auto",
+            pointerEvents: isCompetitionToolActive ? "none" : "auto",
             position: "absolute",
             top: 0,
             left: 0,
@@ -79,7 +81,7 @@ export default function EditorLayer({
             setCropMode("resize");
           }}
           style={{
-            pointerEvents: "auto",
+            pointerEvents: isCompetitionToolActive ? "none" : "auto",
             position: "absolute",
             right: -6,
             bottom: -6,
@@ -111,7 +113,7 @@ export default function EditorLayer({
             startGridResize(e, "top");
           }}
           style={{
-            pointerEvents: "auto",
+            pointerEvents: isCompetitionToolActive ? "none" : "auto",
             position: "absolute",
             top: 0,
             left: 0,
@@ -133,7 +135,7 @@ export default function EditorLayer({
           }}
           onClick={(e) => e.stopPropagation()}
           style={{
-            pointerEvents: "auto",
+            pointerEvents: isCompetitionToolActive ? "none" : "auto",
             position: "absolute",
             right: -6,
             zIndex: 20,

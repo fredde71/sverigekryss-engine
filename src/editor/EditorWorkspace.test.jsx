@@ -142,6 +142,36 @@ test("opens competition menu when the writable cell click lands on the top-edge 
   expect(await screen.findByTestId("competition-cell-menu")).toBeInTheDocument();
 });
 
+test("competition tool lets cell clicks pass through editor affordances", async () => {
+  render(
+    <EditorWorkspaceHarness
+      initialCellTypes={["write", "empty", "empty", "empty"]}
+    />
+  );
+
+  expect(screen.getByTestId("editor-crop-move-affordance")).toHaveStyle({
+    pointerEvents: "auto"
+  });
+  expect(screen.getByTestId("editor-grid-move-affordance")).toHaveStyle({
+    pointerEvents: "auto"
+  });
+
+  await selectCompetitionTool();
+
+  expect(screen.getByTestId("editor-crop-move-affordance")).toHaveStyle({
+    pointerEvents: "none"
+  });
+  expect(screen.getByTestId("editor-crop-resize-handle")).toHaveStyle({
+    pointerEvents: "none"
+  });
+  expect(screen.getByTestId("editor-grid-move-affordance")).toHaveStyle({
+    pointerEvents: "none"
+  });
+  expect(screen.getByTestId("editor-grid-resize-handle")).toHaveStyle({
+    pointerEvents: "none"
+  });
+});
+
 test("removes competition metadata when a marked cell becomes non-writable", async () => {
   render(<EditorWorkspaceHarness />);
 
