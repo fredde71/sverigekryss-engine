@@ -259,6 +259,48 @@ const handleTemplateImport = async (e) => {
   alert("Länk skapad! Se console.");
 };
 
+  const sidebarSectionStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    padding: "12px",
+    border: "1px solid #e1e4ea",
+    background: "#fff",
+    borderRadius: "6px"
+  };
+
+  const sidebarTitleStyle = {
+    margin: 0,
+    paddingBottom: "7px",
+    borderBottom: "1px solid #e2e8f0",
+    fontSize: "11px",
+    fontWeight: 700,
+    fontVariantCaps: "all-small-caps",
+    color: "#64748b"
+  };
+
+  const sidebarButtonStyle = {
+    width: "100%",
+    minHeight: "36px",
+    padding: "8px 10px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "4px",
+    background: "#f8fafc",
+    color: "#1f2937",
+    cursor: "pointer",
+    textAlign: "left",
+    boxSizing: "border-box"
+  };
+
+  const sidebarInputStyle = {
+    width: "100%",
+    height: "34px",
+    boxSizing: "border-box",
+    padding: "6px 8px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "4px"
+  };
+
   return (
     <EditorWorkspace
       rows={rows}
@@ -290,106 +332,132 @@ const handleTemplateImport = async (e) => {
       {/* TOOLBAR */}
       {!window.location.search.includes("data=") && (
       <div style={{
-        width: "160px",
-        background: "#f5f5f5",
-        padding: "10px",
-        border: "1px solid #ddd"
+        width: "220px",
+        background: "#f1f5f9",
+        padding: "14px",
+        border: "1px solid #d8dee9",
+        borderRadius: "8px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "14px",
+        alignSelf: "flex-start"
       }}>
-        <h4>Tools</h4>
-        <div style={{ marginBottom: "10px" }}>
+        <section style={sidebarSectionStyle}>
+          <h4 style={{ margin: 0, fontSize: "16px" }}>Editor</h4>
+          <div style={{ fontSize: "13px", color: "#475569" }}>
+            <div>
+              ID: <strong>{crosswordId || "Ej angivet"}</strong>
+            </div>
+            <div>
+              Storlek: <strong>{rows} x {cols}</strong>
+            </div>
+          </div>
+        </section>
 
-  <div>Crossword ID</div>
+        <section style={sidebarSectionStyle}>
+          <h5 style={sidebarTitleStyle}>Korsord</h5>
+          <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            Crossword ID
+            <input
+              type="text"
+              value={crosswordId}
+              onChange={(e) => setCrosswordId(e.target.value)}
+              placeholder="TT-2026-0001"
+              style={sidebarInputStyle}
+            />
+          </label>
+        </section>
 
-  <input
-    type="text"
-    value={crosswordId}
-    onChange={(e) => setCrosswordId(e.target.value)}
-    placeholder="TT-2026-0001"
-    style={{ width: "140px" }}
-  />
-
-</div>
         {toolbar}
         {competitionMenu}
 
-        <hr />
+        <section style={sidebarSectionStyle}>
+          <h5 style={sidebarTitleStyle}>Läge</h5>
+          <button
+            onClick={() => setModeView(modeView === "edit" ? "play" : "edit")}
+            style={sidebarButtonStyle}
+          >
+            {modeView === "edit" ? "PLAY MODE" : "EDIT MODE"}
+          </button>
+        </section>
 
-        <button onClick={() => setModeView(modeView === "edit" ? "play" : "edit")}>
-          {modeView === "edit" ? "PLAY MODE" : "EDIT MODE"}
-        </button>
+        <section style={sidebarSectionStyle}>
+          <h5 style={sidebarTitleStyle}>Filer</h5>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            Upload Image
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              onChange={handleImageUpload}
+              style={{ width: "100%" }}
+            />
+          </label>
 
-        <br /><br />
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            Import Template
+            <input
+              key={imageSrc}
+              type="file"
+              accept=".json"
+              onChange={handleTemplateImport}
+              style={{ width: "100%" }}
+            />
+          </label>
 
-<div>Upload Image</div>
+          <button onClick={exportTemplate} style={sidebarButtonStyle}>
+            Export Template
+          </button>
+        </section>
 
-<input
-  type="file"
-  accept="image/*,.pdf"
-  onChange={handleImageUpload}
-/>
-<br /><br />
+        <section style={sidebarSectionStyle}>
+          <h5 style={sidebarTitleStyle}>Publicering</h5>
+          <button
+            style={sidebarButtonStyle}
+            onClick={async () => {
 
-<div>Import Template</div>
+              if (!crosswordId.trim()) {
+                alert("Ange Crossword ID innan publicering.");
+                return;
+              }
 
-<input
-  key={imageSrc}
-  type="file"
-  accept=".json"
-  onChange={handleTemplateImport}
-/>
+              const template = {
+                crosswordId,
+                gridArea,
+                cropArea,
+                documentSize,
+                cellTypes,
+                imageSrc,
+                competitionCells,
+                rows,
+                cols
+              };
 
-<br /><br />
-        <button onClick={exportTemplate}>
-          Export Template
-        </button>
+              try {
+                const data = await publishBackendTemplate(template);
 
-        <button
-  onClick={async () => {
+                console.log(data);
 
-    if (!crosswordId.trim()) {
-      alert("Ange Crossword ID innan publicering.");
-      return;
-    }
+                if (data.success) {
+                  const publicUrl = `${window.location.origin}/play/${crosswordId}`;
+                  alert(getPublishSuccessMessage(publicUrl));
+                  return;
+                }
 
-    const template = {
-      crosswordId,
-      gridArea,
-      cropArea,
-      documentSize,
-      cellTypes,
-      imageSrc,
-      competitionCells,
-      rows,
-      cols
-    };
+                alert(data.error || "Publicering misslyckades.");
+              } catch (err) {
+                alert(getPublishFailureMessage(err));
+              }
 
-    try {
-      const data = await publishBackendTemplate(template);
+            }}
+          >
+            Publish
+          </button>
 
-      console.log(data);
-
-      if (data.success) {
-        const publicUrl = `${window.location.origin}/play/${crosswordId}`;
-        alert(getPublishSuccessMessage(publicUrl));
-        return;
-      }
-
-      alert(data.error || "Publicering misslyckades.");
-    } catch (err) {
-      alert(getPublishFailureMessage(err));
-    }
-
-  }}
->
-  Publish
-</button>
-
-        {/* ✅ NY KNAPP (tillagd) */}
-        <button onClick={generateLink}>
-          Generera länk
-        </button>
-
-        <hr />
+          {/* ✅ NY KNAPP (tillagd) */}
+          <button onClick={generateLink} style={sidebarButtonStyle}>
+            Generera länk
+          </button>
+        </section>
 
 </div>
       )} 
