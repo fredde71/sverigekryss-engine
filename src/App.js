@@ -301,6 +301,21 @@ const handleTemplateImport = async (e) => {
     borderRadius: "4px"
   };
 
+  const fileInputButtonStyle = {
+    ...sidebarButtonStyle,
+    display: "flex",
+    alignItems: "center"
+  };
+
+  const hiddenFileInputStyle = {
+    width: 1,
+    height: 1,
+    opacity: 0,
+    overflow: "hidden",
+    position: "absolute",
+    pointerEvents: "none"
+  };
+
   return (
     <EditorWorkspace
       rows={rows}
@@ -383,24 +398,24 @@ const handleTemplateImport = async (e) => {
 
         <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Filer</h5>
-          <label style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={fileInputButtonStyle}>
             Ladda upp bild
             <input
               type="file"
               accept="image/*,.pdf"
               onChange={handleImageUpload}
-              style={{ width: "100%" }}
+              style={hiddenFileInputStyle}
             />
           </label>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={fileInputButtonStyle}>
             Importera mall
             <input
               key={imageSrc}
               type="file"
               accept=".json"
               onChange={handleTemplateImport}
-              style={{ width: "100%" }}
+              style={hiddenFileInputStyle}
             />
           </label>
 

@@ -54,7 +54,7 @@ test("editor workspace is horizontally and vertically scrollable", () => {
   expect(screen.getByTestId("editor-scroll-workspace")).toHaveStyle({
     overflow: "auto",
     maxWidth: "calc(100vw - 220px)",
-    maxHeight: "calc(100vh - 40px)"
+    maxHeight: "calc(100vh - 78px)"
   });
 });
 
@@ -143,6 +143,84 @@ test("fit scale never enlarges the source surface", () => {
     width: 2000,
     height: 2000
   })).toBe(1);
+});
+
+test("renders compact zoom controls above the workspace", () => {
+  render(
+    <EditorScrollWorkspace>
+      <div />
+    </EditorScrollWorkspace>
+  );
+
+  const controls = screen.getByTestId("editor-zoom-controls");
+
+  expect(controls).toContainElement(screen.getByText("Zoom"));
+  expect(controls).toContainElement(screen.getByRole("button", { name: "-" }));
+  expect(controls).toContainElement(screen.getByText("100 %"));
+  expect(controls).toContainElement(screen.getByRole("button", { name: "+" }));
+  expect(controls).toContainElement(
+    screen.getByRole("button", { name: "Anpassa" })
+  );
+});
+
+test("zoom buttons adjust the editor source scale", () => {
+  render(
+    <EditorScrollWorkspace>
+      <div />
+    </EditorScrollWorkspace>
+  );
+
+  act(() => {
+    resizeObserverCallback([
+      {
+        contentRect: {
+          width: 600,
+          height: 900
+        }
+      }
+    ]);
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "+" }));
+
+  expect(screen.getByTestId("editor-zoom-value")).toHaveTextContent("60 %");
+  expect(screen.getByTestId("editor-scroll-source-frame")).toHaveStyle({
+    transform: "scale(0.6)"
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "-" }));
+
+  expect(screen.getByTestId("editor-zoom-value")).toHaveTextContent("50 %");
+  expect(screen.getByTestId("editor-scroll-source-frame")).toHaveStyle({
+    transform: "scale(0.5)"
+  });
+});
+
+test("fit control restores the current fit scale", () => {
+  render(
+    <EditorScrollWorkspace>
+      <div />
+    </EditorScrollWorkspace>
+  );
+
+  act(() => {
+    resizeObserverCallback([
+      {
+        contentRect: {
+          width: 600,
+          height: 900
+        }
+      }
+    ]);
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "+" }));
+  fireEvent.click(screen.getByRole("button", { name: "Anpassa" }));
+
+  expect(screen.getByTestId("editor-zoom-value")).toHaveTextContent("50 %");
+  expect(screen.getByTestId("editor-scroll-source-frame")).toHaveStyle({
+    transform: "scale(0.5)"
+  });
 });
 
 test("grid and crop coordinates do not change when workspace scrolls", () => {
