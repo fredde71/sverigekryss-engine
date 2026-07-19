@@ -315,7 +315,12 @@ const handleTemplateImport = async (e) => {
   const fileInputButtonStyle = {
     ...sidebarButtonStyle,
     display: "flex",
-    alignItems: "center"
+    alignItems: "center",
+    fontFamily: "inherit",
+    fontSize: "13px",
+    fontWeight: 400,
+    lineHeight: 1.35,
+    color: sidebarButtonStyle.color
   };
 
   const fileControlStyle = {
