@@ -73,11 +73,83 @@ test("submit button is disabled until required fields are valid", () => {
   expect(submitButton).toBeEnabled();
 });
 
+test("typing accepts one character per solution box", () => {
+  render(<SubmissionDialog onClose={() => {}} onSubmit={() => {}} />);
+
+  fireEvent.change(screen.getByLabelText("Lösningsord position 1"), {
+    target: { value: "AB" }
+  });
+
+  expect(screen.getByLabelText("Lösningsord position 1")).toHaveValue("B");
+});
+
+test("typing advances focus to the next solution box", () => {
+  render(<SubmissionDialog onClose={() => {}} onSubmit={() => {}} />);
+
+  fireEvent.change(screen.getByLabelText("Lösningsord position 1"), {
+    target: { value: "A" }
+  });
+
+  expect(screen.getByLabelText("Lösningsord position 2")).toHaveFocus();
+});
+
+test("Backspace on an empty solution box moves focus to the previous box", () => {
+  render(<SubmissionDialog onClose={() => {}} onSubmit={() => {}} />);
+
+  const secondPosition = screen.getByLabelText("Lösningsord position 2");
+
+  secondPosition.focus();
+  fireEvent.keyDown(secondPosition, { key: "Backspace" });
+
+  expect(screen.getByLabelText("Lösningsord position 1")).toHaveFocus();
+});
+
+test("pasting distributes up to six characters across solution boxes", () => {
+  render(<SubmissionDialog onClose={() => {}} onSubmit={() => {}} />);
+
+  fireEvent.paste(screen.getByLabelText("Lösningsord position 1"), {
+    clipboardData: {
+      getData: () => "ABCDEFZ"
+    }
+  });
+
+  expect(screen.getByLabelText("Lösningsord position 1")).toHaveValue("A");
+  expect(screen.getByLabelText("Lösningsord position 2")).toHaveValue("B");
+  expect(screen.getByLabelText("Lösningsord position 3")).toHaveValue("C");
+  expect(screen.getByLabelText("Lösningsord position 4")).toHaveValue("D");
+  expect(screen.getByLabelText("Lösningsord position 5")).toHaveValue("E");
+  expect(screen.getByLabelText("Lösningsord position 6")).toHaveValue("F");
+});
+
+test("initialSolution pre-populates solution boxes and remains editable", () => {
+  render(
+    <SubmissionDialog
+      initialSolution="KORSEN"
+      onClose={() => {}}
+      onSubmit={() => {}}
+    />
+  );
+
+  expect(screen.getByLabelText("Lösningsord position 1")).toHaveValue("K");
+  expect(screen.getByLabelText("Lösningsord position 6")).toHaveValue("N");
+
+  fireEvent.change(screen.getByLabelText("Lösningsord position 6"), {
+    target: { value: "T" }
+  });
+
+  expect(screen.getByLabelText("Lösningsord position 6")).toHaveValue("T");
+});
+
 test("Skicka calls onSubmit with submission payload", () => {
   const onSubmit = jest.fn();
 
   render(<SubmissionDialog onClose={() => {}} onSubmit={onSubmit} />);
 
+  fireEvent.paste(screen.getByLabelText("Lösningsord position 1"), {
+    clipboardData: {
+      getData: () => "ABCDEF"
+    }
+  });
   fireEvent.change(screen.getByLabelText("Namn *"), {
     target: { value: " Fredrik " }
   });
@@ -90,7 +162,7 @@ test("Skicka calls onSubmit with submission payload", () => {
   fireEvent.click(screen.getByRole("button", { name: "Skicka" }));
 
   expect(onSubmit).toHaveBeenCalledWith({
-    solution: ["", "", "", "", "", ""],
+    solution: "ABCDEF",
     name: "Fredrik",
     email: "fredrik@example.com",
     phone: "0701234567"

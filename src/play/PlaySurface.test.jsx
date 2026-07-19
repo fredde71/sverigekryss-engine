@@ -100,7 +100,7 @@ test("submission dialog forwards valid payload", () => {
   fireEvent.click(screen.getByRole("button", { name: "Skicka" }));
 
   expect(onSubmitAnswers).toHaveBeenCalledWith({
-    solution: ["", "", "", "", "", ""],
+    solution: "      ",
     name: "Fredrik",
     email: "fredrik@example.com",
     phone: "0701234567"

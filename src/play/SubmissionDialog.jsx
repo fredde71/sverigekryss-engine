@@ -3,8 +3,28 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 const EMPTY_SOLUTION = Array(6).fill("");
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function SubmissionDialog({ onClose, onSubmit }) {
+function createSolutionValues(initialSolution = "") {
+  return Array.from({ length: 6 }, (_, index) => {
+    const value = Array.from(initialSolution)[index];
+
+    return value && value !== " " ? value : "";
+  });
+}
+
+function serializeSolution(values) {
+  return values.map(value => value || " ").join("");
+}
+
+export default function SubmissionDialog({
+  initialSolution = "",
+  onClose,
+  onSubmit
+}) {
   const dialogRef = useRef(null);
+  const solutionRefs = useRef([]);
+  const [solution, setSolution] = useState(() => (
+    createSolutionValues(initialSolution)
+  ));
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -35,13 +55,62 @@ export default function SubmissionDialog({ onClose, onSubmit }) {
     };
   }, [onClose]);
 
+  const focusSolutionPosition = (index) => {
+    solutionRefs.current[index]?.focus();
+  };
+
+  const updateSolutionPosition = (index, value) => {
+    const nextValue = Array.from(value).pop() || "";
+
+    setSolution(prev => {
+      const next = [...prev];
+      next[index] = nextValue;
+      return next;
+    });
+
+    if (nextValue && index < solution.length - 1) {
+      focusSolutionPosition(index + 1);
+    }
+  };
+
+  const handleSolutionKeyDown = (event, index) => {
+    if (event.key === "Backspace" && !solution[index] && index > 0) {
+      event.preventDefault();
+      focusSolutionPosition(index - 1);
+    }
+  };
+
+  const handleSolutionPaste = (event, index) => {
+    const pastedText = event.clipboardData.getData("text");
+
+    if (!pastedText) return;
+
+    event.preventDefault();
+
+    const pastedCharacters = Array.from(pastedText).slice(0, 6 - index);
+
+    setSolution(prev => {
+      const next = [...prev];
+
+      pastedCharacters.forEach((character, characterIndex) => {
+        next[index + characterIndex] = character;
+      });
+
+      return next;
+    });
+
+    focusSolutionPosition(
+      Math.min(index + pastedCharacters.length, solution.length - 1)
+    );
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
 
     if (!isValid) return;
 
     onSubmit({
-      solution: EMPTY_SOLUTION,
+      solution: serializeSolution(solution),
       name: name.trim(),
       email: email.trim(),
       phone: phone.trim()
@@ -107,12 +176,24 @@ export default function SubmissionDialog({ onClose, onSubmit }) {
               gap: "6px"
             }}
           >
-            {EMPTY_SOLUTION.map((value, index) => (
+            {EMPTY_SOLUTION.map((_, index) => (
               <input
                 key={index}
+                ref={(element) => {
+                  solutionRefs.current[index] = element;
+                }}
                 aria-label={`Lösningsord position ${index + 1}`}
-                readOnly
-                value={value}
+                maxLength="1"
+                value={solution[index]}
+                onChange={(event) => {
+                  updateSolutionPosition(index, event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  handleSolutionKeyDown(event, index);
+                }}
+                onPaste={(event) => {
+                  handleSolutionPaste(event, index);
+                }}
                 placeholder={`${index + 1}`}
                 style={{
                   width: "100%",
