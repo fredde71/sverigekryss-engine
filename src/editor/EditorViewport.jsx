@@ -223,6 +223,7 @@ function resizeGridArea(gridArea, edge, dx, dy) {
     return {
       ...gridArea,
       top,
+      left: gridArea.left + dx,
       height: bottom - top
     };
   }
