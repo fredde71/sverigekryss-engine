@@ -156,10 +156,10 @@ test("keeps existing grid overlay move and resize behavior", () => {
   expect(baseProps.startGridResize).toHaveBeenCalledTimes(1);
 });
 
-test("starts grid movement from the grid frame", () => {
+test("starts grid movement from the top edge", () => {
   render(<EditorLayer {...baseProps} />);
 
-  fireEvent.mouseDown(screen.getByTestId("editor-grid-frame"));
+  fireEvent.mouseDown(screen.getByTestId("editor-grid-move-affordance"));
 
   expect(baseProps.startGridMove).toHaveBeenCalledTimes(1);
 });
@@ -170,38 +170,15 @@ test("resize handle does not start grid movement", () => {
   fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-handle"));
 
   expect(baseProps.startGridResize).toHaveBeenCalledTimes(1);
-  expect(baseProps.startGridResize).toHaveBeenCalledWith(
-    expect.anything(),
-    "bottom"
-  );
   expect(baseProps.startGridMove).not.toHaveBeenCalled();
 });
 
-test("starts grid resize from each edge handle", () => {
+test("does not render separate edge resize handles", () => {
   render(<EditorLayer {...baseProps} />);
 
-  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-top-handle"));
-  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-left-handle"));
-  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-right-handle"));
-  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-handle"));
-
-  expect(baseProps.startGridResize).toHaveBeenCalledWith(
-    expect.anything(),
-    "top"
-  );
-  expect(baseProps.startGridResize).toHaveBeenCalledWith(
-    expect.anything(),
-    "left"
-  );
-  expect(baseProps.startGridResize).toHaveBeenCalledWith(
-    expect.anything(),
-    "right"
-  );
-  expect(baseProps.startGridResize).toHaveBeenCalledWith(
-    expect.anything(),
-    "bottom"
-  );
-  expect(baseProps.startGridMove).not.toHaveBeenCalled();
+  expect(screen.queryByTestId("editor-grid-resize-top-handle")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("editor-grid-resize-left-handle")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("editor-grid-resize-right-handle")).not.toBeInTheDocument();
 });
 
 test("grid frame preserves cell editing click handling", () => {

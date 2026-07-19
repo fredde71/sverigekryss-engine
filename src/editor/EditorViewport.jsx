@@ -31,13 +31,12 @@ export default function EditorViewport({
     });
   };
 
-  const startGridResize = (e, edge = "bottom") => {
+  const startGridResize = (e) => {
     e.stopPropagation();
     gridDragMovedRef.current = false;
 
     setGridDrag({
       mode: "resize",
-      edge,
       startClientX: e.clientX,
       startClientY: e.clientY,
       startGridArea: gridArea
@@ -109,12 +108,11 @@ export default function EditorViewport({
           gridDragMovedRef.current = true;
         }
 
-        setGridArea(resizeGridArea(
-          gridDrag.startGridArea,
-          gridDrag.edge,
-          dx,
-          dy
-        ));
+        setGridArea({
+          ...gridDrag.startGridArea,
+          width: Math.max(100, gridDrag.startGridArea.width + dx),
+          height: Math.max(100, gridDrag.startGridArea.height + dy)
+        });
       }
 
       if (cropMode === "move") {
@@ -237,44 +235,6 @@ function resizeCropArea(cropArea, movementX, movementY, documentSize) {
     ...cropArea,
     width: clamp(cropArea.width + movementX, 100, documentSize.width - cropArea.left),
     height: clamp(cropArea.height + movementY, 100, documentSize.height - cropArea.top)
-  };
-}
-
-function resizeGridArea(gridArea, edge, dx, dy) {
-  const minSize = 100;
-  const right = gridArea.left + gridArea.width;
-  const bottom = gridArea.top + gridArea.height;
-
-  if (edge === "top") {
-    const top = Math.min(gridArea.top + dy, bottom - minSize);
-
-    return {
-      ...gridArea,
-      top,
-      height: bottom - top
-    };
-  }
-
-  if (edge === "left") {
-    const left = Math.min(gridArea.left + dx, right - minSize);
-
-    return {
-      ...gridArea,
-      left,
-      width: right - left
-    };
-  }
-
-  if (edge === "right") {
-    return {
-      ...gridArea,
-      width: Math.max(minSize, gridArea.width + dx)
-    };
-  }
-
-  return {
-    ...gridArea,
-    height: Math.max(minSize, gridArea.height + dy)
   };
 }
 
