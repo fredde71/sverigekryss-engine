@@ -65,7 +65,7 @@ test("renders submit button below and outside TemplateCanvas viewport", () => {
   expect(screen.getByTestId("play-surface")).toContainElement(button);
 });
 
-test("button calls onSubmitAnswers", () => {
+test("button opens submission dialog", () => {
   const onSubmitAnswers = jest.fn();
 
   render(
@@ -74,7 +74,37 @@ test("button calls onSubmitAnswers", () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Skicka in svar" }));
 
-  expect(onSubmitAnswers).toHaveBeenCalledTimes(1);
+  expect(
+    screen.getByRole("dialog", { name: "Skicka in tävlingsbidrag" })
+  ).toBeInTheDocument();
+  expect(onSubmitAnswers).not.toHaveBeenCalled();
+});
+
+test("submission dialog forwards valid payload", () => {
+  const onSubmitAnswers = jest.fn();
+
+  render(
+    <PlaySurface template={template} onSubmitAnswers={onSubmitAnswers} />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Skicka in svar" }));
+  fireEvent.change(screen.getByLabelText("Namn *"), {
+    target: { value: "Fredrik" }
+  });
+  fireEvent.change(screen.getByLabelText("E-post *"), {
+    target: { value: "fredrik@example.com" }
+  });
+  fireEvent.change(screen.getByLabelText("Telefonnummer *"), {
+    target: { value: "0701234567" }
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Skicka" }));
+
+  expect(onSubmitAnswers).toHaveBeenCalledWith({
+    solution: ["", "", "", "", "", ""],
+    name: "Fredrik",
+    email: "fredrik@example.com",
+    phone: "0701234567"
+  });
 });
 
 test("local PlaySurface mode is cropped without responsive mode", () => {

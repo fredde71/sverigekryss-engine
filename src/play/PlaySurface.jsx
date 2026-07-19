@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import RuntimeLayer from "../runtime/RuntimeLayer";
+import SubmissionDialog from "./SubmissionDialog";
 import TemplateCanvas from "../template/TemplateCanvas";
 
 export default function PlaySurface({
@@ -7,6 +8,8 @@ export default function PlaySurface({
   responsive = false,
   onSubmitAnswers
 }) {
+  const [isSubmissionDialogOpen, setIsSubmissionDialogOpen] = useState(false);
+
   return (
     <div
       data-testid="play-surface"
@@ -25,7 +28,7 @@ export default function PlaySurface({
       <button
         type="button"
         data-testid="submit-answers-button"
-        onClick={onSubmitAnswers}
+        onClick={() => setIsSubmissionDialogOpen(true)}
         style={{
           padding: "10px 16px",
           fontSize: "16px",
@@ -34,6 +37,13 @@ export default function PlaySurface({
       >
         Skicka in svar
       </button>
+
+      {isSubmissionDialogOpen && (
+        <SubmissionDialog
+          onClose={() => setIsSubmissionDialogOpen(false)}
+          onSubmit={onSubmitAnswers}
+        />
+      )}
     </div>
   );
 }
