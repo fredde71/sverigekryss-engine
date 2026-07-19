@@ -256,7 +256,7 @@ const handleTemplateImport = async (e) => {
   const url = `${window.location.origin}/?data=${encoded}`;
 
   console.log(url);
-  alert("Länk skapad! Se console.");
+  alert("Länk skapad! Se konsolen.");
 };
 
   const sidebarSectionStyle = {
@@ -343,7 +343,7 @@ const handleTemplateImport = async (e) => {
         alignSelf: "flex-start"
       }}>
         <section style={sidebarSectionStyle}>
-          <h4 style={{ margin: 0, fontSize: "16px" }}>Editor</h4>
+          <h4 style={{ margin: 0, fontSize: "16px" }}>Redigerare</h4>
           <div style={{ fontSize: "13px", color: "#475569" }}>
             <div>
               ID: <strong>{crosswordId || "Ej angivet"}</strong>
@@ -357,7 +357,7 @@ const handleTemplateImport = async (e) => {
         <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Korsord</h5>
           <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            Crossword ID
+            Korsords-ID
             <input
               type="text"
               value={crosswordId}
@@ -377,14 +377,14 @@ const handleTemplateImport = async (e) => {
             onClick={() => setModeView(modeView === "edit" ? "play" : "edit")}
             style={sidebarButtonStyle}
           >
-            {modeView === "edit" ? "PLAY MODE" : "EDIT MODE"}
+            {modeView === "edit" ? "SPELLÄGE" : "REDIGERINGSLÄGE"}
           </button>
         </section>
 
         <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Filer</h5>
           <label style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            Upload Image
+            Ladda upp bild
             <input
               type="file"
               accept="image/*,.pdf"
@@ -394,7 +394,7 @@ const handleTemplateImport = async (e) => {
           </label>
 
           <label style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            Import Template
+            Importera mall
             <input
               key={imageSrc}
               type="file"
@@ -405,7 +405,7 @@ const handleTemplateImport = async (e) => {
           </label>
 
           <button onClick={exportTemplate} style={sidebarButtonStyle}>
-            Export Template
+            Exportera mall
           </button>
         </section>
 
@@ -416,7 +416,7 @@ const handleTemplateImport = async (e) => {
             onClick={async () => {
 
               if (!crosswordId.trim()) {
-                alert("Ange Crossword ID innan publicering.");
+                alert("Ange korsords-ID innan publicering.");
                 return;
               }
 
@@ -450,7 +450,7 @@ const handleTemplateImport = async (e) => {
 
             }}
           >
-            Publish
+            Publicera
           </button>
 
           {/* ✅ NY KNAPP (tillagd) */}

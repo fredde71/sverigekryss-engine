@@ -180,7 +180,7 @@ test("removes competition metadata when a marked cell becomes non-writable", asy
   await selectCompetitionTool();
   clickGridCell(0);
   fireEvent.click(await screen.findByRole("button", { name: "Position 3" }));
-  fireEvent.click(screen.getByRole("button", { name: "Blocked" }));
+  fireEvent.click(screen.getByRole("button", { name: "Blockerad" }));
   clickGridCell(0);
 
   expect(readCompetitionState()).toEqual([]);
@@ -206,7 +206,7 @@ test("selecting another tool exits competition mode", async () => {
   await selectCompetitionTool();
   clickGridCell(0);
   expect(await screen.findByTestId("competition-cell-menu")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Image" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bild" }));
 
   expect(screen.queryByTestId("competition-cell-menu")).not.toBeInTheDocument();
 });
@@ -225,7 +225,7 @@ test("renders editor-only badge for assigned competition position", () => {
 });
 
 function selectWriteTool() {
-  fireEvent.click(screen.getByRole("button", { name: "Write" }));
+  fireEvent.click(screen.getByRole("button", { name: "Skrivruta" }));
 }
 
 async function selectCompetitionTool() {
