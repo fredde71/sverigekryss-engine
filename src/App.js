@@ -400,17 +400,18 @@ const handleTemplateImport = async (e) => {
         </EditorScrollWorkspace>
       ) : (
         <TemplateCanvas
-        template={{
-          crosswordId,
-          rows,
-          cols,
-          cellTypes,
-          imageSrc,
-          documentSize,
-          gridArea,
-          cropArea
-        }}
-      >
+          cropped
+          template={{
+            crosswordId,
+            rows,
+            cols,
+            cellTypes,
+            imageSrc,
+            documentSize,
+            gridArea,
+            cropArea
+          }}
+        >
           <RuntimeLayer
             data={{
               cellTypes,
