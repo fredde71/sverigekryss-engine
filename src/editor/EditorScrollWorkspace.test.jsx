@@ -37,7 +37,8 @@ test("editor workspace is horizontally and vertically scrollable", () => {
 
   expect(screen.getByTestId("editor-scroll-workspace")).toHaveStyle({
     overflow: "auto",
-    maxWidth: "calc(100vw - 220px)",
+    width: "100%",
+    maxWidth: "100%",
     maxHeight: "calc(100vh - 40px)"
   });
 });

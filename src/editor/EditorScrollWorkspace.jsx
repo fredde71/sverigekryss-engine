@@ -5,11 +5,13 @@ export default function EditorScrollWorkspace({ children }) {
     <div
       data-testid="editor-scroll-workspace"
       style={{
-        maxWidth: "calc(100vw - 220px)",
+        width: "100%",
+        maxWidth: "100%",
         maxHeight: "calc(100vh - 40px)",
         overflow: "auto",
         position: "relative",
-        border: "1px solid #ddd"
+        border: "1px solid #ddd",
+        boxSizing: "border-box"
       }}
     >
       <div
