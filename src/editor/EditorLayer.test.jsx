@@ -170,6 +170,37 @@ test("resize handle does not start grid movement", () => {
   fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-handle"));
 
   expect(baseProps.startGridResize).toHaveBeenCalledTimes(1);
+  expect(baseProps.startGridResize).toHaveBeenCalledWith(
+    expect.anything(),
+    "bottom"
+  );
+  expect(baseProps.startGridMove).not.toHaveBeenCalled();
+});
+
+test("starts grid resize from each edge handle", () => {
+  render(<EditorLayer {...baseProps} />);
+
+  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-top-handle"));
+  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-left-handle"));
+  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-right-handle"));
+  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-handle"));
+
+  expect(baseProps.startGridResize).toHaveBeenCalledWith(
+    expect.anything(),
+    "top"
+  );
+  expect(baseProps.startGridResize).toHaveBeenCalledWith(
+    expect.anything(),
+    "left"
+  );
+  expect(baseProps.startGridResize).toHaveBeenCalledWith(
+    expect.anything(),
+    "right"
+  );
+  expect(baseProps.startGridResize).toHaveBeenCalledWith(
+    expect.anything(),
+    "bottom"
+  );
   expect(baseProps.startGridMove).not.toHaveBeenCalled();
 });
 

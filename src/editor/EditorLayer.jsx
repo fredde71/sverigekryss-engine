@@ -125,19 +125,79 @@ export default function EditorLayer({
           data-testid="editor-grid-resize-handle"
           onMouseDown={(e) => {
             e.stopPropagation();
-            startGridResize(e);
+            startGridResize(e, "bottom");
           }}
           onClick={(e) => e.stopPropagation()}
           style={{
             pointerEvents: "auto",
             position: "absolute",
-            right: -6,
+            left: 0,
+            right: 0,
             zIndex: 20,
             bottom: -6,
-            width: "12px",
             height: "12px",
-            background: "blue",
-            cursor: "nwse-resize"
+            background: "rgba(0,0,255,0.18)",
+            cursor: "ns-resize"
+          }}
+        />
+
+        <div
+          data-testid="editor-grid-resize-top-handle"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            startGridResize(e, "top");
+          }}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            pointerEvents: "auto",
+            position: "absolute",
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            top: -6,
+            height: "12px",
+            background: "rgba(0,0,255,0.18)",
+            cursor: "ns-resize"
+          }}
+        />
+
+        <div
+          data-testid="editor-grid-resize-left-handle"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            startGridResize(e, "left");
+          }}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            pointerEvents: "auto",
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            zIndex: 20,
+            left: -6,
+            width: "12px",
+            background: "rgba(0,0,255,0.18)",
+            cursor: "ew-resize"
+          }}
+        />
+
+        <div
+          data-testid="editor-grid-resize-right-handle"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            startGridResize(e, "right");
+          }}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            pointerEvents: "auto",
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            zIndex: 20,
+            right: -6,
+            width: "12px",
+            background: "rgba(0,0,255,0.18)",
+            cursor: "ew-resize"
           }}
         />
 

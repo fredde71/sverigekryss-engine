@@ -77,6 +77,18 @@ function EditorViewportHarness({
               data-testid="start-grid-resize"
               onMouseDown={startGridResize}
             />
+            <button
+              data-testid="start-grid-resize-top"
+              onMouseDown={(e) => startGridResize(e, "top")}
+            />
+            <button
+              data-testid="start-grid-resize-left"
+              onMouseDown={(e) => startGridResize(e, "left")}
+            />
+            <button
+              data-testid="start-grid-resize-right"
+              onMouseDown={(e) => startGridResize(e, "right")}
+            />
           </>
         )}
       </EditorViewport>
@@ -355,7 +367,7 @@ test("click without drag still edits cells", () => {
   ]);
 });
 
-test("grid resize preserves top and left", () => {
+test("bottom grid resize preserves top edge", () => {
   render(<EditorViewportHarness />);
 
   fireEvent.mouseDown(screen.getByTestId("start-grid-resize"), {
@@ -367,15 +379,49 @@ test("grid resize preserves top and left", () => {
   expect(readState("grid-state")).toEqual({
     top: 20,
     left: 30,
-    width: 430,
+    width: 400,
     height: 340
   });
 });
 
-test("grid resize changes only width and height", () => {
+test("top grid resize preserves bottom edge", () => {
   render(<EditorViewportHarness />);
 
-  fireEvent.mouseDown(screen.getByTestId("start-grid-resize"), {
+  fireEvent.mouseDown(screen.getByTestId("start-grid-resize-top"), {
+    clientX: 100,
+    clientY: 100
+  });
+  moveClientPointer(100, 140);
+
+  expect(readState("grid-state")).toEqual({
+    top: 60,
+    left: 30,
+    width: 400,
+    height: 260
+  });
+});
+
+test("left grid resize preserves right edge", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-grid-resize-left"), {
+    clientX: 100,
+    clientY: 100
+  });
+  moveClientPointer(150, 100);
+
+  expect(readState("grid-state")).toEqual({
+    top: 20,
+    left: 80,
+    width: 350,
+    height: 300
+  });
+});
+
+test("right grid resize preserves left edge", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-grid-resize-right"), {
     clientX: 100,
     clientY: 100
   });
@@ -390,7 +436,7 @@ test("grid resize changes only width and height", () => {
     top: 20,
     left: 30,
     width: 450,
-    height: 320
+    height: 300
   });
 });
 
