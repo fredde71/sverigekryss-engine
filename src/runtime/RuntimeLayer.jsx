@@ -14,7 +14,7 @@ import {
 
 import { normalizeInputValue } from "../engine/input";
 
-export default function RuntimeLayer({ data }) {
+export default function RuntimeLayer({ data, onAnswersChange }) {
 
   console.log("RuntimeLayer rendered");
 
@@ -38,10 +38,16 @@ const handleCellChange = (index, rawValue) => {
     
   const value = normalizeInputValue(rawValue);
 
-  setAnswers(prev => ({
-    ...prev,
-    [index]: value
-  }));
+  setAnswers(prev => {
+    const next = {
+      ...prev,
+      [index]: value
+    };
+
+    onAnswersChange?.(next);
+
+    return next;
+  });
   if (value) {
 
   setTimeout(() => {

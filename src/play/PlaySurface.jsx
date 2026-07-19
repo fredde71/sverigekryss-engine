@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import RuntimeLayer from "../runtime/RuntimeLayer";
+import { buildCompetitionSolution } from "./competitionSolution";
 import SubmissionDialog from "./SubmissionDialog";
 import TemplateCanvas from "../template/TemplateCanvas";
 
@@ -9,6 +10,11 @@ export default function PlaySurface({
   onSubmitAnswers
 }) {
   const [isSubmissionDialogOpen, setIsSubmissionDialogOpen] = useState(false);
+  const [runtimeAnswers, setRuntimeAnswers] = useState({});
+  const initialSolution = buildCompetitionSolution({
+    template,
+    answers: runtimeAnswers
+  });
 
   return (
     <div
@@ -22,7 +28,10 @@ export default function PlaySurface({
       }}
     >
       <TemplateCanvas template={template} responsive={responsive} cropped>
-        <RuntimeLayer data={template} />
+        <RuntimeLayer
+          data={template}
+          onAnswersChange={setRuntimeAnswers}
+        />
       </TemplateCanvas>
 
       <button
@@ -40,6 +49,7 @@ export default function PlaySurface({
 
       {isSubmissionDialogOpen && (
         <SubmissionDialog
+          initialSolution={initialSolution}
           onClose={() => setIsSubmissionDialogOpen(false)}
           onSubmit={onSubmitAnswers}
         />

@@ -24,10 +24,23 @@ jest.mock("../template/TemplateCanvas", () => {
 jest.mock("../runtime/RuntimeLayer", () => {
   const React = require("react");
 
-  return function MockRuntimeLayer() {
-    return React.createElement("div", {
-      "data-testid": "runtime-layer"
-    });
+  return function MockRuntimeLayer({ onAnswersChange }) {
+    return React.createElement(
+      "button",
+      {
+        type: "button",
+        "data-testid": "runtime-layer",
+        onClick: () => onAnswersChange({
+          1: "B",
+          2: "A",
+          3: "R",
+          4: "D",
+          5: "E",
+          6: "N"
+        })
+      },
+      "Runtime"
+    );
   };
 });
 
@@ -105,6 +118,93 @@ test("submission dialog forwards valid payload", () => {
     email: "fredrik@example.com",
     phone: "0701234567"
   });
+});
+
+test("autofills a complete competition word from Runtime answers", () => {
+  const onSubmitAnswers = jest.fn();
+
+  render(
+    <PlaySurface
+      template={{
+        ...template,
+        competitionCells: [
+          { number: 1, index: 2 },
+          { number: 2, index: 1 },
+          { number: 3, index: 4 },
+          { number: 4, index: 3 },
+          { number: 5, index: 6 },
+          { number: 6, index: 5 }
+        ]
+      }}
+      onSubmitAnswers={onSubmitAnswers}
+    />
+  );
+
+  fireEvent.click(screen.getByTestId("runtime-layer"));
+  fireEvent.click(screen.getByRole("button", { name: "Skicka in svar" }));
+
+  expect(screen.getByLabelText("Lösningsord position 1")).toHaveValue("A");
+  expect(screen.getByLabelText("Lösningsord position 2")).toHaveValue("B");
+  expect(screen.getByLabelText("Lösningsord position 6")).toHaveValue("E");
+});
+
+test("autofills partial competition words and leaves missing cells blank", () => {
+  render(
+    <PlaySurface
+      template={{
+        ...template,
+        competitionCells: [
+          { number: 1, index: 2 },
+          { number: 3, index: 3 }
+        ]
+      }}
+      onSubmitAnswers={() => {}}
+    />
+  );
+
+  fireEvent.click(screen.getByTestId("runtime-layer"));
+  fireEvent.click(screen.getByRole("button", { name: "Skicka in svar" }));
+
+  expect(screen.getByLabelText("Lösningsord position 1")).toHaveValue("A");
+  expect(screen.getByLabelText("Lösningsord position 2")).toHaveValue("");
+  expect(screen.getByLabelText("Lösningsord position 3")).toHaveValue("R");
+});
+
+test("manual edits override autofilled letters", () => {
+  const onSubmitAnswers = jest.fn();
+
+  render(
+    <PlaySurface
+      template={{
+        ...template,
+        competitionCells: [
+          { number: 1, index: 2 },
+          { number: 2, index: 1 }
+        ]
+      }}
+      onSubmitAnswers={onSubmitAnswers}
+    />
+  );
+
+  fireEvent.click(screen.getByTestId("runtime-layer"));
+  fireEvent.click(screen.getByRole("button", { name: "Skicka in svar" }));
+  fireEvent.change(screen.getByLabelText("Lösningsord position 1"), {
+    target: { value: "X" }
+  });
+  fireEvent.change(screen.getByLabelText("Namn *"), {
+    target: { value: "Fredrik" }
+  });
+  fireEvent.change(screen.getByLabelText("E-post *"), {
+    target: { value: "fredrik@example.com" }
+  });
+  fireEvent.change(screen.getByLabelText("Telefonnummer *"), {
+    target: { value: "0701234567" }
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Skicka" }));
+
+  expect(onSubmitAnswers).toHaveBeenCalledWith(expect.objectContaining({
+    solution: "XB    "
+  }));
 });
 
 test("local PlaySurface mode is cropped without responsive mode", () => {
