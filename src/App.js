@@ -49,6 +49,7 @@ function App() {
 
       setGridArea(parsed.gridArea);
       setDocumentSize(parsed.documentSize || DEFAULT_DOCUMENT_SIZE);
+      setCompetitionCells(parsed.competitionCells || []);
 
       setModeView("play");
 
@@ -70,6 +71,7 @@ useEffect(() => {
       setGridArea(data.gridArea);
       setCropArea(data.cropArea);
       setDocumentSize(data.documentSize);
+      setCompetitionCells(data.competitionCells || []);
 
       setRows(data.rows);
       setCols(data.cols);
@@ -102,6 +104,8 @@ useEffect(() => {
     width: 1200,
     height: 1200
   });
+
+  const [competitionCells, setCompetitionCells] = useState([]);
 
   const [documentSize, setDocumentSize] = useState(DEFAULT_DOCUMENT_SIZE);
 
@@ -148,6 +152,7 @@ const documentSize = getDocumentSizeForDimensions({
 setImageSrc(image);
 setDocumentSize(documentSize);
 setCropArea(getFullDocumentArea(documentSize));
+setCompetitionCells([]);
 
 e.target.value = "";
 
@@ -163,6 +168,7 @@ return;
     setImageSrc(image);
     setDocumentSize(documentSize);
     setCropArea(getFullDocumentArea(documentSize));
+    setCompetitionCells([]);
   };
 
   reader.readAsDataURL(file);
@@ -181,6 +187,7 @@ const handleTemplateImport = async (e) => {
     documentSize,
     gridArea,
     cropArea,
+    competitionCells,
     imageSrc
   });
 
@@ -203,6 +210,8 @@ const handleTemplateImport = async (e) => {
     setCropArea(data.cropArea);
   }
 
+  setCompetitionCells(data.competitionCells || []);
+
   if (data.cellTypes) {
     setCellTypes(data.cellTypes);
   }
@@ -220,6 +229,7 @@ const handleTemplateImport = async (e) => {
       documentSize,
       gridArea,
       cropArea,
+      competitionCells,
       cellTypes,
       imageSrc
     });
@@ -261,6 +271,7 @@ const handleTemplateImport = async (e) => {
       documentSize={documentSize}
       cropArea={cropArea}
       setCropArea={setCropArea}
+      setCompetitionCells={setCompetitionCells}
       setCellTypes={setCellTypes}
       isPublicRuntime={isPublicRuntime}
     >
@@ -345,6 +356,7 @@ const handleTemplateImport = async (e) => {
       documentSize,
       cellTypes,
       imageSrc,
+      competitionCells,
       rows,
       cols
     };
@@ -392,7 +404,8 @@ const handleTemplateImport = async (e) => {
               imageSrc,
               documentSize,
               gridArea,
-              cropArea
+              cropArea,
+              competitionCells
             }}
           >
             {editor}
@@ -408,7 +421,8 @@ const handleTemplateImport = async (e) => {
             imageSrc,
             documentSize,
             gridArea,
-            cropArea
+            cropArea,
+            competitionCells
           }}
           onSubmitAnswers={() => {}}
         />

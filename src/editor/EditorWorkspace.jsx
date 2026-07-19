@@ -14,6 +14,7 @@ export default function EditorWorkspace({
   setCols,
   setGridArea,
   setCropArea,
+  setCompetitionCells,
   setCellTypes,
   isPublicRuntime,
   children
@@ -28,6 +29,7 @@ export default function EditorWorkspace({
     setCols(pendingCols);
 
     setCellTypes(Array(pendingRows * pendingCols).fill("empty"));
+    setCompetitionCells?.([]);
   };
 
   const toolbar = (

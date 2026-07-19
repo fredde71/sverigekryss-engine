@@ -164,6 +164,86 @@ test("createTemplate normalizes cellTypes to rows times cols", () => {
   ]);
 });
 
+test("createTemplate preserves valid competitionCells sorted by position", () => {
+  const template = createTemplate({
+    crosswordId: "TT-2026-0001",
+    rows: 3,
+    cols: 3,
+    cellTypes: Array(9).fill("write"),
+    gridArea: {},
+    imageSrc: "",
+    competitionCells: [
+      { index: 8, position: 3 },
+      { index: 1, position: 1 },
+      { index: 4, position: 2 }
+    ]
+  });
+
+  expect(template.competitionCells).toEqual([
+    { index: 1, position: 1 },
+    { index: 4, position: 2 },
+    { index: 8, position: 3 }
+  ]);
+});
+
+test("competitionCells removes invalid entries", () => {
+  const template = normalizeTemplate({
+    crosswordId: "TT-2026-0001",
+    rows: 3,
+    cols: 3,
+    cellTypes: Array(9).fill("write"),
+    gridArea: {},
+    imageSrc: "",
+    competitionCells: [
+      { index: 2, position: 1 },
+      { index: -1, position: 2 },
+      { index: 3, position: 7 },
+      { index: 4.5, position: 3 },
+      { index: 5, position: "x" },
+      null
+    ]
+  });
+
+  expect(template.competitionCells).toEqual([
+    { index: 2, position: 1 }
+  ]);
+});
+
+test("competitionCells handles duplicates deterministically", () => {
+  const template = normalizeTemplate({
+    crosswordId: "TT-2026-0001",
+    rows: 3,
+    cols: 3,
+    cellTypes: Array(9).fill("write"),
+    gridArea: {},
+    imageSrc: "",
+    competitionCells: [
+      { index: 2, position: 2 },
+      { index: 3, position: 2 },
+      { index: 2, position: 3 },
+      { index: 4, position: 1 }
+    ]
+  });
+
+  expect(template.competitionCells).toEqual([
+    { index: 4, position: 1 },
+    { index: 2, position: 2 }
+  ]);
+});
+
+test("legacy Template without competitionCells remains unchanged", () => {
+  const template = normalizeTemplate({
+    crosswordId: "TT-2026-0002",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  expect(template).not.toHaveProperty("competitionCells");
+});
+
 test("normalizeTemplate applies defaults and normalizes cellTypes", () => {
   const template = normalizeTemplate({
     cellTypes: {

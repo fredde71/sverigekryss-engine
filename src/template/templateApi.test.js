@@ -121,6 +121,43 @@ test("loadBackendTemplate preserves backend documentSize", async () => {
   expect(template.documentSize).toEqual(documentSize);
 });
 
+test("loadBackendTemplate preserves backend competitionCells", async () => {
+  mockJsonResponse({
+    crosswordId: "TT-2026-0002",
+    rows: 3,
+    cols: 3,
+    cellTypes: Array(9).fill("write"),
+    gridArea: {},
+    imageSrc: "",
+    competitionCells: [
+      { index: 8, position: 2 },
+      { index: 2, position: 1 }
+    ]
+  });
+
+  const template = await loadBackendTemplate("TT-2026-0002");
+
+  expect(template.competitionCells).toEqual([
+    { index: 2, position: 1 },
+    { index: 8, position: 2 }
+  ]);
+});
+
+test("loadBackendTemplate keeps legacy templates without competitionCells valid", async () => {
+  mockJsonResponse({
+    crosswordId: "TT-2026-0002",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  const template = await loadBackendTemplate("TT-2026-0002");
+
+  expect(template).not.toHaveProperty("competitionCells");
+});
+
 test("loadBackendTemplate does not normalize backend 404 into a Template", async () => {
   global.fetch.mockResolvedValue({
     ok: false,
@@ -152,6 +189,10 @@ test("publishBackendTemplate posts unchanged payload and returns parsed backend 
       width: 1200,
       height: 1697
     },
+    competitionCells: [
+      { index: 12, position: 1 },
+      { index: 18, position: 2 }
+    ],
     imageSrc: "/grid.png"
   };
   const responseBody = {
