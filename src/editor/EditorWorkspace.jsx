@@ -24,15 +24,13 @@ export default function EditorWorkspace({
   const [pendingRows, setPendingRows] = useState(25);
   const [pendingCols, setPendingCols] = useState(25);
   const [cropMode, setCropMode] = useState(null);
-  const [selectedCellIndex, setSelectedCellIndex] = useState(null);
+  const [competitionMenuCellIndex, setCompetitionMenuCellIndex] = useState(null);
 
-  const selectedCompetitionCell = (
-    Number.isInteger(selectedCellIndex) &&
-    cellTypes[selectedCellIndex] === "write"
-  ) ? selectedCellIndex : null;
-  const selectedCompetitionPosition = competitionCells.find(
-    cell => cell.index === selectedCompetitionCell
-  )?.position || "";
+  const activeCompetitionCell = (
+    activeTool === "competition" &&
+    Number.isInteger(competitionMenuCellIndex) &&
+    cellTypes[competitionMenuCellIndex] === "write"
+  ) ? competitionMenuCellIndex : null;
 
   useEffect(() => {
     setCompetitionCells?.(prev => (
@@ -46,15 +44,19 @@ export default function EditorWorkspace({
 
     setCellTypes(Array(pendingRows * pendingCols).fill("empty"));
     setCompetitionCells?.([]);
-    setSelectedCellIndex(null);
+    setCompetitionMenuCellIndex(null);
   };
 
-  const setSelectedCellCompetitionPosition = (position) => {
-    if (selectedCompetitionCell === null) return;
+  const openCompetitionMenu = (index) => {
+    setCompetitionMenuCellIndex(index);
+  };
+
+  const assignCompetitionPosition = (position) => {
+    if (activeCompetitionCell === null) return;
 
     setCompetitionCells(prev => {
       const next = prev.filter(cell => (
-        cell.index !== selectedCompetitionCell &&
+        cell.index !== activeCompetitionCell &&
         cell.position !== position
       ));
 
@@ -65,11 +67,32 @@ export default function EditorWorkspace({
       return [
         ...next,
         {
-          index: selectedCompetitionCell,
+          index: activeCompetitionCell,
           position
         }
       ].sort((a, b) => a.position - b.position);
     });
+
+    setCompetitionMenuCellIndex(null);
+  };
+
+  const clearCompetitionCell = () => {
+    if (activeCompetitionCell === null) return;
+
+    setCompetitionCells(prev => (
+      prev
+        .filter(cell => cell.index !== activeCompetitionCell)
+        .sort((a, b) => a.position - b.position)
+    ));
+    setCompetitionMenuCellIndex(null);
+  };
+
+  const selectEditorTool = (tool) => {
+    setActiveTool(tool);
+
+    if (tool !== "competition") {
+      setCompetitionMenuCellIndex(null);
+    }
   };
 
   const toolbar = (
@@ -78,38 +101,45 @@ export default function EditorWorkspace({
       setPendingRows={setPendingRows}
       pendingCols={pendingCols}
       setPendingCols={setPendingCols}
-      setActiveTool={setActiveTool}
+      activeTool={activeTool}
+      setActiveTool={selectEditorTool}
       createGrid={createGrid}
     />
   );
-  const competitionControl = selectedCompetitionCell !== null && (
+  const competitionMenu = activeCompetitionCell !== null && (
     <div
-      data-testid="competition-cell-control"
+      data-testid="competition-cell-menu"
       style={{
-        marginTop: "10px"
+        marginTop: "10px",
+        padding: "8px",
+        border: "1px solid #d6d6d6",
+        background: "#fff"
       }}
     >
       <div>Tävlingsruta</div>
-      <select
-        aria-label="Tävlingsruta"
-        value={selectedCompetitionPosition}
-        onChange={(event) => {
-          setSelectedCellCompetitionPosition(
-            event.target.value ? Number(event.target.value) : ""
-          );
-        }}
+      <button
+        type="button"
+        onClick={clearCompetitionCell}
         style={{
-          width: "100%"
+          width: "100%",
+          marginBottom: "6px"
         }}
       >
-        <option value="">None</option>
-        <option value="1">Position 1</option>
-        <option value="2">Position 2</option>
-        <option value="3">Position 3</option>
-        <option value="4">Position 4</option>
-        <option value="5">Position 5</option>
-        <option value="6">Position 6</option>
-      </select>
+        Ta bort
+      </button>
+      {[1, 2, 3, 4, 5, 6].map(position => (
+        <button
+          key={position}
+          type="button"
+          onClick={() => assignCompetitionPosition(position)}
+          style={{
+            width: "100%",
+            marginBottom: "4px"
+          }}
+        >
+          Position {position}
+        </button>
+      ))}
     </div>
   );
 
@@ -125,7 +155,7 @@ export default function EditorWorkspace({
       cols={cols}
       cellTypes={cellTypes}
       activeTool={activeTool}
-      onCellSelect={setSelectedCellIndex}
+      onCompetitionCellClick={openCompetitionMenu}
       setCellTypes={setCellTypes}
     >
       {({ startGridResize, handleGridClick }) => (
@@ -151,7 +181,7 @@ export default function EditorWorkspace({
   if (typeof children === "function") {
     return children({
       toolbar,
-      competitionControl,
+      competitionMenu,
       editor,
       cropArea,
       setCropArea

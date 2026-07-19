@@ -276,7 +276,7 @@ const handleTemplateImport = async (e) => {
       setCellTypes={setCellTypes}
       isPublicRuntime={isPublicRuntime}
     >
-      {({ toolbar, competitionControl, editor }) => (
+      {({ toolbar, competitionMenu, editor }) => (
     <div
       style={{
         display: "flex",
@@ -310,7 +310,7 @@ const handleTemplateImport = async (e) => {
 
 </div>
         {toolbar}
-        {competitionControl}
+        {competitionMenu}
 
         <hr />
 

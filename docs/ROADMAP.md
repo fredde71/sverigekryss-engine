@@ -260,6 +260,7 @@ Första Deployment Platform configuration package är genomfört:
 - production kan använda persistent disk paths som /var/data/templates och /var/data/uploads
 - backend skapar storage directories vid startup
 - API routes, payloads, image URLs, CORS, frontend, Template shape, Runtime och deployment provider är oförändrade
+- docs/DEPLOYMENT.md dokumenterar manual Render Version 1 deployment
 
 Oförändrat i detta steg:
 

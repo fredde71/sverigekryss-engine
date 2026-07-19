@@ -12,7 +12,7 @@ export default function EditorViewport({
   cols,
   cellTypes = [],
   activeTool,
-  onCellSelect,
+  onCompetitionCellClick,
   setCellTypes,
   children
 }) {
@@ -52,12 +52,14 @@ export default function EditorViewport({
     const safeRow = Math.max(0, Math.min(rows - 1, row));
 
     const index = safeRow * cols + safeCol;
-    const currentType = cellTypes[index];
-    const selectedCell = getSelectedCellAfterMarking({
-      currentType,
-      activeTool,
-      index
-    });
+
+    if (activeTool === "competition") {
+      if (cellTypes[index] === "write") {
+        onCompetitionCellClick?.(index);
+      }
+
+      return;
+    }
 
     setCellTypes(prev => {
       const next = [...prev];
@@ -81,8 +83,6 @@ export default function EditorViewport({
 
       return next;
     });
-
-    onCellSelect?.(selectedCell);
   };
 
   useEffect(() => {
@@ -255,16 +255,4 @@ function clamp(value, min, max) {
     Math.max(value, min),
     Math.max(min, max)
   );
-}
-
-function getSelectedCellAfterMarking({
-  currentType,
-  activeTool,
-  index
-}) {
-  if (activeTool === "empty") return null;
-  if (activeTool === "write") return index;
-  if (currentType === activeTool) return null;
-
-  return activeTool === "write" ? index : null;
 }

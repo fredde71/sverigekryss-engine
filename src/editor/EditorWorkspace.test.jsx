@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import EditorWorkspace from "./EditorWorkspace";
 
 const gridArea = {
@@ -55,10 +55,10 @@ function EditorWorkspaceHarness({
         setCellTypes={setCellTypes}
         isPublicRuntime={false}
       >
-        {({ toolbar, competitionControl, editor }) => (
+        {({ toolbar, competitionMenu, editor }) => (
           <>
             {toolbar}
-            {competitionControl}
+            {competitionMenu}
             {editor}
           </>
         )}
@@ -67,87 +67,105 @@ function EditorWorkspaceHarness({
   );
 }
 
-test("assigns a competition position to a writable cell", () => {
-  render(<EditorWorkspaceHarness />);
-
-  selectWriteTool();
-  clickGridCell(0);
-  fireEvent.change(screen.getByLabelText("Tävlingsruta"), {
-    target: { value: "1" }
-  });
-
-  expect(readCompetitionState()).toEqual([
-    { index: 0, position: 1 }
-  ]);
-});
-
-test("moves an existing competition position to the newly selected cell", () => {
-  render(<EditorWorkspaceHarness />);
-
-  selectWriteTool();
-  clickGridCell(0);
-  fireEvent.change(screen.getByLabelText("Tävlingsruta"), {
-    target: { value: "1" }
-  });
-  clickGridCell(3);
-  fireEvent.change(screen.getByLabelText("Tävlingsruta"), {
-    target: { value: "1" }
-  });
-
-  expect(readCompetitionState()).toEqual([
-    { index: 3, position: 1 }
-  ]);
-});
-
-test("clears a competition position from the selected cell", () => {
-  render(<EditorWorkspaceHarness />);
-
-  selectWriteTool();
-  clickGridCell(0);
-  fireEvent.change(screen.getByLabelText("Tävlingsruta"), {
-    target: { value: "2" }
-  });
-  fireEvent.change(screen.getByLabelText("Tävlingsruta"), {
-    target: { value: "" }
-  });
-
-  expect(readCompetitionState()).toEqual([]);
-});
-
-test("selects an existing writable cell without clearing it", () => {
+test("assigns a competition position to a writable cell", async () => {
   render(
     <EditorWorkspaceHarness
       initialCellTypes={["write", "empty", "empty", "empty"]}
     />
   );
 
-  selectWriteTool();
+  await selectCompetitionTool();
   clickGridCell(0);
+  fireEvent.click(await screen.findByRole("button", { name: "Position 1" }));
 
-  expect(screen.getByLabelText("Tävlingsruta")).toBeInTheDocument();
+  expect(readCompetitionState()).toEqual([
+    { index: 0, position: 1 }
+  ]);
 });
 
-test("removes competition metadata when a marked cell becomes non-writable", () => {
+test("moves an existing competition position to the newly selected cell", async () => {
+  render(
+    <EditorWorkspaceHarness
+      initialCellTypes={["write", "empty", "empty", "write"]}
+    />
+  );
+
+  await selectCompetitionTool();
+  clickGridCell(0);
+  fireEvent.click(await screen.findByRole("button", { name: "Position 1" }));
+  clickGridCell(3);
+  fireEvent.click(await screen.findByRole("button", { name: "Position 1" }));
+
+  expect(readCompetitionState()).toEqual([
+    { index: 3, position: 1 }
+  ]);
+});
+
+test("clears a competition position from the selected cell", async () => {
+  render(
+    <EditorWorkspaceHarness
+      initialCellTypes={["write", "empty", "empty", "empty"]}
+      initialCompetitionCells={[{ index: 0, position: 2 }]}
+    />
+  );
+
+  await selectCompetitionTool();
+  clickGridCell(0);
+  fireEvent.click(await screen.findByRole("button", { name: "Ta bort" }));
+
+  expect(readCompetitionState()).toEqual([]);
+});
+
+test("shows competition menu for an existing writable cell", async () => {
+  render(
+    <EditorWorkspaceHarness
+      initialCellTypes={["write", "empty", "empty", "empty"]}
+    />
+  );
+
+  await selectCompetitionTool();
+  clickGridCell(0);
+
+  expect(await screen.findByTestId("competition-cell-menu")).toBeInTheDocument();
+});
+
+test("removes competition metadata when a marked cell becomes non-writable", async () => {
   render(<EditorWorkspaceHarness />);
 
   selectWriteTool();
   clickGridCell(0);
-  fireEvent.change(screen.getByLabelText("Tävlingsruta"), {
-    target: { value: "3" }
-  });
+  await selectCompetitionTool();
+  clickGridCell(0);
+  fireEvent.click(await screen.findByRole("button", { name: "Position 3" }));
   fireEvent.click(screen.getByRole("button", { name: "Blocked" }));
   clickGridCell(0);
 
   expect(readCompetitionState()).toEqual([]);
 });
 
-test("does not show competition control for non-writable cells", () => {
+test("does not show competition menu for non-writable cells", async () => {
   render(<EditorWorkspaceHarness />);
 
+  await selectCompetitionTool();
   clickGridCell(0);
 
-  expect(screen.queryByLabelText("Tävlingsruta")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("competition-cell-menu")).not.toBeInTheDocument();
   expect(readCompetitionState()).toEqual([]);
+});
+
+test("selecting another tool exits competition mode", async () => {
+  render(
+    <EditorWorkspaceHarness
+      initialCellTypes={["write", "empty", "empty", "empty"]}
+    />
+  );
+
+  await selectCompetitionTool();
+  clickGridCell(0);
+  expect(await screen.findByTestId("competition-cell-menu")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Image" }));
+
+  expect(screen.queryByTestId("competition-cell-menu")).not.toBeInTheDocument();
 });
 
 test("renders editor-only badge for assigned competition position", () => {
@@ -165,6 +183,16 @@ test("renders editor-only badge for assigned competition position", () => {
 
 function selectWriteTool() {
   fireEvent.click(screen.getByRole("button", { name: "Write" }));
+}
+
+async function selectCompetitionTool() {
+  const button = screen.getByRole("button", { name: "🏆 Tävlingsruta" });
+
+  fireEvent.click(button);
+
+  await waitFor(() => {
+    expect(button).toHaveAttribute("aria-pressed", "true");
+  });
 }
 
 function clickGridCell(index) {

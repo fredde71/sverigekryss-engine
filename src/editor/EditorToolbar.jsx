@@ -5,6 +5,7 @@ export default function EditorToolbar({
   setPendingRows,
   pendingCols,
   setPendingCols,
+  activeTool,
   setActiveTool,
   createGrid
 }) {
@@ -37,11 +38,12 @@ export default function EditorToolbar({
 </button>
 
 </div>
-        <button onClick={() => setActiveTool("image")}>Image</button><br /><br />
-        <button onClick={() => setActiveTool("blocked")}>Blocked</button><br /><br />
-        <button onClick={() => setActiveTool("double")}>Double clue</button><br /><br />
-        <button onClick={() => setActiveTool("write")}>Write</button><br /><br />
-        <button onClick={() => setActiveTool("empty")}>Empty</button><br /><br />
+        <button aria-pressed={activeTool === "image"} onClick={() => setActiveTool("image")}>Image</button><br /><br />
+        <button aria-pressed={activeTool === "blocked"} onClick={() => setActiveTool("blocked")}>Blocked</button><br /><br />
+        <button aria-pressed={activeTool === "double"} onClick={() => setActiveTool("double")}>Double clue</button><br /><br />
+        <button aria-pressed={activeTool === "write"} onClick={() => setActiveTool("write")}>Write</button><br /><br />
+        <button aria-pressed={activeTool === "competition"} onClick={() => setActiveTool("competition")}>🏆 Tävlingsruta</button><br /><br />
+        <button aria-pressed={activeTool === "empty"} onClick={() => setActiveTool("empty")}>Empty</button><br /><br />
     </>
   );
 }
