@@ -54,11 +54,10 @@ function EditorViewportHarness({
         activeTool="write"
         setCellTypes={setCellTypes}
       >
-        {({ startGridMove, startGridResize, setCropMode, handleGridClick }) => (
+        {({ startGridResize, setCropMode, handleGridClick }) => (
           <>
             <div
               data-testid="grid-frame"
-              onMouseDown={startGridMove}
               onClick={handleGridClick}
             />
             <button
@@ -70,12 +69,12 @@ function EditorViewportHarness({
               onMouseDown={() => setCropMode("resize")}
             />
             <button
-              data-testid="start-grid-move"
-              onMouseDown={startGridMove}
+              data-testid="start-grid-top-resize"
+              onMouseDown={(e) => startGridResize(e, "top")}
             />
             <button
               data-testid="start-grid-resize"
-              onMouseDown={startGridResize}
+              onMouseDown={(e) => startGridResize(e, "corner")}
             />
           </>
         )}
@@ -238,10 +237,10 @@ test("crop resize clamps to documentSize boundaries", () => {
   });
 });
 
-test("moving via the top edge updates top and left only", () => {
+test("top-edge drag keeps bottom constant", () => {
   render(<EditorViewportHarness />);
 
-  fireEvent.mouseDown(screen.getByTestId("start-grid-move"), {
+  fireEvent.mouseDown(screen.getByTestId("start-grid-top-resize"), {
     clientX: 100,
     clientY: 100
   });
@@ -249,17 +248,17 @@ test("moving via the top edge updates top and left only", () => {
 
   expect(readState("grid-state")).toEqual({
     top: 10,
-    left: 55,
+    left: 30,
     width: 400,
-    height: 300
+    height: 310
   });
   expect(readState("crop-state")).toEqual(initialCropArea);
 });
 
-test("grid movement supports diagonal dragging", () => {
+test("top-edge drag updates top and height without changing left or width", () => {
   render(<EditorViewportHarness />);
 
-  fireEvent.mouseDown(screen.getByTestId("start-grid-move"), {
+  fireEvent.mouseDown(screen.getByTestId("start-grid-top-resize"), {
     clientX: 100,
     clientY: 100
   });
@@ -267,16 +266,16 @@ test("grid movement supports diagonal dragging", () => {
 
   expect(readState("grid-state")).toEqual({
     top: 60,
-    left: 60,
+    left: 30,
     width: 400,
-    height: 300
+    height: 260
   });
 });
 
-test("grid movement is based on client coordinates from drag start", () => {
+test("top-edge resize is based on client coordinates from drag start", () => {
   render(<EditorViewportHarness />);
 
-  fireEvent.mouseDown(screen.getByTestId("start-grid-move"), {
+  fireEvent.mouseDown(screen.getByTestId("start-grid-top-resize"), {
     clientX: 100,
     clientY: 100
   });
@@ -289,9 +288,26 @@ test("grid movement is based on client coordinates from drag start", () => {
 
   expect(readState("grid-state")).toEqual({
     top: 35,
-    left: 40,
+    left: 30,
     width: 400,
-    height: 300
+    height: 285
+  });
+});
+
+test("top-edge resize enforces minimum grid height", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-grid-top-resize"), {
+    clientX: 100,
+    clientY: 100
+  });
+  moveClientPointer(100, 1000);
+
+  expect(readState("grid-state")).toEqual({
+    top: 220,
+    left: 30,
+    width: 400,
+    height: 100
   });
 });
 
@@ -350,6 +366,23 @@ test("bottom-right resize changes width and height without moving top edge", () 
     left: 30,
     width: 450,
     height: 320
+  });
+});
+
+test("bottom-right resize does not trigger top-edge behavior", () => {
+  render(<EditorViewportHarness />);
+
+  fireEvent.mouseDown(screen.getByTestId("start-grid-resize"), {
+    clientX: 100,
+    clientY: 100
+  });
+  moveClientPointer(100, 140);
+
+  expect(readState("grid-state")).toEqual({
+    top: 20,
+    left: 30,
+    width: 400,
+    height: 340
   });
 });
 

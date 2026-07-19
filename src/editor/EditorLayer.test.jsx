@@ -5,7 +5,6 @@ const baseProps = {
   rows: 2,
   cols: 2,
   cellTypes: ["write", "blocked", "double", "empty"],
-  startGridMove: jest.fn(),
   startGridResize: jest.fn(),
   setCropMode: jest.fn(),
   handleGridClick: jest.fn(),
@@ -132,7 +131,6 @@ test("starts crop movement from crop move affordance", () => {
   fireEvent.mouseDown(screen.getByTestId("editor-crop-move-affordance"));
 
   expect(baseProps.setCropMode).toHaveBeenCalledWith("move");
-  expect(baseProps.startGridMove).not.toHaveBeenCalled();
   expect(baseProps.startGridResize).not.toHaveBeenCalled();
 });
 
@@ -142,35 +140,31 @@ test("starts crop resize from crop resize handle", () => {
   fireEvent.mouseDown(screen.getByTestId("editor-crop-resize-handle"));
 
   expect(baseProps.setCropMode).toHaveBeenCalledWith("resize");
-  expect(baseProps.startGridMove).not.toHaveBeenCalled();
   expect(baseProps.startGridResize).not.toHaveBeenCalled();
 });
 
-test("keeps existing grid overlay move and resize behavior", () => {
+test("uses the purple top edge for top grid resize", () => {
   render(<EditorLayer {...baseProps} />);
 
   fireEvent.mouseDown(screen.getByTestId("editor-grid-move-affordance"));
-  fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-handle"));
 
-  expect(baseProps.startGridMove).toHaveBeenCalledTimes(1);
   expect(baseProps.startGridResize).toHaveBeenCalledTimes(1);
+  expect(baseProps.startGridResize).toHaveBeenCalledWith(
+    expect.anything(),
+    "top"
+  );
 });
 
-test("starts grid movement from the top edge", () => {
-  render(<EditorLayer {...baseProps} />);
-
-  fireEvent.mouseDown(screen.getByTestId("editor-grid-move-affordance"));
-
-  expect(baseProps.startGridMove).toHaveBeenCalledTimes(1);
-});
-
-test("resize handle does not start grid movement", () => {
+test("bottom-right resize handle does not trigger top-edge behavior", () => {
   render(<EditorLayer {...baseProps} />);
 
   fireEvent.mouseDown(screen.getByTestId("editor-grid-resize-handle"));
 
   expect(baseProps.startGridResize).toHaveBeenCalledTimes(1);
-  expect(baseProps.startGridMove).not.toHaveBeenCalled();
+  expect(baseProps.startGridResize).toHaveBeenCalledWith(
+    expect.anything(),
+    "corner"
+  );
 });
 
 test("does not render separate edge resize handles", () => {

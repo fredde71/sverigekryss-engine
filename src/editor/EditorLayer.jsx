@@ -6,7 +6,6 @@ export default function EditorLayer({
   rows,
   cols,
   cellTypes,
-  startGridMove,
   startGridResize,
   handleGridClick,
   isPublicRuntime,
@@ -106,7 +105,10 @@ export default function EditorLayer({
       >
         <div
           data-testid="editor-grid-move-affordance"
-          onMouseDown={startGridMove}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            startGridResize(e, "top");
+          }}
           onClick={(e) => e.stopPropagation()}
           style={{
             pointerEvents: "auto",
@@ -117,7 +119,7 @@ export default function EditorLayer({
             height: "30px",
             zIndex: 20,
             background: "rgba(0,0,255,0.15)",
-            cursor: "move"
+            cursor: "ns-resize"
           }}
         />
 
@@ -125,7 +127,7 @@ export default function EditorLayer({
           data-testid="editor-grid-resize-handle"
           onMouseDown={(e) => {
             e.stopPropagation();
-            startGridResize(e);
+            startGridResize(e, "corner");
           }}
           onClick={(e) => e.stopPropagation()}
           style={{

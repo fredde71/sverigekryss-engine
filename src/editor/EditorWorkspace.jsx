@@ -54,13 +54,12 @@ export default function EditorWorkspace({
       activeTool={activeTool}
       setCellTypes={setCellTypes}
     >
-      {({ startGridMove, startGridResize, handleGridClick }) => (
+      {({ startGridResize, handleGridClick }) => (
         <>
           <EditorLayer
             rows={rows}
             cols={cols}
             cellTypes={cellTypes}
-            startGridMove={startGridMove}
             startGridResize={startGridResize}
             handleGridClick={handleGridClick}
             isPublicRuntime={isPublicRuntime}

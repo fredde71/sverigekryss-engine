@@ -20,23 +20,13 @@ export default function EditorViewport({
   const documentWidth = safeDocumentSize.width;
   const documentHeight = safeDocumentSize.height;
 
-  const startGridMove = (e) => {
-    gridDragMovedRef.current = false;
-
-    setGridDrag({
-      mode: "move",
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      startGridArea: gridArea
-    });
-  };
-
-  const startGridResize = (e) => {
+  const startGridResize = (e, edge = "corner") => {
     e.stopPropagation();
     gridDragMovedRef.current = false;
 
     setGridDrag({
       mode: "resize",
+      edge,
       startClientX: e.clientX,
       startClientY: e.clientY,
       startGridArea: gridArea
@@ -85,21 +75,6 @@ export default function EditorViewport({
       const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
       const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
 
-      if (gridDrag?.mode === "move") {
-        const dx = e.clientX - gridDrag.startClientX;
-        const dy = e.clientY - gridDrag.startClientY;
-
-        if (dx !== 0 || dy !== 0) {
-          gridDragMovedRef.current = true;
-        }
-
-        setGridArea({
-          ...gridDrag.startGridArea,
-          top: gridDrag.startGridArea.top + dy,
-          left: gridDrag.startGridArea.left + dx
-        });
-      }
-
       if (gridDrag?.mode === "resize") {
         const dx = e.clientX - gridDrag.startClientX;
         const dy = e.clientY - gridDrag.startClientY;
@@ -108,11 +83,12 @@ export default function EditorViewport({
           gridDragMovedRef.current = true;
         }
 
-        setGridArea({
-          ...gridDrag.startGridArea,
-          width: Math.max(100, gridDrag.startGridArea.width + dx),
-          height: Math.max(100, gridDrag.startGridArea.height + dy)
-        });
+        setGridArea(resizeGridArea(
+          gridDrag.startGridArea,
+          gridDrag.edge,
+          dx,
+          dy
+        ));
       }
 
       if (cropMode === "move") {
@@ -213,7 +189,6 @@ export default function EditorViewport({
       }}
     >
       {typeof children === "function" ? children({
-        startGridMove,
         startGridResize,
         setCropMode,
         handleGridClick
@@ -235,6 +210,27 @@ function resizeCropArea(cropArea, movementX, movementY, documentSize) {
     ...cropArea,
     width: clamp(cropArea.width + movementX, 100, documentSize.width - cropArea.left),
     height: clamp(cropArea.height + movementY, 100, documentSize.height - cropArea.top)
+  };
+}
+
+function resizeGridArea(gridArea, edge, dx, dy) {
+  const minSize = 100;
+
+  if (edge === "top") {
+    const bottom = gridArea.top + gridArea.height;
+    const top = Math.min(gridArea.top + dy, bottom - minSize);
+
+    return {
+      ...gridArea,
+      top,
+      height: bottom - top
+    };
+  }
+
+  return {
+    ...gridArea,
+    width: Math.max(minSize, gridArea.width + dx),
+    height: Math.max(minSize, gridArea.height + dy)
   };
 }
 
