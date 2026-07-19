@@ -5,7 +5,7 @@ import EditorWorkspace from "./editor/EditorWorkspace";
 import EditorScrollWorkspace from "./editor/EditorScrollWorkspace";
 import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
-import RuntimeLayer from "./runtime/RuntimeLayer";
+import PlaySurface from "./play/PlaySurface";
 import TemplateCanvas from "./template/TemplateCanvas";
 import { exportTemplateFile } from "./template/templateExport";
 import { importTemplateFile } from "./template/templateImport";
@@ -399,8 +399,7 @@ const handleTemplateImport = async (e) => {
           </TemplateCanvas>
         </EditorScrollWorkspace>
       ) : (
-        <TemplateCanvas
-          cropped
+        <PlaySurface
           template={{
             crosswordId,
             rows,
@@ -411,17 +410,8 @@ const handleTemplateImport = async (e) => {
             gridArea,
             cropArea
           }}
-        >
-          <RuntimeLayer
-            data={{
-              cellTypes,
-              rows,
-              cols,
-              gridArea,
-              imageSrc
-            }}
-          />
-        </TemplateCanvas>
+          onSubmitAnswers={() => {}}
+        />
       )}
 
     </div>

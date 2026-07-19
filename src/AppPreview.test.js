@@ -13,16 +13,15 @@ test("editor preview TemplateCanvas remains uncropped", () => {
   expect(editModeCanvas).not.toContain("cropped");
 });
 
-test("local Play preview TemplateCanvas is cropped without responsive mode", () => {
-  const localPlayCanvas = getSourceBetween(
+test("local Play preview uses PlaySurface without responsive mode", () => {
+  const localPlaySurface = getSourceBetween(
     appSource,
     ") : (",
-    "<RuntimeLayer"
+    "</PlaySurface>"
   );
 
-  expect(localPlayCanvas).toContain("<TemplateCanvas");
-  expect(localPlayCanvas).toContain("cropped");
-  expect(localPlayCanvas).not.toContain("responsive");
+  expect(localPlaySurface).toContain("<PlaySurface");
+  expect(localPlaySurface).not.toContain("responsive");
 });
 
 function getSourceBetween(source, start, end) {

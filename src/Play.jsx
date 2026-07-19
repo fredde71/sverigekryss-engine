@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import RuntimeLayer from "./runtime/RuntimeLayer";
-import TemplateCanvas from "./template/TemplateCanvas";
+import PlaySurface from "./play/PlaySurface";
 import { loadBackendTemplate } from "./template/templateApi";
 
 function Play() {
@@ -37,11 +36,7 @@ function Play() {
     return <div>Template not found.</div>;
   }
 
-  return (
-    <TemplateCanvas template={data} responsive>
-      <RuntimeLayer data={data} />
-    </TemplateCanvas>
-  );
+  return <PlaySurface template={data} responsive onSubmitAnswers={() => {}} />;
 }
 
 export default Play;

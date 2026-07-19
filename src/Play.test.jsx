@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import Play from "./Play";
-import TemplateCanvas from "./template/TemplateCanvas";
+import PlaySurface from "./play/PlaySurface";
 import { loadBackendTemplate } from "./template/templateApi";
 
 jest.mock("react-router-dom", () => ({
@@ -13,32 +13,23 @@ jest.mock("./template/templateApi", () => ({
   loadBackendTemplate: jest.fn()
 }));
 
-jest.mock("./template/TemplateCanvas", () => {
+jest.mock("./play/PlaySurface", () => {
   const React = require("react");
 
   return jest.fn(({
+    template,
     responsive = false,
-    cropped = responsive,
-    children
+    onSubmitAnswers
   }) => React.createElement(
-    "div",
+    "button",
     {
-      "data-testid": "public-template-canvas",
+      type: "button",
+      "data-testid": "play-surface",
       "data-responsive": responsive ? "true" : "false",
-      "data-cropped": cropped ? "true" : "false"
+      onClick: onSubmitAnswers
     },
-    children
+    template.crosswordId
   ));
-});
-
-jest.mock("./runtime/RuntimeLayer", () => {
-  const React = require("react");
-
-  return function MockRuntimeLayer() {
-    return React.createElement("div", {
-      "data-testid": "runtime-layer"
-    });
-  };
 });
 
 afterEach(() => {
@@ -87,10 +78,10 @@ test("Public Play remains cropped and responsive", async () => {
   render(<Play />);
 
   await waitFor(() => {
-    expect(TemplateCanvas).toHaveBeenCalled();
+    expect(PlaySurface).toHaveBeenCalled();
   });
 
-  expect(TemplateCanvas).toHaveBeenCalledWith(
+  expect(PlaySurface).toHaveBeenCalledWith(
     expect.objectContaining({
       responsive: true,
       template: expect.objectContaining({
