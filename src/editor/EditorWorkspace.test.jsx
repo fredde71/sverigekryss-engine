@@ -129,6 +129,19 @@ test("shows competition menu for an existing writable cell", async () => {
   expect(await screen.findByTestId("competition-cell-menu")).toBeInTheDocument();
 });
 
+test("opens competition menu when the writable cell click lands on the top-edge handle", async () => {
+  render(
+    <EditorWorkspaceHarness
+      initialCellTypes={["write", "empty", "empty", "empty"]}
+    />
+  );
+
+  await selectCompetitionTool();
+  clickTopEdgeCell(0);
+
+  expect(await screen.findByTestId("competition-cell-menu")).toBeInTheDocument();
+});
+
 test("removes competition metadata when a marked cell becomes non-writable", async () => {
   render(<EditorWorkspaceHarness />);
 
@@ -213,6 +226,27 @@ function clickGridCell(index) {
   ];
 
   fireEvent.click(gridFrame, coordinatesByIndex[index]);
+}
+
+function clickTopEdgeCell(index) {
+  const gridFrame = screen.getByTestId("editor-grid-frame");
+  const topEdge = screen.getByTestId("editor-grid-move-affordance");
+
+  gridFrame.getBoundingClientRect = () => ({
+    top: 0,
+    left: 0,
+    width: 400,
+    height: 400
+  });
+
+  const coordinatesByIndex = [
+    { clientX: 50, clientY: 10 },
+    { clientX: 250, clientY: 10 }
+  ];
+
+  fireEvent.mouseDown(topEdge, coordinatesByIndex[index]);
+  fireEvent.mouseUp(window);
+  fireEvent.click(topEdge, coordinatesByIndex[index]);
 }
 
 function readCompetitionState() {

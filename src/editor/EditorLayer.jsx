@@ -110,7 +110,6 @@ export default function EditorLayer({
             e.stopPropagation();
             startGridResize(e, "top");
           }}
-          onClick={(e) => e.stopPropagation()}
           style={{
             pointerEvents: "auto",
             position: "absolute",
