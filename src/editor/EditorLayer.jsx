@@ -6,6 +6,7 @@ export default function EditorLayer({
   rows,
   cols,
   cellTypes,
+  competitionCells,
   startGridResize,
   handleGridClick,
   isPublicRuntime,
@@ -149,6 +150,7 @@ export default function EditorLayer({
           rows={rows}
           cols={cols}
           cellTypes={cellTypes}
+          competitionCells={competitionCells}
         />
       </div>
     </div>
