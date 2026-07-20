@@ -244,7 +244,8 @@ test("publishBackendTemplate throws backend error for non-OK publish response", 
 
 test("submitCompetitionEntry posts submission payload and returns parsed backend JSON", async () => {
   const payload = {
-    templateId: "TT-2026-0002",
+    publicationId: "pub-20260720102030-abc123",
+    crosswordId: "TT-2026-0002",
     name: "Fredrik",
     email: "fredrik@example.com",
     phone: "0701234567",

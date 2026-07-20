@@ -7,6 +7,7 @@ import { submitCompetitionEntry } from "../template/templateApi";
 
 export default function PlaySurface({
   template,
+  publicationId = "",
   responsive = false,
   onSubmitAnswers
 }) {
@@ -44,7 +45,8 @@ export default function PlaySurface({
 
     try {
       await submitCompetitionEntry({
-        templateId: template.crosswordId,
+        ...(publicationId ? { publicationId } : { templateId: template.crosswordId }),
+        crosswordId: template.crosswordId,
         ...submission
       });
 

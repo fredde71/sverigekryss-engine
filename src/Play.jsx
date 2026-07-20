@@ -8,15 +8,18 @@ function Play() {
   const { id } = useParams();
 
   const [data, setData] = useState(null);
+  const [publicationId, setPublicationId] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     setError("");
     setData(null);
+    setPublicationId("");
 
     loadPlayableTemplate(id)
-      .then(template => {
-        setData(template);
+      .then(result => {
+        setData(result.template);
+        setPublicationId(result.publicationId || "");
       })
       .catch(err => {
         setError(err.message || "Failed to load template.");
@@ -37,17 +40,31 @@ function Play() {
     return <div>Template not found.</div>;
   }
 
-  return <PlaySurface template={data} responsive onSubmitAnswers={() => {}} />;
+  return (
+    <PlaySurface
+      template={data}
+      publicationId={publicationId}
+      responsive
+      onSubmitAnswers={() => {}}
+    />
+  );
 }
 
 async function loadPlayableTemplate(id) {
   try {
     const publication = await loadBackendPublication(id);
+    const template = await loadBackendTemplate(publication.crosswordId);
 
-    return loadBackendTemplate(publication.crosswordId);
+    return {
+      template,
+      publicationId: publication.publicationId
+    };
   } catch (err) {
     if (err.status === 404) {
-      return loadBackendTemplate(id);
+      return {
+        template: await loadBackendTemplate(id),
+        publicationId: ""
+      };
     }
 
     throw err;

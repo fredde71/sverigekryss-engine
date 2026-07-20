@@ -23,6 +23,7 @@ jest.mock("./play/PlaySurface", () => {
 
   return jest.fn(({
     template,
+    publicationId = "",
     responsive = false,
     onSubmitAnswers
   }) => React.createElement(
@@ -30,6 +31,7 @@ jest.mock("./play/PlaySurface", () => {
     {
       type: "button",
       "data-testid": "play-surface",
+      "data-publication-id": publicationId,
       "data-responsive": responsive ? "true" : "false",
       onClick: onSubmitAnswers
     },
@@ -96,6 +98,12 @@ test("Public Play loads template through Publication crosswordId first", async (
 
   expect(loadBackendPublication).toHaveBeenCalledWith("missing-template");
   expect(loadBackendTemplate).toHaveBeenCalledWith("TT-2026-0001");
+  expect(PlaySurface).toHaveBeenCalledWith(
+    expect.objectContaining({
+      publicationId: "pub-20260720102030-abc123"
+    }),
+    undefined
+  );
 });
 
 test("Public Play falls back to legacy crosswordId when Publication is missing", async () => {
@@ -135,6 +143,12 @@ test("Public Play falls back to legacy crosswordId when Publication is missing",
 
   expect(loadBackendPublication).toHaveBeenCalledWith("missing-template");
   expect(loadBackendTemplate).toHaveBeenCalledWith("missing-template");
+  expect(PlaySurface).toHaveBeenCalledWith(
+    expect.objectContaining({
+      publicationId: ""
+    }),
+    undefined
+  );
 });
 
 test("Public Play remains cropped and responsive", async () => {

@@ -10,6 +10,38 @@ const validSubmission = {
   solution: "ABCDEF"
 };
 
+const validPublicationSubmission = {
+  publicationId: "pub-20260720102030-abc123",
+  crosswordId: "TT-2026-0001",
+  name: "Anna Andersson",
+  email: "anna@example.com",
+  phone: "0701234567",
+  solution: "ABCDEF"
+};
+
+test("submission endpoint saves submissions per publicationId", () => {
+  const { writes, res } = submit(validPublicationSubmission);
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, {
+    success: true
+  });
+  assert.equal(writes.length, 1);
+  assert.equal(
+    writes[0][0],
+    "/submissions/pub-20260720102030-abc123.json"
+  );
+
+  const savedSubmissions = JSON.parse(writes[0][1]);
+
+  assert.deepEqual(savedSubmissions, [
+    {
+      ...validPublicationSubmission,
+      submittedAt: "2026-07-19T10:20:30.000Z"
+    }
+  ]);
+});
+
 test("submission endpoint saves required fields with submittedAt", () => {
   const { writes, res } = submit(validSubmission);
 
@@ -60,7 +92,8 @@ test("submission endpoint appends to existing submissions", () => {
 
 test("submission endpoint trims string fields before saving", () => {
   const { writes } = submit({
-    templateId: " TT-2026-0001 ",
+    publicationId: " pub-20260720102030-abc123 ",
+    crosswordId: " TT-2026-0001 ",
     name: " Anna Andersson ",
     email: " anna@example.com ",
     phone: " 0701234567 ",
@@ -69,9 +102,21 @@ test("submission endpoint trims string fields before saving", () => {
   const savedSubmission = JSON.parse(writes[0][1])[0];
 
   assert.deepEqual(savedSubmission, {
-    ...validSubmission,
+    ...validPublicationSubmission,
     submittedAt: "2026-07-19T10:20:30.000Z"
   });
+});
+
+test("submission endpoint keeps legacy templateId fallback working", () => {
+  const { writes, res } = submit(validSubmission);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(writes[0][0], "/submissions/TT-2026-0001.json");
+
+  const savedSubmission = JSON.parse(writes[0][1])[0];
+
+  assert.equal(savedSubmission.templateId, "TT-2026-0001");
+  assert.equal(savedSubmission.publicationId, undefined);
 });
 
 test("submission endpoint requires templateId", () => {
@@ -86,6 +131,20 @@ test("submission endpoint rejects unsafe templateId", () => {
     ...validSubmission,
     templateId: "../TT-2026-0001"
   }, "Invalid templateId");
+});
+
+test("submission endpoint rejects unsafe publicationId", () => {
+  assertInvalidSubmission({
+    ...validPublicationSubmission,
+    publicationId: "../pub-20260720102030-abc123"
+  }, "Invalid publicationId");
+});
+
+test("submission endpoint rejects invalid crosswordId metadata", () => {
+  assertInvalidSubmission({
+    ...validPublicationSubmission,
+    crosswordId: "../TT-2026-0001"
+  }, "Invalid crosswordId");
 });
 
 test("submission endpoint requires name", () => {

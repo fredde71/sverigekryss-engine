@@ -9,7 +9,10 @@ const {
 } = require("./crosswordIdValidation");
 const { parseImageDataUrl } = require("./imageDataUrl");
 const { getPublicationValidationErrors } = require("./publicationModel");
-const { getPublicationIdValidationError } = require("./publicationIdValidation");
+const {
+  getPublicationIdValidationError,
+  normalizePublicationId
+} = require("./publicationIdValidation");
 const {
   readPublication,
   listPublicationsByCrosswordId,
@@ -203,12 +206,12 @@ function createSubmissionHandler({
       };
       const filePath = pathModule.join(
         submissionStorageDir,
-        `${submission.templateId}.json`
+        `${submission.submissionGroupId}.json`
       );
       const existingSubmissions = readSubmissions(fsModule, filePath);
       const submissions = [
         ...existingSubmissions,
-        submission
+        omitSubmissionGroupId(submission)
       ];
 
       fsModule.writeFileSync(
@@ -349,7 +352,26 @@ function createCrosswordPublicationsListHandler({
 }
 
 function validateSubmission(input = {}) {
-  const templateIdError = getCrosswordIdValidationError(input.templateId);
+  const publicationIdError = input.publicationId === undefined
+    ? null
+    : getPublicationIdValidationError(input.publicationId);
+
+  if (publicationIdError) {
+    return {
+      error: publicationIdError === "Missing publicationId"
+        ? "Missing publicationId"
+        : "Invalid publicationId"
+    };
+  }
+
+  const hasPublicationId = typeof input.publicationId === "string"
+    && input.publicationId.trim();
+  const publicationId = hasPublicationId
+    ? normalizePublicationId(input.publicationId)
+    : "";
+  const templateIdError = hasPublicationId
+    ? null
+    : getCrosswordIdValidationError(input.templateId);
 
   if (templateIdError) {
     return {
@@ -359,7 +381,13 @@ function validateSubmission(input = {}) {
     };
   }
 
-  const templateId = normalizeCrosswordId(input.templateId);
+  const templateId = hasPublicationId ? "" : normalizeCrosswordId(input.templateId);
+  const crosswordId = normalizeOptionalCrosswordId(input.crosswordId);
+
+  if (crosswordId.error) {
+    return { error: "Invalid crosswordId" };
+  }
+
   const name = normalizeRequiredString(input.name);
   const email = normalizeRequiredString(input.email);
   const phone = normalizeRequiredString(input.phone);
@@ -387,13 +415,35 @@ function validateSubmission(input = {}) {
 
   return {
     submission: {
-      templateId,
+      submissionGroupId: publicationId || templateId,
+      ...(publicationId ? { publicationId } : { templateId }),
+      ...(crosswordId.value ? { crosswordId: crosswordId.value } : {}),
       name,
       email,
       phone,
       solution
     }
   };
+}
+
+function normalizeOptionalCrosswordId(value) {
+  if (value === undefined || value === null || value === "") {
+    return { value: "" };
+  }
+
+  const validationError = getCrosswordIdValidationError(value);
+
+  if (validationError) {
+    return { error: validationError };
+  }
+
+  return { value: normalizeCrosswordId(value) };
+}
+
+function omitSubmissionGroupId(submission) {
+  const { submissionGroupId, ...persistedSubmission } = submission;
+
+  return persistedSubmission;
 }
 
 function normalizeRequiredString(value) {

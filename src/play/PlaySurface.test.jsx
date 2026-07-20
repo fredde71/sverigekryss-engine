@@ -102,7 +102,7 @@ test("button opens submission dialog", () => {
   expect(onSubmitAnswers).not.toHaveBeenCalled();
 });
 
-test("submission dialog posts valid payload with templateId", async () => {
+test("submission dialog posts legacy templateId payload without publicationId", async () => {
   const onSubmitAnswers = jest.fn();
   submitCompetitionEntry.mockResolvedValue({
     success: true
@@ -127,6 +127,7 @@ test("submission dialog posts valid payload with templateId", async () => {
   await waitFor(() => {
     expect(submitCompetitionEntry).toHaveBeenCalledWith({
       templateId: "TT-2026-0001",
+      crosswordId: "TT-2026-0001",
       solution: "      ",
       name: "Fredrik",
       email: "fredrik@example.com",
@@ -141,6 +142,43 @@ test("submission dialog posts valid payload with templateId", async () => {
     name: "Fredrik",
     email: "fredrik@example.com",
     phone: "0701234567"
+  });
+});
+
+test("submission dialog posts publicationId as primary identity when provided", async () => {
+  submitCompetitionEntry.mockResolvedValue({
+    success: true
+  });
+
+  render(
+    <PlaySurface
+      template={template}
+      publicationId="pub-20260720102030-abc123"
+      onSubmitAnswers={() => {}}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Skicka in svar" }));
+  fireEvent.change(screen.getByLabelText("Namn *"), {
+    target: { value: "Fredrik" }
+  });
+  fireEvent.change(screen.getByLabelText("E-post *"), {
+    target: { value: "fredrik@example.com" }
+  });
+  fireEvent.change(screen.getByLabelText("Telefonnummer *"), {
+    target: { value: "0701234567" }
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Skicka" }));
+
+  await waitFor(() => {
+    expect(submitCompetitionEntry).toHaveBeenCalledWith({
+      publicationId: "pub-20260720102030-abc123",
+      crosswordId: "TT-2026-0001",
+      solution: "      ",
+      name: "Fredrik",
+      email: "fredrik@example.com",
+      phone: "0701234567"
+    });
   });
 });
 
