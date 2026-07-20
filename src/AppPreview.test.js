@@ -34,7 +34,8 @@ test("publish flow creates Publication after existing template publish succeeds"
   expect(publishSection).toContain("const data = await publishBackendTemplate(template);");
   expect(publishSection).toContain("if (data.success)");
   expect(publishSection).toContain("createPublicationFromTemplate");
-  expect(publishSection).toContain("await createBackendPublication(publication);");
+  expect(publishSection).toContain("const createdPublication = await createBackendPublication(publication);");
+  expect(publishSection).toContain("createdPublication.publicationId || crosswordId");
   expect(publishSection).toContain("await refreshPublications(crosswordId);");
 });
 

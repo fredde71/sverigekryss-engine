@@ -57,6 +57,42 @@ test("POST /api/publications saves and returns normalized Publication", () => {
   assert.deepEqual(JSON.parse(writes[0][1]), res.body);
 });
 
+test("POST /api/publications generates publicationId when missing", () => {
+  const writes = [];
+  const handler = createPublicationSaveHandler({
+    fsModule: {
+      mkdirSync() {},
+      writeFileSync(...args) {
+        writes.push(args);
+      }
+    },
+    pathModule: createPathModule(),
+    publicationStorageDir: "/publications",
+    generatePublicationId: () => "pub-20260720102030-abc123"
+  });
+  const res = createResponse();
+
+  handler({
+    body: {
+      ...validPublication,
+      publicationId: ""
+    }
+  }, res);
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(res.body.publicationId, "pub-20260720102030-abc123");
+  assert.equal(res.body.crosswordId, "TT-2026-0001");
+  assert.equal(
+    res.body.url,
+    "https://example.com/play/pub-20260720102030-abc123"
+  );
+  assert.equal(writes[0][0], "/publications/pub-20260720102030-abc123.json");
+  assert.equal(
+    JSON.parse(writes[0][1]).url,
+    "https://example.com/play/pub-20260720102030-abc123"
+  );
+});
+
 test("POST /api/publications rejects invalid Publication before writing", () => {
   const writes = [];
   let joins = 0;

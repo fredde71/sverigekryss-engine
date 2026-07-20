@@ -74,6 +74,25 @@ test("getPublicationValidationErrors reports missing identifiers", () => {
   ]);
 });
 
+test("getPublicationValidationErrors allows missing publicationId when generation is expected", () => {
+  assert.deepEqual(getPublicationValidationErrors({
+    crosswordId: "TT-2026-0001"
+  }, {
+    requirePublicationId: false
+  }), []);
+});
+
+test("getPublicationValidationErrors rejects provided invalid publicationId", () => {
+  assert.deepEqual(getPublicationValidationErrors({
+    publicationId: 123,
+    crosswordId: "TT-2026-0001"
+  }, {
+    requirePublicationId: false
+  }), [
+    "Invalid publicationId"
+  ]);
+});
+
 test("createPublication preserves normalized statistics without sharing the object", () => {
   const statistics = {
     views: 4

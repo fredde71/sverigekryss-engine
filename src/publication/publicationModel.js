@@ -18,7 +18,6 @@ export function createPublicationFromTemplate({
   status = "published"
 }) {
   return createPublication({
-    publicationId: template.crosswordId,
     crosswordId: template.crosswordId,
     newspaper: "",
     group: "",

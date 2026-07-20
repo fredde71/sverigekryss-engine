@@ -553,13 +553,16 @@ const handleTemplateImport = async (e) => {
                 console.log(data);
 
                 if (data.success) {
-                  const publicUrl = `${window.location.origin}/play/${crosswordId}`;
+                  const fallbackPublicUrl = `${window.location.origin}/play/${crosswordId}`;
                   const publication = createPublicationFromTemplate({
                     template,
-                    publicUrl
+                    publicUrl: fallbackPublicUrl
                   });
+                  const createdPublication = await createBackendPublication(publication);
+                  const publicUrl = `${window.location.origin}/play/${
+                    createdPublication.publicationId || crosswordId
+                  }`;
 
-                  await createBackendPublication(publication);
                   await refreshPublications(crosswordId);
 
                   alert(getPublishSuccessMessage(publicUrl));

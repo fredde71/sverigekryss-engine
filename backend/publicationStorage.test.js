@@ -59,6 +59,60 @@ test("writePublication writes normalized Publication JSON", () => {
   assert.equal(publication.publicationId, "PUB-2026-0001");
 });
 
+test("writePublication generates publicationId when missing", () => {
+  const writes = [];
+  const publication = writePublication({
+    ...validPublication,
+    publicationId: ""
+  }, {
+    fsModule: {
+      mkdirSync() {},
+      writeFileSync(...args) {
+        writes.push(args);
+      }
+    },
+    pathModule: createPathModule(),
+    publicationStorageDir: "/publications",
+    generatePublicationId: () => "pub-20260720102030-abc123"
+  });
+
+  assert.equal(publication.publicationId, "pub-20260720102030-abc123");
+  assert.equal(
+    publication.url,
+    "https://example.com/play/pub-20260720102030-abc123"
+  );
+  assert.equal(writes[0][0], "/publications/pub-20260720102030-abc123.json");
+
+  const savedPublication = JSON.parse(writes[0][1]);
+
+  assert.equal(savedPublication.crosswordId, "TT-2026-0001");
+  assert.equal(
+    savedPublication.url,
+    "https://example.com/play/pub-20260720102030-abc123"
+  );
+});
+
+test("writePublication preserves explicit publicationId URL", () => {
+  const writes = [];
+  const publication = writePublication(validPublication, {
+    fsModule: {
+      mkdirSync() {},
+      writeFileSync(...args) {
+        writes.push(args);
+      }
+    },
+    pathModule: createPathModule(),
+    publicationStorageDir: "/publications"
+  });
+
+  assert.equal(publication.publicationId, "PUB-2026-0001");
+  assert.equal(publication.url, "https://example.com/play/PUB-2026-0001");
+  assert.equal(
+    JSON.parse(writes[0][1]).url,
+    "https://example.com/play/PUB-2026-0001"
+  );
+});
+
 test("readPublication returns normalized Publication data", () => {
   const publication = readPublication("PUB-2026-0001", {
     fsModule: {

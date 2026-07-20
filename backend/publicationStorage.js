@@ -5,6 +5,7 @@ const {
   normalizePublicationId,
   getPublicationIdValidationError
 } = require("./publicationIdValidation");
+const { createPublicationId } = require("./publicationIdGenerator");
 
 const DEFAULT_PUBLICATION_STORAGE_DIR =
   process.env.PUBLICATION_STORAGE_DIR || path.join(__dirname, "publications");
@@ -69,9 +70,14 @@ function listPublicationsByCrosswordId(crosswordId, {
 function writePublication(publication, {
   fsModule = fs,
   pathModule = path,
-  publicationStorageDir = DEFAULT_PUBLICATION_STORAGE_DIR
+  publicationStorageDir = DEFAULT_PUBLICATION_STORAGE_DIR,
+  generatePublicationId = createPublicationId
 } = {}) {
-  const normalizedPublication = createPublication(publication);
+  const ensuredPublication = ensurePublicationId(
+    publication,
+    generatePublicationId
+  );
+  const normalizedPublication = createPublication(ensuredPublication);
   const filePath = getPublicationFilePath(normalizedPublication.publicationId, {
     pathModule,
     publicationStorageDir
@@ -84,6 +90,32 @@ function writePublication(publication, {
   );
 
   return normalizedPublication;
+}
+
+function ensurePublicationId(publication, generatePublicationId) {
+  if (typeof publication.publicationId === "string"
+    && publication.publicationId.trim()) {
+    return publication;
+  }
+
+  const publicationId = generatePublicationId();
+
+  return {
+    ...publication,
+    publicationId,
+    url: getPublicationUrlWithPublicationId(publication.url, publicationId)
+  };
+}
+
+function getPublicationUrlWithPublicationId(url, publicationId) {
+  if (typeof url !== "string" || !url.trim()) {
+    return url;
+  }
+
+  return url.replace(
+    /\/play\/[^/?#]+(?=([?#]|$))/,
+    `/play/${publicationId}`
+  );
 }
 
 function readPublicationFile(fileName, {

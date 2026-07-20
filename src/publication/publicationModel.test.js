@@ -57,7 +57,7 @@ test("createPublicationFromTemplate builds the first editor Publication", () => 
   });
 
   expect(publication).toEqual({
-    publicationId: "TT-2026-0001",
+    publicationId: "",
     crosswordId: "TT-2026-0001",
     newspaper: "",
     group: "",

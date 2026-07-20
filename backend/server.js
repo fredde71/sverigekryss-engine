@@ -233,11 +233,14 @@ function createSubmissionHandler({
 function createPublicationSaveHandler({
   fsModule = fs,
   pathModule = path,
-  publicationStorageDir = PUBLICATION_STORAGE_DIR
+  publicationStorageDir = PUBLICATION_STORAGE_DIR,
+  generatePublicationId
 } = {}) {
   return (req, res) => {
     try {
-      const validationErrors = getPublicationValidationErrors(req.body);
+      const validationErrors = getPublicationValidationErrors(req.body, {
+        requirePublicationId: false
+      });
 
       if (validationErrors.length > 0) {
         return res.status(400).json({
@@ -249,7 +252,8 @@ function createPublicationSaveHandler({
       const publication = writePublication(req.body, {
         fsModule,
         pathModule,
-        publicationStorageDir
+        publicationStorageDir,
+        generatePublicationId
       });
 
       res.status(201).json(publication);

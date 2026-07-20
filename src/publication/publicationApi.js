@@ -17,6 +17,22 @@ export async function createBackendPublication(publication) {
   return data;
 }
 
+export async function loadBackendPublication(publicationId) {
+  const response = await fetch(
+    `${BACKEND_BASE_URL}/api/publications/${publicationId}`
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data?.error || "Failed to load publication");
+
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+}
+
 export async function loadBackendPublicationsForCrossword(crosswordId) {
   const response = await fetch(
     `${BACKEND_BASE_URL}/api/crosswords/${crosswordId}/publications`

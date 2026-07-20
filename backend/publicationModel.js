@@ -32,13 +32,18 @@ function createPublication(input = {}) {
   return publication;
 }
 
-function getPublicationValidationErrors(input = {}) {
-  const publicationIdError = getPublicationIdValidationError(input.publicationId);
+function getPublicationValidationErrors(input = {}, {
+  requirePublicationId = true
+} = {}) {
   const crosswordIdError = getCrosswordIdValidationError(input.crosswordId);
   const errors = [];
 
-  if (publicationIdError) {
+  if (requirePublicationId || hasPublicationId(input.publicationId)) {
+    const publicationIdError = getPublicationIdValidationError(input.publicationId);
+
+    if (publicationIdError) {
     errors.push(publicationIdError);
+    }
   }
 
   if (crosswordIdError) {
@@ -46,6 +51,14 @@ function getPublicationValidationErrors(input = {}) {
   }
 
   return errors;
+}
+
+function hasPublicationId(value) {
+  if (value == null) return false;
+
+  if (typeof value !== "string") return true;
+
+  return value.trim().length > 0;
 }
 
 function normalizeOptionalString(value) {
