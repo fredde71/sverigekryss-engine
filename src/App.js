@@ -23,6 +23,8 @@ import {
   getPublishFailureMessage,
   getPublishSuccessMessage
 } from "./template/publishMessages";
+import { createBackendPublication } from "./publication/publicationApi";
+import { createPublicationFromTemplate } from "./publication/publicationModel";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -493,6 +495,13 @@ const handleTemplateImport = async (e) => {
 
                 if (data.success) {
                   const publicUrl = `${window.location.origin}/play/${crosswordId}`;
+                  const publication = createPublicationFromTemplate({
+                    template,
+                    publicUrl
+                  });
+
+                  await createBackendPublication(publication);
+
                   alert(getPublishSuccessMessage(publicUrl));
                   return;
                 }

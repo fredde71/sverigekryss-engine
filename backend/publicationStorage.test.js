@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
   getPublicationFilePath,
+  listPublicationsByCrosswordId,
   readPublication,
   writePublication
 } = require("./publicationStorage");
@@ -148,10 +149,85 @@ test("invalid publication does not create directories or write files", () => {
   assert.equal(writes, 0);
 });
 
+test("listPublicationsByCrosswordId returns matching Publications sorted by date then id", () => {
+  const publications = listPublicationsByCrosswordId("TT-2026-0001", {
+    fsModule: createPublicationFs({
+      "beta.json": {
+        ...validPublication,
+        publicationId: "PUB-B",
+        publishDate: "2026-07-22"
+      },
+      "alpha.json": {
+        ...validPublication,
+        publicationId: "PUB-A",
+        publishDate: "2026-07-20"
+      },
+      "no-date-b.json": {
+        ...validPublication,
+        publicationId: "PUB-NO-DATE-B",
+        publishDate: ""
+      },
+      "no-date-a.json": {
+        ...validPublication,
+        publicationId: "PUB-NO-DATE-A",
+        publishDate: ""
+      },
+      "other-crossword.json": {
+        ...validPublication,
+        publicationId: "PUB-OTHER",
+        crosswordId: "TT-2026-OTHER",
+        publishDate: "2026-07-19"
+      },
+      "notes.txt": {
+        ignored: true
+      }
+    }),
+    pathModule: createPathModule(),
+    publicationStorageDir: "/publications"
+  });
+
+  assert.deepEqual(publications.map(publication => publication.publicationId), [
+    "PUB-A",
+    "PUB-B",
+    "PUB-NO-DATE-A",
+    "PUB-NO-DATE-B"
+  ]);
+});
+
+test("listPublicationsByCrosswordId returns empty list when directory is missing", () => {
+  const publications = listPublicationsByCrosswordId("TT-2026-0001", {
+    fsModule: {
+      existsSync() {
+        return false;
+      }
+    },
+    pathModule: createPathModule(),
+    publicationStorageDir: "/publications"
+  });
+
+  assert.deepEqual(publications, []);
+});
+
 function createPathModule() {
   return {
     join(...parts) {
       return parts.join("/");
+    }
+  };
+}
+
+function createPublicationFs(files) {
+  return {
+    existsSync(filePath) {
+      return filePath === "/publications"
+        || Object.prototype.hasOwnProperty.call(files, filePath);
+    },
+    readdirSync() {
+      return Object.keys(files);
+    },
+    readFileSync(filePath) {
+      const fileName = filePath.replace("/publications/", "");
+      return JSON.stringify(files[fileName]);
     }
   };
 }

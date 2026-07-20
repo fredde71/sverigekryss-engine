@@ -8,6 +8,13 @@ const {
   normalizeCrosswordId
 } = require("./crosswordIdValidation");
 const { parseImageDataUrl } = require("./imageDataUrl");
+const { getPublicationValidationErrors } = require("./publicationModel");
+const { getPublicationIdValidationError } = require("./publicationIdValidation");
+const {
+  readPublication,
+  listPublicationsByCrosswordId,
+  writePublication
+} = require("./publicationStorage");
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -19,10 +26,13 @@ const UPLOAD_STORAGE_DIR =
   process.env.UPLOAD_STORAGE_DIR || path.join(__dirname, "uploads");
 const SUBMISSION_STORAGE_DIR =
   process.env.SUBMISSION_STORAGE_DIR || path.join(__dirname, "submissions");
+const PUBLICATION_STORAGE_DIR =
+  process.env.PUBLICATION_STORAGE_DIR || path.join(__dirname, "publications");
 
 fs.mkdirSync(TEMPLATE_STORAGE_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_STORAGE_DIR, { recursive: true });
 fs.mkdirSync(SUBMISSION_STORAGE_DIR, { recursive: true });
+fs.mkdirSync(PUBLICATION_STORAGE_DIR, { recursive: true });
 
 app.use(createCorsMiddleware());
 app.use(express.json({ limit: "50mb" }));
@@ -36,6 +46,15 @@ app.get("/", (req, res) => {
 app.post("/api/publish", createPublishHandler());
 
 app.post("/api/submissions", createSubmissionHandler());
+
+app.post("/api/publications", createPublicationSaveHandler());
+
+app.get("/api/publications/:publicationId", createPublicationLoadHandler());
+
+app.get(
+  "/api/crosswords/:crosswordId/publications",
+  createCrosswordPublicationsListHandler()
+);
 
 app.get("/api/crossword/:id", createLoadHandler());
 
@@ -211,6 +230,120 @@ function createSubmissionHandler({
   };
 }
 
+function createPublicationSaveHandler({
+  fsModule = fs,
+  pathModule = path,
+  publicationStorageDir = PUBLICATION_STORAGE_DIR
+} = {}) {
+  return (req, res) => {
+    try {
+      const validationErrors = getPublicationValidationErrors(req.body);
+
+      if (validationErrors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: validationErrors[0]
+        });
+      }
+
+      const publication = writePublication(req.body, {
+        fsModule,
+        pathModule,
+        publicationStorageDir
+      });
+
+      res.status(201).json(publication);
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        success: false,
+        error: "Failed to save publication"
+      });
+    }
+  };
+}
+
+function createPublicationLoadHandler({
+  fsModule = fs,
+  pathModule = path,
+  publicationStorageDir = PUBLICATION_STORAGE_DIR
+} = {}) {
+  return (req, res) => {
+    try {
+      const validationError = getPublicationIdValidationError(
+        req.params.publicationId
+      );
+
+      if (validationError) {
+        return res.status(400).json({
+          success: false,
+          error: validationError
+        });
+      }
+
+      const publication = readPublication(req.params.publicationId, {
+        fsModule,
+        pathModule,
+        publicationStorageDir
+      });
+
+      if (!publication) {
+        return res.status(404).json({
+          success: false,
+          error: "Publication not found"
+        });
+      }
+
+      res.json(publication);
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        success: false,
+        error: "Failed to load publication"
+      });
+    }
+  };
+}
+
+function createCrosswordPublicationsListHandler({
+  fsModule = fs,
+  pathModule = path,
+  publicationStorageDir = PUBLICATION_STORAGE_DIR
+} = {}) {
+  return (req, res) => {
+    try {
+      const validationError = getCrosswordIdValidationError(
+        req.params.crosswordId
+      );
+
+      if (validationError) {
+        return res.status(400).json({
+          success: false,
+          error: validationError
+        });
+      }
+
+      const crosswordId = normalizeCrosswordId(req.params.crosswordId);
+      const publications = listPublicationsByCrosswordId(crosswordId, {
+        fsModule,
+        pathModule,
+        publicationStorageDir
+      });
+
+      res.json(publications);
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        success: false,
+        error: "Failed to list publications"
+      });
+    }
+  };
+}
+
 function validateSubmission(input = {}) {
   const templateIdError = getCrosswordIdValidationError(input.templateId);
 
@@ -286,5 +419,8 @@ module.exports = {
   app,
   createPublishHandler,
   createLoadHandler,
-  createSubmissionHandler
+  createSubmissionHandler,
+  createPublicationSaveHandler,
+  createPublicationLoadHandler,
+  createCrosswordPublicationsListHandler
 };
