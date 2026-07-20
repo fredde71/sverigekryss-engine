@@ -12,7 +12,46 @@ Architecture decisions should always follow this document.
 
 # Core Domain Objects
 
-## 1. Template
+## 1. Crossword
+
+A Crossword represents one finished crossword as a domain object.
+
+The crossword content originates from a completed printed puzzle source.
+
+The platform does not generate Crossword content.
+
+A Crossword can have one or more Publications.
+
+Model:
+
+Crossword
+
+↓
+
+Publication(s)
+
+## 2. Publication
+
+A Publication represents one publishing instance of a Crossword.
+
+One Crossword can be published in several newspapers, groups, weeks or channels.
+
+Each Publication owns publication-specific operational data:
+
+- publicationId
+- tidning
+- grupp
+- publiceringsdatum
+- publiceringsvecka
+- status
+- URL
+- statistik
+
+Statistics are stored per Publication, not per Crossword.
+
+This allows the same Crossword to be reused or distributed in several contexts while preserving separate publication status, public URL and reporting.
+
+## 3. Template
 
 A Template represents a digitized printed puzzle.
 

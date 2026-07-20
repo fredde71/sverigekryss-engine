@@ -12,6 +12,22 @@ Målet är att skapa en webbaserad motor för Sverigekrysset där:
 - Play används för att lösa korsordet
 - Samma template ska kunna återanvändas vecka efter vecka
 
+Plattformens vision:
+
+"Från en PDF till ett färdigpublicerat digitalt korsord med så lite manuellt arbete som möjligt."
+
+Plattformen omfattar digitalisering, AI-stöd, publicering, automatisering och statistik.
+
+Wordex hanterar redan kundportal, kundmappar och distribution.
+
+Sverigekryss Engine fokuserar därför på AI-assisterad produktion och digitalisering:
+
+- import av färdiga PDF:er och bildunderlag
+- redaktörsstyrd markering av korsordets digitala struktur
+- publicerbara digitala templates
+- spelbar Runtime
+- framtida automation kring produktion, publicering och statistik
+
 ---
 
 # Huvudsystem

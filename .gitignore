@@ -21,6 +21,8 @@
 !/backend/uploads/.gitkeep
 /backend/submissions/*
 !/backend/submissions/.gitkeep
+/backend/publications/*
+!/backend/publications/.gitkeep
 .env.local
 .env.development.local
 .env.test.local

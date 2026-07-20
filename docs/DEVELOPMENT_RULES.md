@@ -24,6 +24,30 @@ Reglerna är överordnade enskilda implementationer, optimeringar och buggrättn
 
 # Grundprinciper
 
+## 0. Systemet digitaliserar, det genererar inte korsord
+
+Systemet får aldrig generera korsordsinnehåll.
+
+Alla korsord kommer från färdiga PDF:er eller motsvarande färdiga tryckunderlag.
+
+Systemet digitaliserar endast befintliga korsord genom att redaktören markerar strukturen:
+
+- skrivbara rutor
+- spärrrutor
+- bildytor
+- dubbelcellsledtrådar
+- tävlingsrutor
+- crop och gridplacering
+- övrig metadata som behövs för publicering
+
+AI får endast fungera som assistent för redaktören.
+
+AI-stöd får hjälpa till att tolka, föreslå, kontrollera eller automatisera redaktörens arbete.
+
+AI får inte ersätta den färdiga PDF:en som källa till korsordets innehåll.
+
+---
+
 ## 1. Vi bygger produkt, inte prototyp
 
 Alla förändringar ska göras med långsiktig förvaltning i åtanke.

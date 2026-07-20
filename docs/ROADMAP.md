@@ -10,6 +10,68 @@ Subsystem med högre prioritet ska färdigställas innan nya subsystem introduce
 
 ---
 
+# Produktgenerationer
+
+Roadmapen organiseras i fyra produktgenerationer.
+
+Generationerna beskriver den långsiktiga produktordningen.
+
+De detaljerade faserna längre ned beskriver aktuell implementation och verifierad status.
+
+## Generation 1
+
+Mål:
+
+Stabil Version 1 för digitalisering, publicering och spel.
+
+Omfattar:
+
+- Editor
+- Player
+- Competition
+- Storage
+- Publishing
+
+## Generation 2
+
+Mål:
+
+Minska manuellt redaktörsarbete med AI-stöd och automation.
+
+Omfattar:
+
+- AI-assisted editor
+- Automation
+
+## Generation 3
+
+Mål:
+
+Stöd för ljudbaserade korsordsformat.
+
+Omfattar:
+
+- Music crossword
+- AI text-to-speech
+- Audio playback
+- Listening statistics
+
+## Generation 4
+
+Mål:
+
+Full publiceringsautomation och uppföljning över flera publiceringsytor.
+
+Omfattar:
+
+- Publication automation
+- Publication IDs
+- Metadata
+- Statistics
+- Multi-publication workflow
+
+---
+
 # Fas 1 – Stabilisering
 
 Mål:

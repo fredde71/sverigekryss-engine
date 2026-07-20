@@ -85,6 +85,36 @@ RuntimeLayer äger RuntimeSession-beteende internt.
 
 ---
 
+# Framtida Plattformflöden
+
+Runtime är en del av en större Puzzle Platform.
+
+Framtida AI-, publicerings- och statistikflöden ska kopplas runt Runtime utan att Runtime äger dessa ansvar.
+
+Övergripande riktning:
+
+- AI-assisted editor hjälper redaktören före publicering
+- Publication workflow skapar och hanterar publiceringsinstanser
+- Public Play använder publicerad Template-data för spelupplevelsen
+- Submission och Competition-flöden kan samla in tävlingsbidrag
+- Statistics samlas per Publication
+
+Runtime ska fortsatt fokusera på spelupplevelsen:
+
+- rendera ett publicerat korsord
+- hantera inmatning och navigation
+- exponera spelinteraktion för omgivande play-ytor när det behövs
+
+Runtime ska inte äga:
+
+- AI-tolkning
+- publiceringsmetadata
+- publicationId
+- distributionslogik
+- statistiklagring
+
+---
+
 ## RuntimeGrid
 
 Ansvarar för:

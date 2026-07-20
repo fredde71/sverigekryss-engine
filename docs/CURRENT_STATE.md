@@ -10,6 +10,22 @@ Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanva
 
 ---
 
+# Aktuell produktstatus
+
+Följande är färdigt i aktuell editor/play-produktion:
+
+- svensk vänstermeny
+- grupperad sidebar
+- förbättrade upload-kontroller
+- filstatus under upload-kontroller med panelanpassad typografi
+- zoom-verktygsfält ovanför editorarbetsytan
+- persistent zoom i editor och player
+- typografiförbättringar i vänsterpanel och zoomrad
+- stabil frontend testsvit med cirka 149 tester
+- fungerande production build
+
+---
+
 # Senaste verifierade milstolpe
 
 Epic 1 – Build Runtime är slutförd.
