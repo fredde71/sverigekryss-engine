@@ -35,6 +35,28 @@ test("publish flow creates Publication after existing template publish succeeds"
   expect(publishSection).toContain("if (data.success)");
   expect(publishSection).toContain("createPublicationFromTemplate");
   expect(publishSection).toContain("await createBackendPublication(publication);");
+  expect(publishSection).toContain("await refreshPublications(crosswordId);");
+});
+
+test("editor sidebar contains Publication list section", () => {
+  const publicationsSection = getSourceBetween(
+    appSource,
+    "<h5 style={sidebarTitleStyle}>Publiceringar</h5>",
+    "</section>"
+  );
+
+  expect(publicationsSection).toContain("Ange korsords-ID för att visa publiceringar.");
+  expect(publicationsSection).toContain("Hämtar publiceringar...");
+  expect(publicationsSection).toContain("Inga publiceringar finns ännu.");
+  expect(publicationsSection).toContain("publication.publicationId");
+  expect(publicationsSection).toContain("publication.newspaper");
+  expect(publicationsSection).toContain("publication.publishDate");
+  expect(publicationsSection).toContain("publication.status");
+});
+
+test("editor loads Publications for the current crosswordId", () => {
+  expect(appSource).toContain("loadBackendPublicationsForCrossword");
+  expect(appSource).toContain("refreshPublications(crosswordId);");
 });
 
 function getSourceBetween(source, start, end) {

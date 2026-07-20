@@ -23,7 +23,10 @@ import {
   getPublishFailureMessage,
   getPublishSuccessMessage
 } from "./template/publishMessages";
-import { createBackendPublication } from "./publication/publicationApi";
+import {
+  createBackendPublication,
+  loadBackendPublicationsForCrossword
+} from "./publication/publicationApi";
 import { createPublicationFromTemplate } from "./publication/publicationModel";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -119,6 +122,40 @@ useEffect(() => {
     scale: 1,
     zoomMode: "fit"
   });
+  const [publications, setPublications] = useState([]);
+  const [publicationsStatus, setPublicationsStatus] = useState("idle");
+  const [publicationsError, setPublicationsError] = useState("");
+
+  const refreshPublications = React.useCallback(async (targetCrosswordId) => {
+    const normalizedCrosswordId = targetCrosswordId.trim();
+
+    if (!normalizedCrosswordId) {
+      setPublications([]);
+      setPublicationsStatus("idle");
+      setPublicationsError("");
+      return;
+    }
+
+    setPublicationsStatus("loading");
+    setPublicationsError("");
+
+    try {
+      const publicationList = await loadBackendPublicationsForCrossword(
+        normalizedCrosswordId
+      );
+
+      setPublications(Array.isArray(publicationList) ? publicationList : []);
+      setPublicationsStatus("loaded");
+    } catch (err) {
+      setPublications([]);
+      setPublicationsStatus("error");
+      setPublicationsError("Kunde inte hämta publiceringar.");
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshPublications(crosswordId);
+  }, [crosswordId, refreshPublications]);
 
   const handleImageUpload = async (e) => {
 
@@ -338,6 +375,28 @@ const handleTemplateImport = async (e) => {
     color: "#64748b"
   };
 
+  const publicationListStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    margin: 0,
+    padding: 0,
+    listStyle: "none"
+  };
+
+  const publicationItemStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "3px",
+    padding: "8px",
+    border: "1px solid #e2e8f0",
+    borderRadius: "4px",
+    background: "#f8fafc",
+    fontSize: "12px",
+    lineHeight: 1.35,
+    color: "#334155"
+  };
+
   const hiddenFileInputStyle = {
     width: 1,
     height: 1,
@@ -501,6 +560,7 @@ const handleTemplateImport = async (e) => {
                   });
 
                   await createBackendPublication(publication);
+                  await refreshPublications(crosswordId);
 
                   alert(getPublishSuccessMessage(publicUrl));
                   return;
@@ -520,6 +580,35 @@ const handleTemplateImport = async (e) => {
           <button onClick={generateLink} style={sidebarButtonStyle}>
             Generera länk
           </button>
+        </section>
+
+        <section style={sidebarSectionStyle}>
+          <h5 style={sidebarTitleStyle}>Publiceringar</h5>
+          {!crosswordId.trim() ? (
+            <div style={fileStatusStyle}>
+              Ange korsords-ID för att visa publiceringar.
+            </div>
+          ) : publicationsStatus === "loading" ? (
+            <div style={fileStatusStyle}>Hämtar publiceringar...</div>
+          ) : publicationsStatus === "error" ? (
+            <div style={fileStatusStyle}>{publicationsError}</div>
+          ) : publications.length === 0 ? (
+            <div style={fileStatusStyle}>Inga publiceringar finns ännu.</div>
+          ) : (
+            <ul style={publicationListStyle}>
+              {publications.map((publication) => (
+                <li
+                  key={publication.publicationId}
+                  style={publicationItemStyle}
+                >
+                  <strong>{publication.publicationId}</strong>
+                  <span>{publication.newspaper || "Tidning ej angiven"}</span>
+                  <span>{publication.publishDate || "Datum ej angivet"}</span>
+                  <span>{publication.status || "Status saknas"}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
 </div>
