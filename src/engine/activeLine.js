@@ -170,75 +170,27 @@ function getBlockedClueStartCell({
   rows,
   isBlocked
 }) {
-  const candidates = getAdjacentWriteCells({
-    activeCell,
-    cellTypes,
-    cols,
-    rows,
-    isBlocked
-  });
+  const candidate = direction === "across"
+    ? activeCell + 1
+    : activeCell + cols;
 
-  console.log("[single-clue-debug] getBlockedClueStartCell candidates", {
-    clickedCell: activeCell,
-    direction,
-    candidates
-  });
+  const isCandidateInBounds = direction === "across"
+    ? activeCell % cols !== cols - 1
+    : candidate < rows * cols;
 
-  let bestCandidate = null;
-  let bestLength = 0;
-
-  candidates.forEach(candidate => {
-    const activeCells = getNormalActiveCells({
-      activeCell: candidate,
-      direction,
-      cellTypes,
-      cols,
-      rows,
-      isBlocked
-    });
-
-    if (activeCells.size > bestLength) {
-      bestCandidate = candidate;
-      bestLength = activeCells.size;
-    }
-  });
+  const bestCandidate = (
+    isCandidateInBounds &&
+    candidate >= 0 &&
+    candidate < rows * cols &&
+    !isBlocked(candidate)
+  ) ? candidate : null;
 
   console.log("[single-clue-debug] getBlockedClueStartCell result", {
     clickedCell: activeCell,
     direction,
-    bestCandidate,
-    bestLength
+    candidate,
+    bestCandidate
   });
 
   return bestCandidate;
-}
-
-function getAdjacentWriteCells({
-  activeCell,
-  cellTypes,
-  cols,
-  rows,
-  isBlocked
-}) {
-  const total = rows * cols;
-  const col = activeCell % cols;
-  const candidates = [];
-
-  if (col < cols - 1) {
-    candidates.push(activeCell + 1);
-  }
-
-  if (activeCell + cols < total) {
-    candidates.push(activeCell + cols);
-  }
-
-  if (col > 0) {
-    candidates.push(activeCell - 1);
-  }
-
-  if (activeCell - cols >= 0) {
-    candidates.push(activeCell - cols);
-  }
-
-  return candidates.filter(index => !isBlocked(index));
 }

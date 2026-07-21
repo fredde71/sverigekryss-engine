@@ -241,6 +241,42 @@ describe("getActiveCells", () => {
     }))).toEqual([1, 2]);
   });
 
+  test("uses the TT-2026-0002 blocked clue anchor instead of the longer row above", () => {
+    const rows = 25;
+    const cols = 25;
+    const cellTypes = Array(rows * cols).fill("empty");
+
+    [
+      277,
+      278,
+      279,
+      280,
+      281,
+      282,
+      300,
+      301,
+      302,
+      304,
+      305,
+      306,
+      328,
+      329
+    ].forEach(index => {
+      cellTypes[index] = "write";
+    });
+
+    cellTypes[303] = "blocked";
+    cellTypes[307] = "double";
+
+    expect(asArray(getActiveCells({
+      activeCell: 303,
+      direction: "across",
+      cellTypes,
+      cols,
+      rows
+    }))).toEqual([304, 305, 306]);
+  });
+
   test("excludes double clue cells and highlights only writable cells down", () => {
     const cellTypes = [
       "double", "write", "write",
