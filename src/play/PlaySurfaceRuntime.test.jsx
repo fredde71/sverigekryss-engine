@@ -1,49 +1,86 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import PlaySurface from "./PlaySurface";
 
-const template = {
-  crosswordId: "TT-2026-0001",
-  rows: 2,
-  cols: 3,
-  cellTypes: [
-    "blocked", "write", "write",
-    "blocked", "write", "write"
-  ],
-  imageSrc: "/grid.png",
-  documentSize: {
-    width: 1200,
-    height: 1200
-  },
-  cropArea: {
-    top: 0,
-    left: 0,
-    width: 1200,
-    height: 1200
-  },
-  gridArea: {
-    top: 0,
-    left: 0,
-    width: 300,
-    height: 200
-  }
-};
+function createTemplate(cellTypes) {
+  return {
+    crosswordId: "TT-2026-0001",
+    rows: 3,
+    cols: 4,
+    cellTypes,
+    imageSrc: "/grid.png",
+    documentSize: {
+      width: 1200,
+      height: 1200
+    },
+    cropArea: {
+      top: 0,
+      left: 0,
+      width: 1200,
+      height: 1200
+    },
+    gridArea: {
+      top: 0,
+      left: 0,
+      width: 400,
+      height: 300
+    }
+  };
+}
 
-test("clicking a blocked simple clue cell activates the adjacent write word", async () => {
-  render(<PlaySurface template={template} onSubmitAnswers={() => {}} />);
+test("clicking a blocked horizontal clue activates the full adjacent across word", async () => {
+  render(
+    <PlaySurface
+      template={createTemplate([
+        "blocked", "write", "write", "write",
+        "write", "empty", "empty", "empty",
+        "empty", "empty", "empty", "empty"
+      ])}
+      onSubmitAnswers={() => {}}
+    />
+  );
 
-  fireEvent.click(screen.getAllByTestId("runtime-clue-cell")[0]);
+  fireEvent.click(screen.getByTestId("runtime-clue-cell"));
 
   const inputs = screen.getAllByRole("textbox");
 
+  await expectActiveInputs(inputs, [0, 1, 2]);
+});
+
+test("clicking a blocked vertical clue activates the full adjacent down word", async () => {
+  render(
+    <PlaySurface
+      template={createTemplate([
+        "blocked", "write", "empty", "empty",
+        "write", "empty", "empty", "empty",
+        "write", "empty", "empty", "empty"
+      ])}
+      onSubmitAnswers={() => {}}
+    />
+  );
+
+  fireEvent.click(screen.getByTestId("runtime-clue-cell"));
+
+  const inputs = screen.getAllByRole("textbox");
+
+  await expectActiveInputs(inputs, [1, 2]);
+});
+
+async function expectActiveInputs(inputs, activeIndexes) {
   await waitFor(() => {
-    expect(inputs[0].parentElement).toHaveStyle({
+    expect(inputs[activeIndexes[0]].parentElement).toHaveStyle({
       backgroundColor: "rgba(0, 120, 255, 0.2)"
     });
   });
-  expect(inputs[1].parentElement).toHaveStyle({
-    backgroundColor: "rgba(0, 120, 255, 0.2)"
+
+  inputs.forEach((input, index) => {
+    if (activeIndexes.includes(index)) {
+      expect(input.parentElement).toHaveStyle({
+        backgroundColor: "rgba(0, 120, 255, 0.2)"
+      });
+    } else {
+      expect(input.parentElement).not.toHaveStyle({
+        backgroundColor: "rgba(0, 120, 255, 0.2)"
+      });
+    }
   });
-  expect(inputs[2].parentElement).not.toHaveStyle({
-    backgroundColor: "rgba(0, 120, 255, 0.2)"
-  });
-});
+}

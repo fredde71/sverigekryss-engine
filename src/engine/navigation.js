@@ -90,6 +90,26 @@ export function getDirection({
     isWritableCell(cellTypes[down]);
 
   if (isRightWritable && isDownWritable) {
+    if (cellTypes[currentIndex] === "blocked") {
+      const acrossLength = getWritableRunLength({
+        startIndex: right,
+        step: 1,
+        cols,
+        rows,
+        cellTypes,
+        sameRowAs: currentIndex
+      });
+      const downLength = getWritableRunLength({
+        startIndex: down,
+        step: cols,
+        cols,
+        rows,
+        cellTypes
+      });
+
+      return acrossLength >= downLength ? "across" : "down";
+    }
+
     return "toggle";
   }
 
@@ -106,4 +126,28 @@ export function getDirection({
 
 function isWritableCell(type) {
   return type === "write";
+}
+
+function getWritableRunLength({
+  startIndex,
+  step,
+  cols,
+  rows,
+  cellTypes,
+  sameRowAs
+}) {
+  let length = 0;
+  let current = startIndex;
+
+  while (
+    current < rows * cols &&
+    (sameRowAs === undefined ||
+      Math.floor(current / cols) === Math.floor(sameRowAs / cols)) &&
+    isWritableCell(cellTypes[current])
+  ) {
+    length++;
+    current += step;
+  }
+
+  return length;
 }

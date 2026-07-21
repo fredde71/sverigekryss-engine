@@ -33,18 +33,30 @@ describe("getDirection", () => {
     })).toBe("toggle");
   });
 
-  test("returns toggle for simple clue blocked cells when both directions are writable", () => {
+  test("returns the longer direction for simple clue blocked cells when both directions are writable", () => {
     const cellTypes = [
-      "blocked", "write",
-      "write", "blocked"
+      "blocked", "write", "write", "write",
+      "write", "blocked", "blocked", "blocked",
+      "blocked", "blocked", "blocked", "blocked"
     ];
 
     expect(getDirection({
       currentIndex: 0,
-      cols: 2,
-      rows: 2,
+      cols: 4,
+      rows: 3,
       cellTypes
-    })).toBe("toggle");
+    })).toBe("across");
+
+    expect(getDirection({
+      currentIndex: 0,
+      cols: 4,
+      rows: 3,
+      cellTypes: [
+        "blocked", "write", "blocked", "blocked",
+        "write", "empty", "empty", "empty",
+        "write", "empty", "empty", "empty"
+      ]
+    })).toBe("down");
   });
 
   test("returns across when only the right cell is writable", () => {
