@@ -160,11 +160,23 @@ const handleCellClick = (index) => {
    
    const type = cellTypes[i];
 
-if (type === "blocked" || type === "image") {
+if (type === "image") {
   return (
     <RuntimeCell
       key={i}
       type={type}
+    />
+  );
+}
+
+if (type === "blocked") {
+  return (
+    <RuntimeCell
+      key={i}
+      type={type}
+      dataIndex={i}
+      isActive={false}
+      onClick={() => handleCellClick(i)}
     />
   );
 }
