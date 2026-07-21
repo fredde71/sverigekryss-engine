@@ -89,27 +89,28 @@ export function getDirection({
     down < rows * cols &&
     isWritableCell(cellTypes[down]);
 
-  if (isRightWritable && isDownWritable) {
-    if (cellTypes[currentIndex] === "blocked") {
-      const acrossLength = getWritableRunLength({
-        startIndex: right,
-        step: 1,
-        cols,
-        rows,
-        cellTypes,
-        sameRowAs: currentIndex
-      });
-      const downLength = getWritableRunLength({
-        startIndex: down,
-        step: cols,
-        cols,
-        rows,
-        cellTypes
-      });
+  if (cellTypes[currentIndex] === "blocked") {
+    const acrossLength = getBestDirectionalLength({
+      currentIndex,
+      direction: "across",
+      cols,
+      rows,
+      cellTypes
+    });
+    const downLength = getBestDirectionalLength({
+      currentIndex,
+      direction: "down",
+      cols,
+      rows,
+      cellTypes
+    });
 
+    if (acrossLength > 0 || downLength > 0) {
       return acrossLength >= downLength ? "across" : "down";
     }
+  }
 
+  if (isRightWritable && isDownWritable) {
     return "toggle";
   }
 
@@ -128,26 +129,101 @@ function isWritableCell(type) {
   return type === "write";
 }
 
-function getWritableRunLength({
-  startIndex,
-  step,
+function getBestDirectionalLength({
+  currentIndex,
+  direction,
   cols,
   rows,
-  cellTypes,
-  sameRowAs
+  cellTypes
 }) {
-  let length = 0;
-  let current = startIndex;
+  return getAdjacentWriteCells({
+    currentIndex,
+    cols,
+    rows,
+    cellTypes
+  }).reduce((bestLength, index) => Math.max(
+    bestLength,
+    getDirectionalLength({
+      startIndex: index,
+      direction,
+      cols,
+      rows,
+      cellTypes
+    })
+  ), 0);
+}
 
-  while (
-    current < rows * cols &&
-    (sameRowAs === undefined ||
-      Math.floor(current / cols) === Math.floor(sameRowAs / cols)) &&
-    isWritableCell(cellTypes[current])
-  ) {
-    length++;
-    current += step;
+function getDirectionalLength({
+  startIndex,
+  direction,
+  cols,
+  rows,
+  cellTypes
+}) {
+  let start = startIndex;
+  let end = startIndex;
+
+  if (direction === "across") {
+    while (
+      start - 1 >= 0 &&
+      start % cols !== 0 &&
+      isWritableCell(cellTypes[start - 1])
+    ) {
+      start--;
+    }
+
+    while (
+      end % cols !== cols - 1 &&
+      isWritableCell(cellTypes[end + 1])
+    ) {
+      end++;
+    }
+
+    return end - start + 1;
   }
 
-  return length;
+  while (
+    start - cols >= 0 &&
+    isWritableCell(cellTypes[start - cols])
+  ) {
+    start -= cols;
+  }
+
+  while (
+    end + cols < rows * cols &&
+    isWritableCell(cellTypes[end + cols])
+  ) {
+    end += cols;
+  }
+
+  return ((end - start) / cols) + 1;
+}
+
+function getAdjacentWriteCells({
+  currentIndex,
+  cols,
+  rows,
+  cellTypes
+}) {
+  const total = rows * cols;
+  const col = currentIndex % cols;
+  const candidates = [];
+
+  if (col < cols - 1) {
+    candidates.push(currentIndex + 1);
+  }
+
+  if (currentIndex + cols < total) {
+    candidates.push(currentIndex + cols);
+  }
+
+  if (col > 0) {
+    candidates.push(currentIndex - 1);
+  }
+
+  if (currentIndex - cols >= 0) {
+    candidates.push(currentIndex - cols);
+  }
+
+  return candidates.filter(index => isWritableCell(cellTypes[index]));
 }

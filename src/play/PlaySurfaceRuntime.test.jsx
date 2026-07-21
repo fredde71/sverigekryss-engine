@@ -31,8 +31,8 @@ test("clicking a blocked horizontal clue activates the full adjacent across word
   render(
     <PlaySurface
       template={createTemplate([
-        "blocked", "write", "write", "write",
-        "write", "empty", "empty", "empty",
+        "blocked", "write", "empty", "empty",
+        "write", "write", "write", "empty",
         "empty", "empty", "empty", "empty"
       ])}
       onSubmitAnswers={() => {}}
@@ -43,16 +43,16 @@ test("clicking a blocked horizontal clue activates the full adjacent across word
 
   const inputs = screen.getAllByRole("textbox");
 
-  await expectActiveInputs(inputs, [0, 1, 2]);
+  await expectActiveInputs(inputs, [1, 2, 3]);
 });
 
 test("clicking a blocked vertical clue activates the full adjacent down word", async () => {
   render(
     <PlaySurface
       template={createTemplate([
-        "blocked", "write", "empty", "empty",
-        "write", "empty", "empty", "empty",
-        "write", "empty", "empty", "empty"
+        "blocked", "write", "write", "empty",
+        "empty", "write", "empty", "empty",
+        "empty", "write", "empty", "empty"
       ])}
       onSubmitAnswers={() => {}}
     />
@@ -62,7 +62,7 @@ test("clicking a blocked vertical clue activates the full adjacent down word", a
 
   const inputs = screen.getAllByRole("textbox");
 
-  await expectActiveInputs(inputs, [1, 2]);
+  await expectActiveInputs(inputs, [0, 2, 3]);
 });
 
 async function expectActiveInputs(inputs, activeIndexes) {

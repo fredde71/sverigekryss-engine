@@ -10,44 +10,69 @@ export function getActiveCells({
     return new Set();
   }
 
-  const active = new Set();
-
   const isBlocked = (index) => cellTypes[index] !== "write";
 
-  const isClue = cellTypes[activeCell] === "double" ||
-    cellTypes[activeCell] === "blocked";
+  const cellType = cellTypes[activeCell];
 
   // CLUE CELL
-  if (isClue) {
+  if (cellType === "double") {
+    const startCell = direction === "across"
+      ? activeCell + 1
+      : activeCell + cols;
 
-    if (direction === "across") {
-      let current = activeCell + 1;
-
-      while (
-        current < rows * cols &&
-        current % cols !== 0 &&
-        Math.floor(current / cols) === Math.floor(activeCell / cols) &&
-        !isBlocked(current)
-      ) {
-        active.add(current);
-        current++;
-      }
-
-      return active;
-    }
-
-    let current = activeCell + cols;
-
-    while (
-      current < rows * cols &&
-      !isBlocked(current)
-    ) {
-      active.add(current);
-      current += cols;
-    }
-
-    return active;
+    return getNormalActiveCells({
+      activeCell: startCell,
+      direction,
+      cellTypes,
+      cols,
+      rows,
+      isBlocked
+    });
   }
+
+  if (cellType === "blocked") {
+    const startCell = getBlockedClueStartCell({
+      activeCell,
+      direction,
+      cellTypes,
+      cols,
+      rows,
+      isBlocked
+    });
+
+    return getNormalActiveCells({
+      activeCell: startCell,
+      direction,
+      cellTypes,
+      cols,
+      rows,
+      isBlocked
+    });
+  }
+
+  return getNormalActiveCells({
+    activeCell,
+    direction,
+    cellTypes,
+    cols,
+    rows,
+    isBlocked
+  });
+}
+
+function getNormalActiveCells({
+  activeCell,
+  direction,
+  cellTypes,
+  cols,
+  rows,
+  isBlocked
+}) {
+  if (activeCell === null || activeCell === undefined || isBlocked(activeCell)) {
+    return new Set();
+  }
+
+  const active = new Set();
 
   // NORMAL ACROSS
   if (direction === "across") {
@@ -102,4 +127,72 @@ export function getActiveCells({
   }
 
   return active;
+}
+
+function getBlockedClueStartCell({
+  activeCell,
+  direction,
+  cellTypes,
+  cols,
+  rows,
+  isBlocked
+}) {
+  const candidates = getAdjacentWriteCells({
+    activeCell,
+    cellTypes,
+    cols,
+    rows,
+    isBlocked
+  });
+
+  let bestCandidate = null;
+  let bestLength = 0;
+
+  candidates.forEach(candidate => {
+    const activeCells = getNormalActiveCells({
+      activeCell: candidate,
+      direction,
+      cellTypes,
+      cols,
+      rows,
+      isBlocked
+    });
+
+    if (activeCells.size > bestLength) {
+      bestCandidate = candidate;
+      bestLength = activeCells.size;
+    }
+  });
+
+  return bestCandidate;
+}
+
+function getAdjacentWriteCells({
+  activeCell,
+  cellTypes,
+  cols,
+  rows,
+  isBlocked
+}) {
+  const total = rows * cols;
+  const col = activeCell % cols;
+  const candidates = [];
+
+  if (col < cols - 1) {
+    candidates.push(activeCell + 1);
+  }
+
+  if (activeCell + cols < total) {
+    candidates.push(activeCell + cols);
+  }
+
+  if (col > 0) {
+    candidates.push(activeCell - 1);
+  }
+
+  if (activeCell - cols >= 0) {
+    candidates.push(activeCell - cols);
+  }
+
+  return candidates.filter(index => !isBlocked(index));
 }
