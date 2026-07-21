@@ -89,6 +89,19 @@ export function getDirection({
     down < rows * cols &&
     isWritableCell(cellTypes[down]);
 
+  let result = null;
+
+  console.log("[single-clue-debug] getDirection input", {
+    currentIndex,
+    type: cellTypes[currentIndex],
+    right: right % cols !== 0
+      ? { index: right, type: cellTypes[right], isWritable: isRightWritable }
+      : null,
+    down: down < rows * cols
+      ? { index: down, type: cellTypes[down], isWritable: isDownWritable }
+      : null
+  });
+
   if (cellTypes[currentIndex] === "blocked") {
     const acrossLength = getBestDirectionalLength({
       currentIndex,
@@ -105,23 +118,53 @@ export function getDirection({
       cellTypes
     });
 
+    console.log("[single-clue-debug] getDirection blocked candidate lengths", {
+      currentIndex,
+      acrossLength,
+      downLength
+    });
+
     if (acrossLength > 0 || downLength > 0) {
-      return acrossLength >= downLength ? "across" : "down";
+      result = acrossLength >= downLength ? "across" : "down";
+      console.log("[single-clue-debug] getDirection result", {
+        currentIndex,
+        result
+      });
+      return result;
     }
   }
 
   if (isRightWritable && isDownWritable) {
-    return "toggle";
+    result = "toggle";
+    console.log("[single-clue-debug] getDirection result", {
+      currentIndex,
+      result
+    });
+    return result;
   }
 
   if (isRightWritable) {
-    return "across";
+    result = "across";
+    console.log("[single-clue-debug] getDirection result", {
+      currentIndex,
+      result
+    });
+    return result;
   }
 
   if (isDownWritable) {
-    return "down";
+    result = "down";
+    console.log("[single-clue-debug] getDirection result", {
+      currentIndex,
+      result
+    });
+    return result;
   }
 
+  console.log("[single-clue-debug] getDirection result", {
+    currentIndex,
+    result
+  });
   return null;
 }
 

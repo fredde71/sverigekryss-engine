@@ -13,6 +13,19 @@ function PlayCell({
   dataIndex,
   maxLength
 }) {
+  if (isActive) {
+    console.log("[single-clue-debug] blue highlight rendered by PlayCell", {
+      component: "PlayCell",
+      dataIndex,
+      value,
+      disabled,
+      isActive,
+      maxLength,
+      receivedStyle: style,
+      appliedBackgroundColor: "rgba(0, 120, 255, 0.2)"
+    });
+  }
+
   return (
     <div
     style={{

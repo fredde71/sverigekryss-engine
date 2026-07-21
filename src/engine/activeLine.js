@@ -14,13 +14,19 @@ export function getActiveCells({
 
   const cellType = cellTypes[activeCell];
 
+  console.log("[single-clue-debug] getActiveCells input", {
+    activeCell,
+    cellType,
+    direction
+  });
+
   // CLUE CELL
   if (cellType === "double") {
     const startCell = direction === "across"
       ? activeCell + 1
       : activeCell + cols;
 
-    return getNormalActiveCells({
+    const active = getNormalActiveCells({
       activeCell: startCell,
       direction,
       cellTypes,
@@ -28,6 +34,15 @@ export function getActiveCells({
       rows,
       isBlocked
     });
+
+    console.log("[single-clue-debug] getActiveCells double clue result", {
+      clickedCell: activeCell,
+      startCell,
+      direction,
+      activeCells: Array.from(active)
+    });
+
+    return active;
   }
 
   if (cellType === "blocked") {
@@ -40,7 +55,7 @@ export function getActiveCells({
       isBlocked
     });
 
-    return getNormalActiveCells({
+    const active = getNormalActiveCells({
       activeCell: startCell,
       direction,
       cellTypes,
@@ -48,9 +63,19 @@ export function getActiveCells({
       rows,
       isBlocked
     });
+
+    console.log("[single-clue-debug] getActiveCells blocked clue result", {
+      clickedCell: activeCell,
+      startCell,
+      startCellType: startCell === null ? null : cellTypes[startCell],
+      direction,
+      activeCells: Array.from(active)
+    });
+
+    return active;
   }
 
-  return getNormalActiveCells({
+  const active = getNormalActiveCells({
     activeCell,
     direction,
     cellTypes,
@@ -58,6 +83,14 @@ export function getActiveCells({
     rows,
     isBlocked
   });
+
+  console.log("[single-clue-debug] getActiveCells write cell result", {
+    startCell: activeCell,
+    direction,
+    activeCells: Array.from(active)
+  });
+
+  return active;
 }
 
 function getNormalActiveCells({
@@ -145,6 +178,12 @@ function getBlockedClueStartCell({
     isBlocked
   });
 
+  console.log("[single-clue-debug] getBlockedClueStartCell candidates", {
+    clickedCell: activeCell,
+    direction,
+    candidates
+  });
+
   let bestCandidate = null;
   let bestLength = 0;
 
@@ -162,6 +201,13 @@ function getBlockedClueStartCell({
       bestCandidate = candidate;
       bestLength = activeCells.size;
     }
+  });
+
+  console.log("[single-clue-debug] getBlockedClueStartCell result", {
+    clickedCell: activeCell,
+    direction,
+    bestCandidate,
+    bestLength
   });
 
   return bestCandidate;

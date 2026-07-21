@@ -14,7 +14,11 @@ import {
 
 import { normalizeInputValue } from "../engine/input";
 
-export default function RuntimeLayer({ data, onAnswersChange }) {
+export default function RuntimeLayer({
+  data,
+  onAnswersChange,
+  debugPublicationId = ""
+}) {
 
   console.log("RuntimeLayer rendered");
 
@@ -73,6 +77,29 @@ const handleCellChange = (index, rawValue) => {
 const handleCellClick = (index) => {
 
   console.log("RuntimeLayer handleCellClick called", index);
+  console.log("[single-clue-debug] clicked cell", {
+    templateId: data?.crosswordId,
+    crosswordId: data?.crosswordId,
+    publicationId: debugPublicationId,
+    index,
+    type: cellTypes[index],
+    value: cellTypes[index],
+    cell: cellTypes[index],
+    row: Math.floor(index / cols),
+    col: index % cols,
+    right: index % cols !== cols - 1
+      ? { index: index + 1, type: cellTypes[index + 1] }
+      : null,
+    down: index + cols < rows * cols
+      ? { index: index + cols, type: cellTypes[index + cols] }
+      : null,
+    left: index % cols !== 0
+      ? { index: index - 1, type: cellTypes[index - 1] }
+      : null,
+    up: index - cols >= 0
+      ? { index: index - cols, type: cellTypes[index - cols] }
+      : null
+  });
 
   setActiveCell(index);
 
@@ -81,6 +108,15 @@ const handleCellClick = (index) => {
     cols,
     rows,
     cellTypes
+  });
+
+  console.log("[single-clue-debug] direction selected", {
+    templateId: data?.crosswordId,
+    publicationId: debugPublicationId,
+    clickedIndex: index,
+    clickedType: cellTypes[index],
+    clickedCell: cellTypes[index],
+    directionResult
   });
 
   if (directionResult === "toggle") {
@@ -124,6 +160,20 @@ const handleCellClick = (index) => {
 });
 
   console.log("RuntimeLayer activeCells size", activeCells.size);
+  console.log("[single-clue-debug] active line sent to render", {
+    templateId: data?.crosswordId,
+    publicationId: debugPublicationId,
+    activeCell,
+    activeCellType: activeCell === null ? null : cellTypes[activeCell],
+    activeCellObject: activeCell === null ? null : cellTypes[activeCell],
+    direction,
+    activeCells: Array.from(activeCells),
+    activeCellObjects: Array.from(activeCells).map(index => ({
+      index,
+      cell: cellTypes[index],
+      type: cellTypes[index]
+    }))
+  });
 
   return (
     <div
@@ -180,6 +230,22 @@ if (type === "blocked") {
     />
   );
 }
+
+console.log("[single-clue-debug] render runtime cell", {
+  component: "RuntimeLayer -> RuntimeCell",
+  templateId: data?.crosswordId,
+  publicationId: debugPublicationId,
+  index: i,
+  cell: cellTypes[i],
+  type,
+  isActive: activeCells.has(i),
+  props: {
+    type: cellTypes[i],
+    value: answers[i] || "",
+    dataIndex: i,
+    isActive: activeCells.has(i)
+  }
+});
 
 return (
   <RuntimeCell
