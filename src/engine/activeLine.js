@@ -12,18 +12,13 @@ export function getActiveCells({
 
   const active = new Set();
 
-  const isBlocked = (index) => {
-    return (
-      cellTypes[index] === "image" ||
-      cellTypes[index] === "blocked" ||
-      cellTypes[index] === "double"
-    );
-  };
+  const isBlocked = (index) => cellTypes[index] !== "write";
 
-  const isDouble = cellTypes[activeCell] === "double";
+  const isClue = cellTypes[activeCell] === "double" ||
+    cellTypes[activeCell] === "blocked";
 
-  // DOUBLE CLUE
-  if (isDouble) {
+  // CLUE CELL
+  if (isClue) {
 
     if (direction === "across") {
       let current = activeCell + 1;

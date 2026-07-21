@@ -14,9 +14,7 @@ export function getNextCell({
 
     if (
       next % cols !== 0 &&
-      cellTypes[next] !== "image" &&
-      cellTypes[next] !== "blocked" &&
-      cellTypes[next] !== "double"
+      isWritableCell(cellTypes[next])
     ) {
       nextIndex = next;
     }
@@ -27,9 +25,7 @@ export function getNextCell({
 
     if (
       next < rows * cols &&
-      cellTypes[next] !== "image" &&
-      cellTypes[next] !== "blocked" &&
-      cellTypes[next] !== "double"
+      isWritableCell(cellTypes[next])
     ) {
       nextIndex = next;
     }
@@ -87,15 +83,11 @@ export function getDirection({
 
   const isRightWritable =
     right % cols !== 0 &&
-    cellTypes[right] !== "image" &&
-    cellTypes[right] !== "blocked" &&
-    cellTypes[right] !== "double";
+    isWritableCell(cellTypes[right]);
 
   const isDownWritable =
     down < rows * cols &&
-    cellTypes[down] !== "image" &&
-    cellTypes[down] !== "blocked" &&
-    cellTypes[down] !== "double";
+    isWritableCell(cellTypes[down]);
 
   if (isRightWritable && isDownWritable) {
     return "toggle";
@@ -110,4 +102,8 @@ export function getDirection({
   }
 
   return null;
+}
+
+function isWritableCell(type) {
+  return type === "write";
 }

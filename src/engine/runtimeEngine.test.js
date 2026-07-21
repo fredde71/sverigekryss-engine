@@ -33,6 +33,20 @@ describe("getDirection", () => {
     })).toBe("toggle");
   });
 
+  test("returns toggle for simple clue blocked cells when both directions are writable", () => {
+    const cellTypes = [
+      "blocked", "write",
+      "write", "blocked"
+    ];
+
+    expect(getDirection({
+      currentIndex: 0,
+      cols: 2,
+      rows: 2,
+      cellTypes
+    })).toBe("toggle");
+  });
+
   test("returns across when only the right cell is writable", () => {
     const cellTypes = [
       "double", "write",
@@ -101,7 +115,7 @@ describe("getNextCell", () => {
   });
 
   test("stops across before non-writable cells", () => {
-    for (const type of ["blocked", "image", "double"]) {
+    for (const type of ["blocked", "image", "double", "empty"]) {
       expect(getNextCell({
         currentIndex: 0,
         direction: "across",
@@ -200,6 +214,21 @@ describe("getActiveCells", () => {
     }))).toEqual([1, 2]);
   });
 
+  test("excludes simple clue blocked cells and highlights only writable cells across", () => {
+    const cellTypes = [
+      "blocked", "write", "write", "empty",
+      "write", "write", "image", "write"
+    ];
+
+    expect(asArray(getActiveCells({
+      activeCell: 0,
+      direction: "across",
+      cellTypes,
+      cols: 4,
+      rows: 2
+    }))).toEqual([1, 2]);
+  });
+
   test("excludes double clue cells and highlights only writable cells down", () => {
     const cellTypes = [
       "double", "write", "write",
@@ -216,9 +245,9 @@ describe("getActiveCells", () => {
     }))).toEqual([3, 6]);
   });
 
-  test("normal active lines stop at blocked image and double cells", () => {
+  test("normal active lines stop at blocked image double and empty cells", () => {
     const cellTypes = [
-      "blocked", "write", "write", "double",
+      "blocked", "write", "write", "empty",
       "image", "write", "write", "write"
     ];
 

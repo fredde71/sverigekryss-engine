@@ -15,19 +15,6 @@ export default function RuntimeCell({
   dataIndex,
   maxLength
 }) {
-  if (type === "blocked") {
-    return (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          backgroundColor: "transparent",
-          ...style
-        }}
-      />
-    );
-  }
-
   if (type === "image") {
   return (
     <div
@@ -37,12 +24,13 @@ export default function RuntimeCell({
         ...style
       }}
     />
-  );
+);
 }
 
-  if (type === "double") {
+  if (type === "double" || type === "blocked") {
   return (
     <div
+      data-testid="runtime-clue-cell"
       onClick={onClick}
       style={{
         width: "100%",
