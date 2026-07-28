@@ -101,6 +101,60 @@ Verification:
 
 ---
 
+## Digitization AnalysisContext Unit Tests
+
+Status:
+
+Implemented.
+
+Coverage:
+
+- createAnalysisContext creates an immutable technical workspace
+- context update helpers return new contexts
+- previous contexts are not mutated
+- nested objects are cloned and frozen
+- diagnostics append immutably
+- typed arrays are copied on entry
+- typed-array reads expose defensive typed-array copies
+- typed arrays preserve instanceof, ArrayBuffer.isView, iterator, slice and subarray behavior
+- element writes, mutating methods, subarray writes and buffer writes do not mutate context
+- existing AnalysisContext instances can be extended without degrading typed arrays into plain objects
+- gridDetectionEngine accepts AnalysisContext-shaped input
+- gridDetectionEngine returns an immutable updated context
+- injected detection functions are supported
+- missing gridGeometry does not invent row or column assumptions
+- gridDetectionEngine creates a DigitizationSuggestion domain object from GridDetection
+- DigitizationSuggestion clones and freezes grid geometry and diagnostics
+- imageGridDetectionEngine reads ImageData exactly once through injected readImageData
+- imageGridDetectionEngine thresholds small RGBA images into BinaryImage
+- transparent dark pixels are composited over white before threshold
+- Projection, LineCandidate and GridGeometry produce grid detections without row/column defaults
+- missing grid returns diagnostics and no suggestions
+- pixel data is treated as read-only
+- imageGridDetectionEngine output is deterministic for the same source image
+- DigitizationJob is immutable and clones inputs defensively
+- DigitizationEngine orchestrates a single DigitizationJob
+- DigitizationEngine preserves diagnostics and suggestions
+- DigitizationEngine propagates readImageData failures
+- DigitizationEngine is deterministic and does not mutate inputs
+- DigitizationRunner runs one job or many jobs
+- DigitizationRunner preserves job order
+- DigitizationRunner handles empty job lists
+- Projection has direct unit coverage for horizontal and vertical counts
+- Projection validates BinaryImage dimensions, data length and binary values
+- Projection returns Uint32Array results
+- LineCandidate has direct unit coverage for contiguous candidate runs and default coverage behavior
+- LineCandidate validates projection values, axisLength and minCoverageRatio
+- GridGeometry has direct unit coverage for null results, geometry construction and current candidate ordering behavior
+- GridDetection has direct unit coverage for cloning and deep-freezing geometry and diagnostics
+
+Verification:
+
+- focused digitization tests pass
+- total automated digitization tests: 68
+
+---
+
 # Demo-Critical Subset
 
 These workflows must be prioritized first for automated coverage:

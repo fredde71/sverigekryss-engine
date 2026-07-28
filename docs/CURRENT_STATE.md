@@ -24,6 +24,35 @@ Följande är färdigt i aktuell editor/play-produktion:
 - stabil frontend testsvit med cirka 149 tester
 - fungerande production build
 
+Följande är färdigt i återställd digitization foundation:
+
+- AnalysisContext som immutabelt tekniskt arbetsobjekt
+- defensiva interna kopior av typed arrays i AnalysisContext
+- typed-array-fält exponeras som defensiva kopior vid läsning
+- context-stöd i gridDetectionEngine
+- minimalt DigitizationSuggestion-domänobjekt
+- gridDetectionEngine som enda bro från GridDetection till DigitizationSuggestion
+- imageGridDetectionEngine för teknisk grid-detektering från RGBA ImageData
+- BinaryImage, Projection, LineCandidate, GridGeometry och GridDetection som ren analyskedja
+- Projection validerar BinaryImage-dimensioner, datalängd och binära värden
+- Projection returnerar Uint32Array för rad- och kolumnprojektioner
+- LineCandidate validerar projektioner, axisLength och minCoverageRatio
+- GridDetection klonar och djupfryser geometri och diagnostics
+- explicit threshold-baserad binarisering med transparenta pixlar kompositerade över vit bakgrund
+- diagnostics och tom suggestions-lista när grid saknas
+- DigitizationJob som immutabel domäninput för ett digitiseringsjobb
+- DigitizationEngine som orkestrerar ett jobb genom imageGridDetectionEngine
+- DigitizationRunner som tunn körningsadapter för ett eller flera jobb
+- diagnostics och suggestions bevaras genom engine/runner-flödet
+
+Inte implementerat i detta steg:
+
+- OCR
+- Template-koppling
+- UI-koppling
+- API/backend/persistence-koppling
+- 25x25-antaganden
+
 ---
 
 # Senaste verifierade milstolpe

@@ -34,6 +34,81 @@ Sverigekryss Engine fokuserar därför på AI-assisterad produktion och digitali
 
 Systemet består av följande subsystem:
 
+## Digitization
+
+Ansvarar för tekniska analyssteg som kan ge redaktören förslag inför manuell digitalisering.
+
+Digitization är separat från:
+
+- Template Lifecycle
+- Editor UI
+- Runtime
+- API/backend
+- persistence
+
+Aktuellt implementerat digitization-steg:
+
+- AnalysisContext
+- context-stöd i gridDetectionEngine
+- imageGridDetectionEngine
+- DigitizationEngine
+- DigitizationRunner
+- DigitizationJob
+- ren analyskedja för RGBA-bilder:
+  - BinaryImage
+  - Projection
+  - LineCandidate
+  - GridGeometry
+  - GridDetection
+
+Projection validerar BinaryImage-dimensioner, datalängd och binära pixelvärden innan rad- eller kolumnprojektion skapas.
+
+Projection-resultat är `Uint32Array` för att undvika 16-bitars overflow i större bilder.
+
+LineCandidate validerar projektioner, `axisLength` och `minCoverageRatio` innan kandidater beräknas.
+
+GridDetection klonar och djupfryser geometri och diagnostics så att detektionens resultat inte kan muteras via senare ändringar i indata.
+
+AnalysisContext är ett immutabelt tekniskt arbetsobjekt för analyskedjan.
+
+AnalysisContext äger inte:
+
+- Template-shape
+- UI-state
+- backend state
+- OCR-resultat
+- persistence
+
+Typed arrays i AnalysisContext lagras som defensiva interna kopior.
+
+Typed-array-fält exponeras som nya defensiva kopior vid läsning så att standardbeteenden som instanceof, ArrayBuffer.isView, iteratorer, slice och subarray fungerar utan att context kan muteras.
+
+gridDetectionEngine är enda bron mellan teknisk GridDetection och DigitizationSuggestion-domänobjektet.
+
+imageGridDetectionEngine:
+
+- läser ImageData exakt en gång via injicerad readImageData
+- behandlar pixeldata som read-only
+- binariserar RGBA med explicit threshold
+- hanterar alfa genom att kompositera transparenta pixlar över vit bakgrund före threshold
+- bygger AnalysisContext stegvis genom tillgänglig analyskedja
+- skapar DigitizationSuggestion endast när GridDetection har godkänd geometri
+- returnerar diagnostics och tom suggestions-lista när grid saknas
+
+DigitizationEngine:
+
+- orkestrerar ett DigitizationJob genom imageGridDetectionEngine
+- bevarar diagnostics, GridDetection och DigitizationSuggestion-lista från analysflödet
+- returnerar ett deterministiskt, immutabelt körresultat
+
+DigitizationRunner:
+
+- är en tunn körningsadapter för ett eller flera DigitizationJob
+- kör flera jobb i angiven ordning
+- äger inte analyslogik
+
+OCR, Template-koppling, UI-koppling, API/backend/persistence-koppling och 25x25-antaganden är inte implementerade i detta steg.
+
 ## Editor
 
 Ansvarar för:
