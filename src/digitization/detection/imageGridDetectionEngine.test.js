@@ -125,6 +125,70 @@ test("detectGridFromImageSource normalizes suggestion geometry to documentSize",
   expect(result.suggestions[0].grid).toEqual(result.gridDetection.geometry);
 });
 
+test("detectGridFromImageSource reports vertical projection profile before candidate filtering", async () => {
+  const result = await detectGridFromImageSource({
+    source: {
+      id: "vertical-projection-source"
+    },
+    readImageData: jest.fn(async () => createRgbaImageFromDarkPixels({
+      width: 6,
+      height: 4,
+      darkPixels: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [3, 0],
+        [3, 1],
+        [3, 2],
+        [4, 0]
+      ]
+    }))
+  });
+  const projectionProfile = result.diagnostics.find(diagnostic => (
+    diagnostic.type === "vertical-projection-profile"
+  ));
+
+  expect(projectionProfile).toEqual({
+    type: "vertical-projection-profile",
+    axis: "vertical",
+    length: 6,
+    maxStrength: 3,
+    meanStrength: 7 / 6,
+    medianStrength: 1,
+    topPeaks: [
+      { position: 3, strength: 3 },
+      { position: 1, strength: 2 },
+      { position: 0, strength: 1 },
+      { position: 4, strength: 1 },
+      { position: 2, strength: 0 },
+      { position: 5, strength: 0 }
+    ],
+    runCount: 2,
+    topRuns: [
+      {
+        start: 3,
+        end: 4,
+        position: 3.5,
+        length: 2,
+        maxStrength: 3,
+        meanStrength: 2,
+        maxCoverage: 3 / 4,
+        meanCoverage: 2 / 4
+      },
+      {
+        start: 0,
+        end: 1,
+        position: 0.5,
+        length: 2,
+        maxStrength: 2,
+        meanStrength: 1.5,
+        maxCoverage: 2 / 4,
+        meanCoverage: 1.5 / 4
+      }
+    ]
+  });
+});
+
 test("detectGridFromImageSource reports candidate counts, spacing, bounds and rejection reasons", async () => {
   const result = await detectGridFromImageSource({
     source: {
@@ -395,6 +459,34 @@ function createTransparentDarkImage({
     data[offset + 1] = 0;
     data[offset + 2] = 0;
     data[offset + 3] = 0;
+  }
+
+  return {
+    width,
+    height,
+    data
+  };
+}
+
+function createRgbaImageFromDarkPixels({
+  width,
+  height,
+  darkPixels
+}) {
+  const data = new Uint8ClampedArray(width * height * 4);
+  const darkPixelKeys = new Set(darkPixels.map(([x, y]) => `${x}:${y}`));
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const offset = ((y * width) + x) * 4;
+      const isDark = darkPixelKeys.has(`${x}:${y}`);
+      const value = isDark ? 0 : 255;
+
+      data[offset] = value;
+      data[offset + 1] = value;
+      data[offset + 2] = value;
+      data[offset + 3] = 255;
+    }
   }
 
   return {
