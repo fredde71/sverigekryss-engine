@@ -48,10 +48,18 @@ export async function detectGridFromImageSource({
       minCoverageRatio: options.minLineCoverageRatio
     })
   };
-  const gridGeometry = buildGridGeometry({
-    horizontalCandidates: lineCandidates.horizontal,
-    verticalCandidates: lineCandidates.vertical
-  });
+  const gridGeometry = normalizeGridGeometryForDocument(
+    buildGridGeometry({
+      horizontalCandidates: lineCandidates.horizontal,
+      verticalCandidates: lineCandidates.vertical
+    }),
+    {
+      imageWidth: imageData.width,
+      imageHeight: imageData.height,
+      documentSize: options.documentSize
+    }
+  );
+
   const gridDiagnostics = [];
 
   if (!gridGeometry) {
@@ -96,4 +104,39 @@ export async function detectGridFromImageSource({
     suggestions,
     diagnostics: detectedContext.gridDetection.diagnostics
   };
+}
+
+function normalizeGridGeometryForDocument(gridGeometry, {
+  imageWidth,
+  imageHeight,
+  documentSize
+}) {
+  if (!gridGeometry) {
+    return null;
+  }
+
+  const targetWidth = getPositiveDimension(documentSize?.width, imageWidth);
+  const targetHeight = getPositiveDimension(documentSize?.height, imageHeight);
+  const scaleX = targetWidth / imageWidth;
+  const scaleY = targetHeight / imageHeight;
+
+  return {
+    ...gridGeometry,
+    bounds: {
+      top: scaleCoordinate(gridGeometry.bounds.top, scaleY),
+      left: scaleCoordinate(gridGeometry.bounds.left, scaleX),
+      width: scaleCoordinate(gridGeometry.bounds.width, scaleX),
+      height: scaleCoordinate(gridGeometry.bounds.height, scaleY)
+    },
+    horizontalLines: gridGeometry.horizontalLines.map(line => scaleCoordinate(line, scaleY)),
+    verticalLines: gridGeometry.verticalLines.map(line => scaleCoordinate(line, scaleX))
+  };
+}
+
+function getPositiveDimension(value, fallback) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function scaleCoordinate(value, scale) {
+  return Number.isFinite(value) ? value * scale : value;
 }

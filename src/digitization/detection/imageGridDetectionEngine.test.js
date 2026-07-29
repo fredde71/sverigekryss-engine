@@ -40,6 +40,40 @@ test("detectGridFromImageSource detects grid geometry from a small RGBA image", 
   });
 });
 
+test("detectGridFromImageSource normalizes suggestion geometry to documentSize", async () => {
+  const result = await detectGridFromImageSource({
+    source: {
+      id: "large-upload-source"
+    },
+    options: {
+      documentSize: {
+        width: 5,
+        height: 20
+      }
+    },
+    readImageData: jest.fn(async () => createRgbaImage({
+      width: 10,
+      height: 10,
+      darkRows: [2, 4, 8],
+      darkCols: [1, 5, 9]
+    }))
+  });
+
+  expect(result.gridDetection.geometry).toEqual({
+    bounds: {
+      top: 4,
+      left: 0.5,
+      width: 4,
+      height: 12
+    },
+    horizontalLines: [4, 8, 16],
+    verticalLines: [0.5, 2.5, 4.5],
+    rows: 2,
+    cols: 2
+  });
+  expect(result.suggestions[0].grid).toEqual(result.gridDetection.geometry);
+});
+
 test("detectGridFromImageSource returns diagnostics and no suggestions when grid is missing", async () => {
   const result = await detectGridFromImageSource({
     source: { id: "blank-source" },

@@ -30,6 +30,8 @@ import {
 import { createPublicationFromTemplate } from "./publication/publicationModel";
 import { readBrowserImageData } from "./digitization/adapters/browserImageDataReader";
 import { detectGridFromImageSource } from "./digitization/detection/imageGridDetectionEngine";
+import DigitizationDiagnosticPanel from "./digitization/DigitizationDiagnosticPanel";
+import DigitizationSuggestionOverlay from "./digitization/DigitizationSuggestionOverlay";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -127,6 +129,7 @@ useEffect(() => {
   const [publications, setPublications] = useState([]);
   const [publicationsStatus, setPublicationsStatus] = useState("idle");
   const [publicationsError, setPublicationsError] = useState("");
+  const [digitizationResult, setDigitizationResult] = useState(null);
 
   const refreshPublications = React.useCallback(async (targetCrosswordId) => {
     const normalizedCrosswordId = targetCrosswordId.trim();
@@ -206,7 +209,7 @@ setCompetitionCells([]);
 
 e.target.value = "";
 
-  scheduleDigitizationForUpload(canvas);
+  scheduleDigitizationForUpload(canvas, documentSize);
 
 return;
 }
@@ -222,26 +225,42 @@ return;
     setCropArea(getFullDocumentArea(documentSize));
     setCompetitionCells([]);
 
-    scheduleDigitizationForUpload(image);
+    scheduleDigitizationForUpload(image, documentSize);
   };
 
   reader.readAsDataURL(file);
 
 };
 
-  const scheduleDigitizationForUpload = (source) => {
+  const scheduleDigitizationForUpload = (source, targetDocumentSize) => {
     window.setTimeout(() => {
-      runDigitizationForUpload(source);
+      runDigitizationForUpload(source, targetDocumentSize);
     }, 0);
   };
 
-  const runDigitizationForUpload = async (source) => {
+  const runDigitizationForUpload = async (source, targetDocumentSize) => {
+    setDigitizationResult({
+      status: "pending"
+    });
+
     try {
-      await detectGridFromImageSource({
+      const result = await detectGridFromImageSource({
         source,
+        options: {
+          documentSize: targetDocumentSize
+        },
         readImageData: readBrowserImageData
       });
+
+      setDigitizationResult({
+        status: "completed",
+        result
+      });
     } catch (err) {
+      setDigitizationResult({
+        status: "failed",
+        error: err
+      });
       console.warn("Digitization failed during upload", err);
     }
   };
@@ -496,10 +515,15 @@ const handleTemplateImport = async (e) => {
           </label>
         </section>
 
-        {toolbar}
-        {competitionMenu}
+	        {toolbar}
+	        {competitionMenu}
 
-        <section style={sidebarSectionStyle}>
+	        <section style={sidebarSectionStyle}>
+	          <h5 style={sidebarTitleStyle}>Digitisering</h5>
+	          <DigitizationDiagnosticPanel digitizationResult={digitizationResult} />
+	        </section>
+	
+	        <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Läge</h5>
           <button
             onClick={() => setModeView(modeView === "edit" ? "play" : "edit")}
@@ -658,10 +682,14 @@ const handleTemplateImport = async (e) => {
               gridArea,
               cropArea,
               competitionCells
-            }}
-          >
-            {editor}
-          </TemplateCanvas>
+	            }}
+	          >
+	            <DigitizationSuggestionOverlay
+	              digitizationResult={digitizationResult}
+	              documentSize={documentSize}
+	            />
+	            {editor}
+	          </TemplateCanvas>
         </EditorScrollWorkspace>
       ) : (
         <PlaySurface

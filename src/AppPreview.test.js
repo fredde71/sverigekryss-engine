@@ -16,7 +16,7 @@ test("editor preview TemplateCanvas remains uncropped", () => {
 test("local Play preview uses PlaySurface without responsive mode", () => {
   const localPlaySurface = getSourceBetween(
     appSource,
-    ") : (",
+    "<PlaySurface",
     "</PlaySurface>"
   );
 
@@ -78,31 +78,65 @@ test("upload flow runs digitization through the browser ImageData adapter withou
   );
   const digitizationSection = getSourceBetween(
     appSource,
-    "const runDigitizationForUpload = async (source) => {",
+    "const runDigitizationForUpload = async (source, targetDocumentSize) => {",
     "};"
   );
 
-  expect(appSource).not.toContain("digitizationResult");
-  expect(appSource).not.toContain("setDigitizationResult");
+  expect(appSource).toContain("const [digitizationResult, setDigitizationResult] = useState(null);");
   expect(appSource).toContain("import { readBrowserImageData } from \"./digitization/adapters/browserImageDataReader\";");
   expect(appSource).toContain("import { detectGridFromImageSource } from \"./digitization/detection/imageGridDetectionEngine\";");
+  expect(appSource).toContain("import DigitizationDiagnosticPanel from \"./digitization/DigitizationDiagnosticPanel\";");
+  expect(appSource).toContain("<DigitizationDiagnosticPanel digitizationResult={digitizationResult} />");
   expect(pdfStateUpdateSection).toContain("setDocumentSize(documentSize);");
   expect(pdfStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
   expect(pdfStateUpdateSection).toContain("setCompetitionCells([]);");
-  expect(pdfStateUpdateSection).toContain("scheduleDigitizationForUpload(canvas);");
+  expect(pdfStateUpdateSection).toContain("scheduleDigitizationForUpload(canvas, documentSize);");
   expect(imageStateUpdateSection).toContain("setImageSrc(image);");
   expect(imageStateUpdateSection).toContain("setDocumentSize(documentSize);");
   expect(imageStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
   expect(imageStateUpdateSection).toContain("setCompetitionCells([]);");
-  expect(imageStateUpdateSection).toContain("scheduleDigitizationForUpload(image);");
+  expect(imageStateUpdateSection).toContain("scheduleDigitizationForUpload(image, documentSize);");
   expect(appSource).toContain("window.setTimeout(() => {");
+  expect(digitizationSection).toContain("setDigitizationResult({");
+  expect(digitizationSection).toContain("status: \"pending\"");
+  expect(digitizationSection).toContain("status: \"completed\"");
+  expect(digitizationSection).toContain("status: \"failed\"");
   expect(digitizationSection).toContain("detectGridFromImageSource");
+  expect(digitizationSection).toContain("documentSize: targetDocumentSize");
   expect(digitizationSection).toContain("readImageData: readBrowserImageData");
   expect(digitizationSection).toContain("console.warn(\"Digitization failed during upload\", err);");
   expect(digitizationSection).not.toContain("setGridArea");
   expect(digitizationSection).not.toContain("setRows");
   expect(digitizationSection).not.toContain("setCols");
   expect(digitizationSection).not.toContain("setCropArea");
+});
+
+test("editor preview renders read-only digitization suggestion overlay", () => {
+  const editModeCanvas = getSourceBetween(
+    appSource,
+    "{modeView === \"edit\" ? (",
+    ") : ("
+  );
+  const localPlaySurface = getSourceBetween(
+    appSource,
+    "<PlaySurface",
+    "</PlaySurface>"
+  );
+  const overlaySection = getSourceBetween(
+    appSource,
+    "<DigitizationSuggestionOverlay",
+    "/>"
+  );
+
+  expect(appSource).toContain("import DigitizationSuggestionOverlay from \"./digitization/DigitizationSuggestionOverlay\";");
+  expect(editModeCanvas).toContain("<DigitizationSuggestionOverlay");
+  expect(localPlaySurface).not.toContain("DigitizationSuggestionOverlay");
+  expect(overlaySection).toContain("digitizationResult={digitizationResult}");
+  expect(overlaySection).toContain("documentSize={documentSize}");
+  expect(overlaySection).not.toContain("setGridArea");
+  expect(overlaySection).not.toContain("setRows");
+  expect(overlaySection).not.toContain("setCols");
+  expect(overlaySection).not.toContain("setCropArea");
 });
 
 function getSourceBetween(source, start, end) {
