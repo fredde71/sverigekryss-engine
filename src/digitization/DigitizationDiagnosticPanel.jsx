@@ -7,13 +7,19 @@ export default function DigitizationDiagnosticPanel({
 
   return (
     <section aria-label="Digitiseringsdiagnostik">
-      <div>Status: {summary.status}</div>
-      <div>Förslag: {summary.suggestionStatus}</div>
-      <div>Konfidens: {summary.confidence}</div>
-      <div>Orsaker: {summary.reasons}</div>
-      <div>Mått: {summary.metrics}</div>
-      <div>Rader/kolumner: {summary.rowsCols}</div>
-      <div>Geometri: {summary.geometry}</div>
+      <div>Status: {summary.userStatus}</div>
+      <div>Nästa steg: {summary.nextStep}</div>
+
+      <details>
+        <summary>Utvecklardetaljer</summary>
+        <div>Status: {summary.status}</div>
+        <div>Förslag: {summary.suggestionStatus}</div>
+        <div>Konfidens: {summary.confidence}</div>
+        <div>Orsaker: {summary.reasons}</div>
+        <div>Mått: {summary.metrics}</div>
+        <div>Rader/kolumner: {summary.rowsCols}</div>
+        <div>Geometri: {summary.geometry}</div>
+      </details>
     </section>
   );
 }
@@ -21,6 +27,8 @@ export default function DigitizationDiagnosticPanel({
 export function getDigitizationSummary(digitizationResult) {
   if (!digitizationResult) {
     return {
+      userStatus: "Ingen bildanalys har körts.",
+      nextStep: "Ladda upp en bild eller PDF för att se en rutnätsförhandsvisning.",
       status: "Ingen analys körd",
       suggestionStatus: "Inga förslag",
       confidence: "Saknas",
@@ -33,6 +41,8 @@ export function getDigitizationSummary(digitizationResult) {
 
   if (digitizationResult.status === "failed") {
     return {
+      userStatus: "Bildanalysen misslyckades.",
+      nextStep: "Fortsätt redigera manuellt eller prova att ladda upp bilden igen.",
       status: "Analys misslyckades",
       suggestionStatus: "Inga förslag",
       confidence: "Saknas",
@@ -45,6 +55,8 @@ export function getDigitizationSummary(digitizationResult) {
 
   if (digitizationResult.status === "pending") {
     return {
+      userStatus: "Bildanalys pågår.",
+      nextStep: "Vänta tills analysen är klar.",
       status: "Analys pågår",
       suggestionStatus: "Inga förslag ännu",
       confidence: "Saknas",
@@ -67,10 +79,15 @@ export function getDigitizationSummary(digitizationResult) {
     result
   });
   const confidence = suggestion?.confidence || detection.confidence || "Saknas";
+  const hasSuggestion = !!suggestion;
 
   return {
+    userStatus: hasSuggestion ? "Rutnät hittat." : "Inget rutnät hittades.",
+    nextStep: hasSuggestion
+      ? "Granska förhandsvisningen och justera manuellt vid behov."
+      : "Kontrollera bildens kontrast och beskärning, eller placera rutnätet manuellt.",
     status: "Analys klar",
-    suggestionStatus: suggestion ? "Förslag finns" : "Inga förslag",
+    suggestionStatus: hasSuggestion ? "Förslag finns" : "Inga förslag",
     confidence,
     reasons: formatDiagnostics(diagnostics),
     metrics: getMetricsSummary(grid),

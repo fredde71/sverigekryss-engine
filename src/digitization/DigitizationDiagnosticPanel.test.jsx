@@ -2,15 +2,19 @@ import { render, screen } from "@testing-library/react";
 import DigitizationDiagnosticPanel from "./DigitizationDiagnosticPanel";
 
 test("DigitizationDiagnosticPanel shows no-result state", () => {
-  render(<DigitizationDiagnosticPanel digitizationResult={null} />);
+  const { container } = render(<DigitizationDiagnosticPanel digitizationResult={null} />);
 
   expect(screen.getByLabelText("Digitiseringsdiagnostik")).toHaveTextContent("Status: Ingen analys körd");
+  expect(screen.getByLabelText("Digitiseringsdiagnostik")).toHaveTextContent("Status: Ingen bildanalys har körts.");
+  expect(screen.getByLabelText("Digitiseringsdiagnostik")).toHaveTextContent("Nästa steg: Ladda upp en bild eller PDF för att se en rutnätsförhandsvisning.");
   expect(screen.getByLabelText("Digitiseringsdiagnostik")).toHaveTextContent("Förslag: Inga förslag");
   expect(screen.getByLabelText("Digitiseringsdiagnostik")).toHaveTextContent("Konfidens: Saknas");
+  expect(screen.getByText("Utvecklardetaljer")).toBeInTheDocument();
+  expect(container.querySelector("details")).not.toHaveAttribute("open");
 });
 
 test("DigitizationDiagnosticPanel shows successful suggestion diagnostics defensively", () => {
-  render(
+  const { container } = render(
     <DigitizationDiagnosticPanel
       digitizationResult={{
         status: "completed",
@@ -44,6 +48,9 @@ test("DigitizationDiagnosticPanel shows successful suggestion diagnostics defens
 
   const panel = screen.getByLabelText("Digitiseringsdiagnostik");
 
+  expect(panel).toHaveTextContent("Status: Rutnät hittat.");
+  expect(panel).toHaveTextContent("Nästa steg: Granska förhandsvisningen och justera manuellt vid behov.");
+  expect(container.querySelector("details")).not.toHaveAttribute("open");
   expect(panel).toHaveTextContent("Status: Analys klar");
   expect(panel).toHaveTextContent("Förslag: Förslag finns");
   expect(panel).toHaveTextContent("Konfidens: detected");
@@ -54,7 +61,7 @@ test("DigitizationDiagnosticPanel shows successful suggestion diagnostics defens
 });
 
 test("DigitizationDiagnosticPanel exposes publisher grid diagnostics", () => {
-  render(
+  const { container } = render(
     <DigitizationDiagnosticPanel
       digitizationResult={{
         status: "completed",
@@ -125,6 +132,7 @@ test("DigitizationDiagnosticPanel exposes publisher grid diagnostics", () => {
 
   const panel = screen.getByLabelText("Digitiseringsdiagnostik");
 
+  expect(container.querySelector("details")).not.toHaveAttribute("open");
   expect(panel).toHaveTextContent("Horisontella kandidater: accepterade 12, avvisade 4, totalt 16");
   expect(panel).toHaveTextContent("Vertikala kandidater: accepterade 10, avvisade 6, totalt 16");
   expect(panel).toHaveTextContent("Horisontell avståndsjämnhet: 0.94");
@@ -134,7 +142,7 @@ test("DigitizationDiagnosticPanel exposes publisher grid diagnostics", () => {
 });
 
 test("DigitizationDiagnosticPanel shows failure state", () => {
-  render(
+  const { container } = render(
     <DigitizationDiagnosticPanel
       digitizationResult={{
         status: "failed",
@@ -145,7 +153,40 @@ test("DigitizationDiagnosticPanel shows failure state", () => {
 
   const panel = screen.getByLabelText("Digitiseringsdiagnostik");
 
+  expect(panel).toHaveTextContent("Status: Bildanalysen misslyckades.");
+  expect(panel).toHaveTextContent("Nästa steg: Fortsätt redigera manuellt eller prova att ladda upp bilden igen.");
+  expect(container.querySelector("details")).not.toHaveAttribute("open");
   expect(panel).toHaveTextContent("Status: Analys misslyckades");
   expect(panel).toHaveTextContent("Förslag: Inga förslag");
   expect(panel).toHaveTextContent("Orsaker: reader failed");
+});
+
+test("DigitizationDiagnosticPanel shows actionable no-grid state", () => {
+  const { container } = render(
+    <DigitizationDiagnosticPanel
+      digitizationResult={{
+        status: "completed",
+        result: {
+          suggestions: [],
+          gridDetection: {
+            confidence: "missing-grid-geometry",
+            geometry: null,
+            diagnostics: [
+              {
+                type: "acceptance-status",
+                accepted: false
+              }
+            ]
+          }
+        }
+      }}
+    />
+  );
+
+  const panel = screen.getByLabelText("Digitiseringsdiagnostik");
+
+  expect(panel).toHaveTextContent("Status: Inget rutnät hittades.");
+  expect(panel).toHaveTextContent("Nästa steg: Kontrollera bildens kontrast och beskärning, eller placera rutnätet manuellt.");
+  expect(panel).toHaveTextContent("Grid avvisat");
+  expect(container.querySelector("details")).not.toHaveAttribute("open");
 });
