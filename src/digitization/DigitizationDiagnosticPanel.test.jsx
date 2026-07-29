@@ -141,6 +141,110 @@ test("DigitizationDiagnosticPanel exposes publisher grid diagnostics", () => {
   expect(panel).toHaveTextContent("Grid accepterat");
 });
 
+test("DigitizationDiagnosticPanel formats vertical projection profile diagnostics readably", () => {
+  render(
+    <DigitizationDiagnosticPanel
+      digitizationResult={{
+        status: "completed",
+        result: {
+          suggestions: [
+            {
+              confidence: "detected",
+              diagnostics: [
+                {
+                  type: "vertical-projection-profile",
+                  length: 8,
+                  maxStrength: 7,
+                  meanStrength: 2.5,
+                  medianStrength: 2,
+                  runCount: 6,
+                  topPeaks: [
+                    { position: 3, strength: 7 },
+                    { position: 1, strength: 6 },
+                    { position: 5, strength: 5 },
+                    { position: 0, strength: 4 },
+                    { position: 2, strength: 3 },
+                    { position: 7, strength: 2 }
+                  ],
+                  topRuns: [
+                    {
+                      start: 3,
+                      end: 4,
+                      maxStrength: 7,
+                      meanStrength: 6,
+                      maxCoverage: 0.7,
+                      meanCoverage: 0.6
+                    },
+                    {
+                      start: 1,
+                      end: 1,
+                      maxStrength: 6,
+                      meanStrength: 6,
+                      maxCoverage: 0.6,
+                      meanCoverage: 0.6
+                    },
+                    {
+                      start: 5,
+                      end: 5,
+                      maxStrength: 5,
+                      meanStrength: 5,
+                      maxCoverage: 0.5,
+                      meanCoverage: 0.5
+                    },
+                    {
+                      start: 0,
+                      end: 0,
+                      maxStrength: 4,
+                      meanStrength: 4,
+                      maxCoverage: 0.4,
+                      meanCoverage: 0.4
+                    },
+                    {
+                      start: 2,
+                      end: 2,
+                      maxStrength: 3,
+                      meanStrength: 3,
+                      maxCoverage: 0.3,
+                      meanCoverage: 0.3
+                    },
+                    {
+                      start: 7,
+                      end: 7,
+                      maxStrength: 2,
+                      meanStrength: 2,
+                      maxCoverage: 0.2,
+                      meanCoverage: 0.2
+                    }
+                  ]
+                }
+              ],
+              grid: {
+                rows: 2,
+                cols: 2,
+                bounds: {
+                  top: 0,
+                  left: 0,
+                  width: 20,
+                  height: 20
+                },
+                horizontalLines: [0, 10, 20],
+                verticalLines: [0, 10, 20]
+              }
+            }
+          ]
+        }
+      }}
+    />
+  );
+
+  const panel = screen.getByLabelText("Digitiseringsdiagnostik");
+
+  expect(panel).toHaveTextContent("Vertikal projektion: längd 8, max 7, medel 2.5, median 2, runs 6");
+  expect(panel).toHaveTextContent("toppar pos 3 styrka 7; pos 1 styrka 6; pos 5 styrka 5; pos 0 styrka 4; pos 2 styrka 3 (visar 5 av 6)");
+  expect(panel).toHaveTextContent("runs med täckning 3-4: max 7, medel 6, täckning max 70%, medel 60%; 1-1: max 6, medel 6, täckning max 60%, medel 60%; 5-5: max 5, medel 5, täckning max 50%, medel 50%; 0-0: max 4, medel 4, täckning max 40%, medel 40%; 2-2: max 3, medel 3, täckning max 30%, medel 30% (visar 5 av 6)");
+  expect(panel).not.toHaveTextContent("Okänd diagnostik");
+});
+
 test("DigitizationDiagnosticPanel shows failure state", () => {
   const { container } = render(
     <DigitizationDiagnosticPanel

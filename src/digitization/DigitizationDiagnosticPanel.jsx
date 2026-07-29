@@ -1,5 +1,7 @@
 import React from "react";
 
+const DIAGNOSTIC_PREVIEW_LIMIT = 5;
+
 export default function DigitizationDiagnosticPanel({
   digitizationResult
 }) {
@@ -169,7 +171,52 @@ function formatDiagnostic(diagnostic) {
     return diagnostic.accepted ? "Grid accepterat" : "Grid avvisat";
   }
 
+  if (diagnostic.type === "vertical-projection-profile") {
+    return formatVerticalProjectionProfile(diagnostic);
+  }
+
   return "Okänd diagnostik";
+}
+
+function formatVerticalProjectionProfile(diagnostic) {
+  return [
+    `Vertikal projektion: längd ${formatNumber(diagnostic.length)}`,
+    `max ${formatNumber(diagnostic.maxStrength)}`,
+    `medel ${formatNumber(diagnostic.meanStrength)}`,
+    `median ${formatNumber(diagnostic.medianStrength)}`,
+    `runs ${formatNumber(diagnostic.runCount)}`,
+    `toppar ${formatDiagnosticList(diagnostic.topPeaks, formatProjectionPeak)}`,
+    `runs med täckning ${formatDiagnosticList(diagnostic.topRuns, formatProjectionRun)}`
+  ].join(", ");
+}
+
+function formatProjectionPeak(peak) {
+  if (!peak || typeof peak !== "object") {
+    return "okänd";
+  }
+
+  return `pos ${formatNumber(peak.position)} styrka ${formatNumber(peak.strength)}`;
+}
+
+function formatProjectionRun(run) {
+  if (!run || typeof run !== "object") {
+    return "okänd";
+  }
+
+  return `${formatNumber(run.start)}-${formatNumber(run.end)}: max ${formatNumber(run.maxStrength)}, medel ${formatNumber(run.meanStrength)}, täckning max ${formatPercent(run.maxCoverage)}, medel ${formatPercent(run.meanCoverage)}`;
+}
+
+function formatDiagnosticList(items, formatItem) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return "saknas";
+  }
+
+  const visibleItems = items.slice(0, DIAGNOSTIC_PREVIEW_LIMIT);
+  const suffix = items.length > DIAGNOSTIC_PREVIEW_LIMIT
+    ? ` (visar ${DIAGNOSTIC_PREVIEW_LIMIT} av ${items.length})`
+    : "";
+
+  return `${visibleItems.map(formatItem).join("; ")}${suffix}`;
 }
 
 function formatRejectionReason(reason) {
@@ -244,6 +291,14 @@ function formatNumber(value) {
   }
 
   return Number.isInteger(value) ? `${value}` : value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function formatPercent(value) {
+  if (!Number.isFinite(value)) {
+    return "saknas";
+  }
+
+  return `${formatNumber(value * 100)}%`;
 }
 
 function formatAxis(axis) {
