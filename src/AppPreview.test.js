@@ -60,6 +60,51 @@ test("editor loads Publications for the current crosswordId", () => {
   expect(appSource).toContain("refreshPublications(crosswordId);");
 });
 
+test("upload flow runs digitization through the browser ImageData adapter without applying suggestions", () => {
+  const uploadSection = getSourceBetween(
+    appSource,
+    "const handleImageUpload = async (e) => {",
+    "const handleTemplateImport = async (e) => {"
+  );
+  const pdfStateUpdateSection = getSourceBetween(
+    uploadSection,
+    "setImageSrc(image);",
+    "return;"
+  );
+  const imageStateUpdateSection = getSourceBetween(
+    uploadSection,
+    "reader.onload = async () => {",
+    "};"
+  );
+  const digitizationSection = getSourceBetween(
+    appSource,
+    "const runDigitizationForUpload = async (source) => {",
+    "};"
+  );
+
+  expect(appSource).not.toContain("digitizationResult");
+  expect(appSource).not.toContain("setDigitizationResult");
+  expect(appSource).toContain("import { readBrowserImageData } from \"./digitization/adapters/browserImageDataReader\";");
+  expect(appSource).toContain("import { detectGridFromImageSource } from \"./digitization/detection/imageGridDetectionEngine\";");
+  expect(pdfStateUpdateSection).toContain("setDocumentSize(documentSize);");
+  expect(pdfStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
+  expect(pdfStateUpdateSection).toContain("setCompetitionCells([]);");
+  expect(pdfStateUpdateSection).toContain("scheduleDigitizationForUpload(canvas);");
+  expect(imageStateUpdateSection).toContain("setImageSrc(image);");
+  expect(imageStateUpdateSection).toContain("setDocumentSize(documentSize);");
+  expect(imageStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
+  expect(imageStateUpdateSection).toContain("setCompetitionCells([]);");
+  expect(imageStateUpdateSection).toContain("scheduleDigitizationForUpload(image);");
+  expect(appSource).toContain("window.setTimeout(() => {");
+  expect(digitizationSection).toContain("detectGridFromImageSource");
+  expect(digitizationSection).toContain("readImageData: readBrowserImageData");
+  expect(digitizationSection).toContain("console.warn(\"Digitization failed during upload\", err);");
+  expect(digitizationSection).not.toContain("setGridArea");
+  expect(digitizationSection).not.toContain("setRows");
+  expect(digitizationSection).not.toContain("setCols");
+  expect(digitizationSection).not.toContain("setCropArea");
+});
+
 function getSourceBetween(source, start, end) {
   const startIndex = source.indexOf(start);
   const endIndex = source.indexOf(end, startIndex + start.length);

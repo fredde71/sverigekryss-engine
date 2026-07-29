@@ -28,6 +28,8 @@ import {
   loadBackendPublicationsForCrossword
 } from "./publication/publicationApi";
 import { createPublicationFromTemplate } from "./publication/publicationModel";
+import { readBrowserImageData } from "./digitization/adapters/browserImageDataReader";
+import { detectGridFromImageSource } from "./digitization/detection/imageGridDetectionEngine";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -186,12 +188,12 @@ const context = canvas.getContext("2d");
 canvas.width = viewport.width;
 canvas.height = viewport.height;
 
-await page.render({
-  canvasContext: context,
-  viewport
-}).promise;
+  await page.render({
+    canvasContext: context,
+    viewport
+  }).promise;
 
-const image = canvas.toDataURL("image/png");
+  const image = canvas.toDataURL("image/png");
 const documentSize = getDocumentSizeForDimensions({
   width: viewport.width,
   height: viewport.height
@@ -203,6 +205,8 @@ setCropArea(getFullDocumentArea(documentSize));
 setCompetitionCells([]);
 
 e.target.value = "";
+
+  scheduleDigitizationForUpload(canvas);
 
 return;
 }
@@ -217,11 +221,30 @@ return;
     setDocumentSize(documentSize);
     setCropArea(getFullDocumentArea(documentSize));
     setCompetitionCells([]);
+
+    scheduleDigitizationForUpload(image);
   };
 
   reader.readAsDataURL(file);
 
 };
+
+  const scheduleDigitizationForUpload = (source) => {
+    window.setTimeout(() => {
+      runDigitizationForUpload(source);
+    }, 0);
+  };
+
+  const runDigitizationForUpload = async (source) => {
+    try {
+      await detectGridFromImageSource({
+        source,
+        readImageData: readBrowserImageData
+      });
+    } catch (err) {
+      console.warn("Digitization failed during upload", err);
+    }
+  };
 const handleTemplateImport = async (e) => {
 
   const file = e.target.files?.[0];
