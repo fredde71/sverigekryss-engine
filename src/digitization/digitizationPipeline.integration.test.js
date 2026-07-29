@@ -48,7 +48,57 @@ test("digitization pipeline preserves immutable detection flow into a suggestion
   expect(result.gridDetection).toEqual({
     geometry: result.context.gridGeometry,
     confidence: "detected",
-    diagnostics: []
+    diagnostics: expect.arrayContaining([
+      expect.objectContaining({
+        type: "candidate-counts",
+        axis: "horizontal",
+        acceptedCount: 3,
+        rejectedCount: 2,
+        totalCount: 5
+      }),
+      expect.objectContaining({
+        type: "candidate-counts",
+        axis: "vertical",
+        acceptedCount: 3,
+        rejectedCount: 2,
+        totalCount: 5
+      }),
+      expect.objectContaining({
+        type: "spacing-consistency",
+        axis: "horizontal",
+        status: "measured",
+        consistency: 1,
+        min: 2,
+        max: 2,
+        average: 2
+      }),
+      expect.objectContaining({
+        type: "spacing-consistency",
+        axis: "vertical",
+        status: "measured",
+        consistency: 1,
+        min: 2,
+        max: 2,
+        average: 2
+      }),
+      expect.objectContaining({
+        type: "pre-rejection-bounds",
+        bounds: {
+          top: 0,
+          left: 0,
+          width: 4,
+          height: 4
+        }
+      }),
+      expect.objectContaining({
+        type: "rejection-reasons",
+        reasons: []
+      }),
+      expect.objectContaining({
+        type: "acceptance-status",
+        accepted: true
+      })
+    ])
   });
   expect(Object.isFrozen(result.gridDetection)).toBe(true);
   expect(Object.isFrozen(result.gridDetection.geometry)).toBe(true);
@@ -60,7 +110,7 @@ test("digitization pipeline preserves immutable detection flow into a suggestion
     sourceId: "integration-source",
     grid: result.gridDetection.geometry,
     confidence: "detected",
-    diagnostics: []
+    diagnostics: result.gridDetection.diagnostics
   });
   expect(Object.isFrozen(result.suggestions[0])).toBe(true);
   expect(Object.isFrozen(result.suggestions[0].grid)).toBe(true);
@@ -99,7 +149,42 @@ test("digitization pipeline preserves missing-grid reasons without UI or filesys
   expect(result.gridDetection).toEqual({
     geometry: null,
     confidence: "missing-grid-geometry",
-    diagnostics: ["Grid geometry was not detected"]
+    diagnostics: expect.arrayContaining([
+      expect.objectContaining({
+        type: "candidate-counts",
+        axis: "horizontal",
+        acceptedCount: 0,
+        rejectedCount: 0,
+        totalCount: 0
+      }),
+      expect.objectContaining({
+        type: "candidate-counts",
+        axis: "vertical",
+        acceptedCount: 0,
+        rejectedCount: 0,
+        totalCount: 0
+      }),
+      expect.objectContaining({
+        type: "pre-rejection-bounds",
+        bounds: null
+      }),
+      expect.objectContaining({
+        type: "rejection-reason",
+        axis: "horizontal",
+        candidateCount: 0,
+        minimumCount: 2
+      }),
+      expect.objectContaining({
+        type: "rejection-reason",
+        axis: "vertical",
+        candidateCount: 0,
+        minimumCount: 2
+      }),
+      expect.objectContaining({
+        type: "acceptance-status",
+        accepted: false
+      })
+    ])
   });
   expect(result.diagnostics).toEqual(result.gridDetection.diagnostics);
   expect(result.suggestions).toEqual([]);

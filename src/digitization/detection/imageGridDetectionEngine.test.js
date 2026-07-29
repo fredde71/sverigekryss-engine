@@ -27,9 +27,60 @@ test("detectGridFromImageSource detects grid geometry from a small RGBA image", 
       horizontalLines: [0, 2, 4],
       verticalLines: [0, 2, 4]
     },
-    diagnostics: []
+    diagnostics: expect.arrayContaining([
+      {
+        type: "candidate-counts",
+        axis: "horizontal",
+        acceptedCount: 3,
+        rejectedCount: 2,
+        totalCount: 5
+      },
+      {
+        type: "candidate-counts",
+        axis: "vertical",
+        acceptedCount: 3,
+        rejectedCount: 2,
+        totalCount: 5
+      },
+      {
+        type: "spacing-consistency",
+        axis: "horizontal",
+        status: "measured",
+        consistency: 1,
+        min: 2,
+        max: 2,
+        average: 2
+      },
+      {
+        type: "spacing-consistency",
+        axis: "vertical",
+        status: "measured",
+        consistency: 1,
+        min: 2,
+        max: 2,
+        average: 2
+      },
+      {
+        type: "pre-rejection-bounds",
+        bounds: {
+          top: 0,
+          left: 0,
+          width: 4,
+          height: 4
+        }
+      },
+      {
+        type: "rejection-reasons",
+        reasons: []
+      },
+      {
+        type: "acceptance-status",
+        accepted: true
+      }
+    ])
   });
   expect(result.suggestions).toHaveLength(1);
+  expect(result.suggestions[0].diagnostics).toEqual(result.gridDetection.diagnostics);
   expect(result.suggestions[0]).toMatchObject({
     sourceId: "grid-source",
     confidence: "detected",
@@ -74,6 +125,68 @@ test("detectGridFromImageSource normalizes suggestion geometry to documentSize",
   expect(result.suggestions[0].grid).toEqual(result.gridDetection.geometry);
 });
 
+test("detectGridFromImageSource reports candidate counts, spacing, bounds and rejection reasons", async () => {
+  const result = await detectGridFromImageSource({
+    source: {
+      id: "publisher-diagnostics-source"
+    },
+    readImageData: jest.fn(async () => createPublisherDiagnosticImage())
+  });
+
+  expect(result.gridDetection.geometry).toBeNull();
+  expect(result.suggestions).toEqual([]);
+  expect(result.diagnostics).toEqual(expect.arrayContaining([
+    {
+      type: "candidate-counts",
+      axis: "horizontal",
+      acceptedCount: 1,
+      rejectedCount: 1,
+      totalCount: 2
+    },
+    {
+      type: "candidate-counts",
+      axis: "vertical",
+      acceptedCount: 2,
+      rejectedCount: 2,
+      totalCount: 4
+    },
+    {
+      type: "spacing-consistency",
+      axis: "horizontal",
+      status: "insufficient-candidates"
+    },
+    {
+      type: "spacing-consistency",
+      axis: "vertical",
+      status: "measured",
+      consistency: 1,
+      min: 2,
+      max: 2,
+      average: 2
+    },
+    {
+      type: "pre-rejection-bounds",
+      bounds: {
+        top: 0,
+        left: 0,
+        width: 2,
+        height: 0
+      }
+    },
+    {
+      type: "rejection-reason",
+      code: "insufficient-candidates",
+      axis: "horizontal",
+      candidateCount: 1,
+      minimumCount: 2
+    },
+    {
+      type: "acceptance-status",
+      accepted: false
+    }
+  ]));
+});
+
 test("detectGridFromImageSource returns diagnostics and no suggestions when grid is missing", async () => {
   const result = await detectGridFromImageSource({
     source: { id: "blank-source" },
@@ -86,10 +199,57 @@ test("detectGridFromImageSource returns diagnostics and no suggestions when grid
   expect(result.gridDetection).toEqual({
     geometry: null,
     confidence: "missing-grid-geometry",
-    diagnostics: ["Grid geometry was not detected"]
+    diagnostics: expect.arrayContaining([
+      {
+        type: "candidate-counts",
+        axis: "horizontal",
+        acceptedCount: 0,
+        rejectedCount: 0,
+        totalCount: 0
+      },
+      {
+        type: "candidate-counts",
+        axis: "vertical",
+        acceptedCount: 0,
+        rejectedCount: 0,
+        totalCount: 0
+      },
+      {
+        type: "spacing-consistency",
+        axis: "horizontal",
+        status: "insufficient-candidates"
+      },
+      {
+        type: "spacing-consistency",
+        axis: "vertical",
+        status: "insufficient-candidates"
+      },
+      {
+        type: "pre-rejection-bounds",
+        bounds: null
+      },
+      {
+        type: "rejection-reason",
+        code: "insufficient-candidates",
+        axis: "horizontal",
+        candidateCount: 0,
+        minimumCount: 2
+      },
+      {
+        type: "rejection-reason",
+        code: "insufficient-candidates",
+        axis: "vertical",
+        candidateCount: 0,
+        minimumCount: 2
+      },
+      {
+        type: "acceptance-status",
+        accepted: false
+      }
+    ])
   });
   expect(result.suggestions).toEqual([]);
-  expect(result.diagnostics).toEqual(["Grid geometry was not detected"]);
+  expect(result.diagnostics).toEqual(result.gridDetection.diagnostics);
 });
 
 test("transparent dark pixels are composited over white and do not form lines", async () => {
@@ -194,7 +354,9 @@ function createRgbaImage({
   width,
   height,
   darkRows = [],
-  darkCols = []
+  darkCols = [],
+  weakRows = [],
+  weakCols = []
 }) {
   const data = new Uint8ClampedArray(width * height * 4);
 
@@ -202,12 +364,14 @@ function createRgbaImage({
     for (let x = 0; x < width; x++) {
       const offset = ((y * width) + x) * 4;
       const isDark = darkRows.includes(y) || darkCols.includes(x);
-      const value = isDark ? 0 : 255;
+      const isWeak = weakRows.includes(y) || weakCols.includes(x);
+      const value = isDark || isWeak ? 0 : 255;
+      const alpha = isWeak && !isDark ? 128 : 255;
 
       data[offset] = value;
       data[offset + 1] = value;
       data[offset + 2] = value;
-      data[offset + 3] = 255;
+      data[offset + 3] = alpha;
     }
   }
 
@@ -231,6 +395,38 @@ function createTransparentDarkImage({
     data[offset + 1] = 0;
     data[offset + 2] = 0;
     data[offset + 3] = 0;
+  }
+
+  return {
+    width,
+    height,
+    data
+  };
+}
+
+function createPublisherDiagnosticImage() {
+  const width = 5;
+  const height = 5;
+  const data = new Uint8ClampedArray(width * height * 4);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const offset = ((y * width) + x) * 4;
+      const isAcceptedHorizontal = y === 0;
+      const isAcceptedVertical = x === 0 || x === 2;
+      const isRejectedHorizontal = y === 3 && x === 4;
+      const isRejectedVertical = x === 4 && y === 1;
+      const isDark = isAcceptedHorizontal
+        || isAcceptedVertical
+        || isRejectedHorizontal
+        || isRejectedVertical;
+      const value = isDark ? 0 : 255;
+
+      data[offset] = value;
+      data[offset + 1] = value;
+      data[offset + 2] = value;
+      data[offset + 3] = 255;
+    }
   }
 
   return {

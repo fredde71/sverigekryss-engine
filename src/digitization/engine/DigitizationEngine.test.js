@@ -27,9 +27,47 @@ test("runDigitizationJob orchestrates a single job through image grid detection"
         rows: 2,
         cols: 2
       },
-      diagnostics: []
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({
+          type: "candidate-counts",
+          axis: "horizontal",
+          acceptedCount: 3,
+          rejectedCount: 2,
+          totalCount: 5
+        }),
+        expect.objectContaining({
+          type: "candidate-counts",
+          axis: "vertical",
+          acceptedCount: 3,
+          rejectedCount: 2,
+          totalCount: 5
+        }),
+        expect.objectContaining({
+          type: "acceptance-status",
+          accepted: true
+        })
+      ])
     },
-    diagnostics: []
+    diagnostics: expect.arrayContaining([
+      expect.objectContaining({
+        type: "candidate-counts",
+        axis: "horizontal",
+        acceptedCount: 3,
+        rejectedCount: 2,
+        totalCount: 5
+      }),
+      expect.objectContaining({
+        type: "candidate-counts",
+        axis: "vertical",
+        acceptedCount: 3,
+        rejectedCount: 2,
+        totalCount: 5
+      }),
+      expect.objectContaining({
+        type: "acceptance-status",
+        accepted: true
+      })
+    ])
   });
   expect(result.suggestions).toHaveLength(1);
   expect(result.suggestions[0]).toMatchObject({
@@ -53,11 +91,42 @@ test("runDigitizationJob preserves diagnostics and empty suggestions when grid i
   });
 
   expect(result.suggestions).toEqual([]);
-  expect(result.diagnostics).toEqual(["Grid geometry was not detected"]);
+  expect(result.diagnostics).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      type: "candidate-counts",
+      axis: "horizontal",
+      acceptedCount: 0,
+      rejectedCount: 0,
+      totalCount: 0
+    }),
+    expect.objectContaining({
+      type: "candidate-counts",
+      axis: "vertical",
+      acceptedCount: 0,
+      rejectedCount: 0,
+      totalCount: 0
+    }),
+    expect.objectContaining({
+      type: "rejection-reason",
+      axis: "horizontal",
+      candidateCount: 0,
+      minimumCount: 2
+    }),
+    expect.objectContaining({
+      type: "rejection-reason",
+      axis: "vertical",
+      candidateCount: 0,
+      minimumCount: 2
+    }),
+    expect.objectContaining({
+      type: "acceptance-status",
+      accepted: false
+    })
+  ]));
   expect(result.gridDetection).toEqual({
     geometry: null,
     confidence: "missing-grid-geometry",
-    diagnostics: ["Grid geometry was not detected"]
+    diagnostics: result.diagnostics
   });
 });
 

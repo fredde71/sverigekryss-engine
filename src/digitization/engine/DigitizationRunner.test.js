@@ -66,7 +66,26 @@ test("runDigitizationJobs runs multiple jobs in order", async () => {
   expect(results.map(result => result.jobId)).toEqual(["job-1", "job-2"]);
   expect(results[0].suggestions).toHaveLength(1);
   expect(results[1].suggestions).toEqual([]);
-  expect(results[1].diagnostics).toEqual(["Grid geometry was not detected"]);
+  expect(results[1].diagnostics).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      type: "candidate-counts",
+      axis: "horizontal",
+      acceptedCount: 0,
+      rejectedCount: 0,
+      totalCount: 0
+    }),
+    expect.objectContaining({
+      type: "candidate-counts",
+      axis: "vertical",
+      acceptedCount: 0,
+      rejectedCount: 0,
+      totalCount: 0
+    }),
+    expect.objectContaining({
+      type: "acceptance-status",
+      accepted: false
+    })
+  ]));
 });
 
 test("runDigitizationJobs returns an empty array for no jobs", async () => {

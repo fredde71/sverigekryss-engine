@@ -53,6 +53,86 @@ test("DigitizationDiagnosticPanel shows successful suggestion diagnostics defens
   expect(panel).toHaveTextContent("Geometri: top 1, left 2, width 30, height 20");
 });
 
+test("DigitizationDiagnosticPanel exposes publisher grid diagnostics", () => {
+  render(
+    <DigitizationDiagnosticPanel
+      digitizationResult={{
+        status: "completed",
+        result: {
+          suggestions: [
+            {
+              confidence: "detected",
+              diagnostics: [
+                {
+                  type: "candidate-counts",
+                  axis: "horizontal",
+                  acceptedCount: 12,
+                  rejectedCount: 4,
+                  totalCount: 16
+                },
+                {
+                  type: "candidate-counts",
+                  axis: "vertical",
+                  acceptedCount: 10,
+                  rejectedCount: 6,
+                  totalCount: 16
+                },
+                {
+                  type: "spacing-consistency",
+                  axis: "horizontal",
+                  status: "measured",
+                  consistency: 0.94,
+                  min: 19,
+                  max: 21,
+                  average: 20
+                },
+                {
+                  type: "pre-rejection-bounds",
+                  bounds: {
+                    top: 8,
+                    left: 12,
+                    width: 420,
+                    height: 500
+                  }
+                },
+                {
+                  type: "rejection-reasons",
+                  reasons: []
+                },
+                {
+                  type: "acceptance-status",
+                  accepted: true
+                }
+              ],
+              grid: {
+                rows: 11,
+                cols: 9,
+                bounds: {
+                  top: 8,
+                  left: 12,
+                  width: 420,
+                  height: 500
+                },
+                horizontalLines: [8, 28],
+                verticalLines: [12, 32]
+              }
+            }
+          ]
+        }
+      }}
+    />
+  );
+
+  const panel = screen.getByLabelText("Digitiseringsdiagnostik");
+
+  expect(panel).toHaveTextContent("Horisontella kandidater: accepterade 12, avvisade 4, totalt 16");
+  expect(panel).toHaveTextContent("Vertikala kandidater: accepterade 10, avvisade 6, totalt 16");
+  expect(panel).toHaveTextContent("Horisontell avståndsjämnhet: 0.94");
+  expect(panel).toHaveTextContent("Detekterade gränser före avvisning: top 8, left 12, width 420, height 500");
+  expect(panel).toHaveTextContent("Avvisningsorsaker: inga");
+  expect(panel).toHaveTextContent("Grid accepterat");
+});
+
 test("DigitizationDiagnosticPanel shows failure state", () => {
   render(
     <DigitizationDiagnosticPanel
