@@ -175,6 +175,10 @@ function formatDiagnostic(diagnostic) {
     return formatVerticalProjectionProfile(diagnostic);
   }
 
+  if (diagnostic.type === "vertical-line-mask-projection-comparison") {
+    return formatVerticalLineMaskProjectionComparison(diagnostic);
+  }
+
   return "Okänd diagnostik";
 }
 
@@ -187,6 +191,24 @@ function formatVerticalProjectionProfile(diagnostic) {
     `runs ${formatNumber(diagnostic.runCount)}`,
     `toppar ${formatDiagnosticList(diagnostic.topPeaks, formatProjectionPeak)}`,
     `runs med täckning ${formatDiagnosticList(diagnostic.topRuns, formatProjectionRun)}`
+  ].join(", ");
+}
+
+function formatVerticalLineMaskProjectionComparison(diagnostic) {
+  return [
+    "Vertikal linjemask jämfört med rå projektion:",
+    `rå median ${formatNumber(diagnostic.raw?.medianStrength)}`,
+    `mask median ${formatNumber(diagnostic.mask?.medianStrength)}`,
+    `rå max ${formatNumber(diagnostic.raw?.maxStrength)}`,
+    `mask max ${formatNumber(diagnostic.mask?.maxStrength)}`,
+    `rå runs ${formatNumber(diagnostic.raw?.runCount)}`,
+    `mask runs ${formatNumber(diagnostic.mask?.runCount)}`,
+    `behållna pixlar ${formatPercent(diagnostic.preprocessing?.retainedPixelRatio)}`,
+    `behållna komponenter ${formatNumber(diagnostic.preprocessing?.retainedComponentCount)}`,
+    `rå toppar ${formatDiagnosticList(diagnostic.raw?.topPeaks, formatProjectionPeak)}`,
+    `mask toppar ${formatDiagnosticList(diagnostic.mask?.topPeaks, formatProjectionPeak)}`,
+    `rå runs ${formatDiagnosticList(diagnostic.raw?.topRuns, formatProjectionRun)}`,
+    `mask runs ${formatDiagnosticList(diagnostic.mask?.topRuns, formatProjectionRun)}`
   ].join(", ");
 }
 

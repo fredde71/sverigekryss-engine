@@ -19,6 +19,9 @@ import {
   detectGridFromAnalysisContext
 } from "./gridDetectionEngine";
 
+const VERTICAL_LINE_MASK_MIN_SPAN_RATIO = 0.6;
+const VERTICAL_LINE_MASK_MIN_SPAN_PIXELS = 3;
+
 export async function detectGridFromImageSource({
   source,
   options = {},
@@ -39,6 +42,14 @@ export async function detectGridFromImageSource({
   const verticalProjectionDiagnostics = createVerticalProjectionDiagnostics({
     projection: projections.vertical,
     axisLength: binaryImage.height
+  });
+  const verticalLineMask = createVerticalLineMask(binaryImage);
+  const verticalLineMaskProjection = createVerticalProjection(verticalLineMask);
+  const verticalLineMaskDiagnostics = createVerticalLineMaskDiagnostics({
+    rawProjection: projections.vertical,
+    maskProjection: verticalLineMaskProjection,
+    axisLength: binaryImage.height,
+    mask: verticalLineMask
   });
   const lineCandidates = {
     horizontal: findLineCandidates(projections.horizontal, {
@@ -78,6 +89,7 @@ export async function detectGridFromImageSource({
 
   const gridDiagnostics = [
     verticalProjectionDiagnostics,
+    verticalLineMaskDiagnostics,
     ...candidateDiagnostics,
     ...spacingDiagnostics,
     createBoundsDiagnostic(rawBounds),
@@ -169,7 +181,188 @@ function scaleCoordinate(value, scale) {
   return Number.isFinite(value) ? value * scale : value;
 }
 
+function createVerticalLineMask(binaryImage) {
+  const {
+    width,
+    height,
+    data
+  } = binaryImage;
+  const mask = new Uint8Array(width * height);
+  const visited = new Uint8Array(width * height);
+  const minVerticalSpan = Math.min(
+    height,
+    Math.max(
+      VERTICAL_LINE_MASK_MIN_SPAN_PIXELS,
+      Math.ceil(height * VERTICAL_LINE_MASK_MIN_SPAN_RATIO)
+    )
+  );
+  let sourcePixelCount = 0;
+  let retainedPixelCount = 0;
+  let componentCount = 0;
+  let retainedComponentCount = 0;
+
+  for (let index = 0; index < data.length; index++) {
+    if (data[index] === 1) {
+      sourcePixelCount += 1;
+    }
+  }
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = (y * width) + x;
+
+      if (data[index] !== 1 || visited[index] === 1) {
+        continue;
+      }
+
+      componentCount += 1;
+
+      const component = collectNearVerticalComponent({
+        width,
+        height,
+        data,
+        visited,
+        startX: x,
+        startY: y
+      });
+      const verticalSpan = component.maxY - component.minY + 1;
+
+      if (verticalSpan >= minVerticalSpan) {
+        retainedComponentCount += 1;
+
+        for (const componentIndex of component.indices) {
+          if (mask[componentIndex] === 0) {
+            mask[componentIndex] = 1;
+            retainedPixelCount += 1;
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    width,
+    height,
+    data: mask,
+    maskType: "vertical-line",
+    minVerticalSpan,
+    sourcePixelCount,
+    retainedPixelCount,
+    componentCount,
+    retainedComponentCount
+  };
+}
+
+function collectNearVerticalComponent({
+  width,
+  height,
+  data,
+  visited,
+  startX,
+  startY
+}) {
+  const queue = [
+    {
+      x: startX,
+      y: startY
+    }
+  ];
+  const indices = [];
+  let minY = startY;
+  let maxY = startY;
+
+  visited[(startY * width) + startX] = 1;
+
+  for (let cursor = 0; cursor < queue.length; cursor++) {
+    const {
+      x,
+      y
+    } = queue[cursor];
+    const index = (y * width) + x;
+
+    indices.push(index);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) {
+          continue;
+        }
+
+        const nextX = x + dx;
+        const nextY = y + dy;
+
+        if (nextX < 0 || nextX >= width || nextY < 0 || nextY >= height) {
+          continue;
+        }
+
+        const nextIndex = (nextY * width) + nextX;
+
+        if (data[nextIndex] !== 1 || visited[nextIndex] === 1) {
+          continue;
+        }
+
+        visited[nextIndex] = 1;
+        queue.push({
+          x: nextX,
+          y: nextY
+        });
+      }
+    }
+  }
+
+  return {
+    indices,
+    minY,
+    maxY
+  };
+}
+
 function createVerticalProjectionDiagnostics({
+  projection,
+  axisLength
+}) {
+  return {
+    type: "vertical-projection-profile",
+    axis: "vertical",
+    ...createProjectionProfileSummary({
+      projection,
+      axisLength
+    })
+  };
+}
+
+function createVerticalLineMaskDiagnostics({
+  rawProjection,
+  maskProjection,
+  axisLength,
+  mask
+}) {
+  return {
+    type: "vertical-line-mask-projection-comparison",
+    axis: "vertical",
+    preprocessing: {
+      maskType: "vertical-line",
+      minVerticalSpan: mask.minVerticalSpan,
+      sourcePixelCount: mask.sourcePixelCount,
+      retainedPixelCount: mask.retainedPixelCount,
+      retainedPixelRatio: calculateRatio(mask.retainedPixelCount, mask.sourcePixelCount),
+      componentCount: mask.componentCount,
+      retainedComponentCount: mask.retainedComponentCount
+    },
+    raw: createProjectionProfileSummary({
+      projection: rawProjection,
+      axisLength
+    }),
+    mask: createProjectionProfileSummary({
+      projection: maskProjection,
+      axisLength
+    })
+  };
+}
+
+function createProjectionProfileSummary({
   projection,
   axisLength
 }) {
@@ -190,8 +383,6 @@ function createVerticalProjectionDiagnostics({
   const runs = createProjectionRuns(values, axisLength);
 
   return {
-    type: "vertical-projection-profile",
-    axis: "vertical",
     length,
     maxStrength,
     meanStrength,
@@ -265,6 +456,12 @@ function createProjectionRuns(values, axisLength) {
 function calculateCoverage(strength, axisLength) {
   return Number.isFinite(axisLength) && axisLength > 0
     ? strength / axisLength
+    : 0;
+}
+
+function calculateRatio(value, total) {
+  return Number.isFinite(value) && Number.isFinite(total) && total > 0
+    ? value / total
     : 0;
 }
 

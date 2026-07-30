@@ -245,6 +245,152 @@ test("DigitizationDiagnosticPanel formats vertical projection profile diagnostic
   expect(panel).not.toHaveTextContent("Okänd diagnostik");
 });
 
+test("DigitizationDiagnosticPanel formats vertical line mask comparison diagnostics readably", () => {
+  render(
+    <DigitizationDiagnosticPanel
+      digitizationResult={{
+        status: "completed",
+        result: {
+          suggestions: [
+            {
+              confidence: "detected",
+              diagnostics: [
+                {
+                  type: "vertical-line-mask-projection-comparison",
+                  axis: "vertical",
+                  preprocessing: {
+                    maskType: "vertical-line",
+                    retainedPixelRatio: 0.625,
+                    retainedComponentCount: 3
+                  },
+                  raw: {
+                    medianStrength: 2,
+                    maxStrength: 9,
+                    runCount: 6,
+                    topPeaks: [
+                      { position: 2, strength: 9 },
+                      { position: 4, strength: 8 },
+                      { position: 6, strength: 7 },
+                      { position: 8, strength: 6 },
+                      { position: 10, strength: 5 },
+                      { position: 12, strength: 4 }
+                    ],
+                    topRuns: [
+                      {
+                        start: 2,
+                        end: 2,
+                        maxStrength: 9,
+                        meanStrength: 9,
+                        maxCoverage: 0.9,
+                        meanCoverage: 0.9
+                      },
+                      {
+                        start: 4,
+                        end: 4,
+                        maxStrength: 8,
+                        meanStrength: 8,
+                        maxCoverage: 0.8,
+                        meanCoverage: 0.8
+                      },
+                      {
+                        start: 6,
+                        end: 6,
+                        maxStrength: 7,
+                        meanStrength: 7,
+                        maxCoverage: 0.7,
+                        meanCoverage: 0.7
+                      },
+                      {
+                        start: 8,
+                        end: 8,
+                        maxStrength: 6,
+                        meanStrength: 6,
+                        maxCoverage: 0.6,
+                        meanCoverage: 0.6
+                      },
+                      {
+                        start: 10,
+                        end: 10,
+                        maxStrength: 5,
+                        meanStrength: 5,
+                        maxCoverage: 0.5,
+                        meanCoverage: 0.5
+                      },
+                      {
+                        start: 12,
+                        end: 12,
+                        maxStrength: 4,
+                        meanStrength: 4,
+                        maxCoverage: 0.4,
+                        meanCoverage: 0.4
+                      }
+                    ]
+                  },
+                  mask: {
+                    medianStrength: 1,
+                    maxStrength: 7,
+                    runCount: 2,
+                    topPeaks: [
+                      { position: 2, strength: 7 },
+                      { position: 4, strength: 6 },
+                      { position: 6, strength: 5 },
+                      { position: 8, strength: 4 },
+                      { position: 10, strength: 3 },
+                      { position: 12, strength: 2 }
+                    ],
+                    topRuns: [
+                      {
+                        start: 2,
+                        end: 4,
+                        maxStrength: 7,
+                        meanStrength: 6.5,
+                        maxCoverage: 0.7,
+                        meanCoverage: 0.65
+                      },
+                      {
+                        start: 6,
+                        end: 8,
+                        maxStrength: 5,
+                        meanStrength: 4.5,
+                        maxCoverage: 0.5,
+                        meanCoverage: 0.45
+                      }
+                    ]
+                  }
+                }
+              ],
+              grid: {
+                rows: 2,
+                cols: 2,
+                bounds: {
+                  top: 0,
+                  left: 0,
+                  width: 20,
+                  height: 20
+                },
+                horizontalLines: [0, 10, 20],
+                verticalLines: [0, 10, 20]
+              }
+            }
+          ]
+        }
+      }}
+    />
+  );
+
+  const panel = screen.getByLabelText("Digitiseringsdiagnostik");
+
+  expect(screen.getByText("Utvecklardetaljer")).toBeInTheDocument();
+  expect(panel).toHaveTextContent("Vertikal linjemask jämfört med rå projektion:");
+  expect(panel).toHaveTextContent("rå median 2, mask median 1, rå max 9, mask max 7, rå runs 6, mask runs 2");
+  expect(panel).toHaveTextContent("behållna pixlar 62.5%, behållna komponenter 3");
+  expect(panel).toHaveTextContent("rå toppar pos 2 styrka 9; pos 4 styrka 8; pos 6 styrka 7; pos 8 styrka 6; pos 10 styrka 5 (visar 5 av 6)");
+  expect(panel).toHaveTextContent("mask toppar pos 2 styrka 7; pos 4 styrka 6; pos 6 styrka 5; pos 8 styrka 4; pos 10 styrka 3 (visar 5 av 6)");
+  expect(panel).toHaveTextContent("rå runs 2-2: max 9, medel 9, täckning max 90%, medel 90%; 4-4: max 8, medel 8, täckning max 80%, medel 80%; 6-6: max 7, medel 7, täckning max 70%, medel 70%; 8-8: max 6, medel 6, täckning max 60%, medel 60%; 10-10: max 5, medel 5, täckning max 50%, medel 50% (visar 5 av 6)");
+  expect(panel).toHaveTextContent("mask runs 2-4: max 7, medel 6.5, täckning max 70%, medel 65%; 6-8: max 5, medel 4.5, täckning max 50%, medel 45%");
+  expect(panel).not.toHaveTextContent("Okänd diagnostik");
+});
+
 test("DigitizationDiagnosticPanel shows failure state", () => {
   const { container } = render(
     <DigitizationDiagnosticPanel
