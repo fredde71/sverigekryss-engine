@@ -189,10 +189,53 @@ test("detectGridFromImageSource reports vertical projection profile before candi
   });
 });
 
-test("detectGridFromImageSource reports vertical-line mask projection comparison without changing raw candidate diagnostics", async () => {
+test("detectGridFromImageSource does not run vertical-line mask diagnostics by default", async () => {
   const result = await detectGridFromImageSource({
     source: {
-      id: "vertical-line-mask-source"
+      id: "default-diagnostics-source"
+    },
+    readImageData: jest.fn(async () => createRgbaImageFromDarkPixels({
+      width: 8,
+      height: 8,
+      darkPixels: [
+        [2, 0],
+        [2, 1],
+        [2, 2],
+        [2, 3],
+        [2, 4],
+        [2, 5],
+        [2, 6],
+        [2, 7],
+        [5, 1],
+        [5, 2],
+        [6, 5]
+      ]
+    }))
+  });
+
+  expect(result.diagnostics.some(diagnostic => (
+    diagnostic.type === "vertical-line-mask-projection-comparison"
+  ))).toBe(false);
+  expect(result.diagnostics).toEqual(expect.arrayContaining([
+    {
+      type: "candidate-counts",
+      axis: "vertical",
+      acceptedCount: 1,
+      rejectedCount: 1,
+      totalCount: 2
+    }
+  ]));
+});
+
+test("detectGridFromImageSource runs vertical-line mask diagnostics only with explicit opt-in", async () => {
+  const result = await detectGridFromImageSource({
+    source: {
+      id: "opt-in-diagnostics-source"
+    },
+    options: {
+      experimentalDiagnostics: {
+        verticalLineMask: true
+      }
     },
     readImageData: jest.fn(async () => createRgbaImageFromDarkPixels({
       width: 8,
@@ -216,69 +259,10 @@ test("detectGridFromImageSource reports vertical-line mask projection comparison
     diagnostic.type === "vertical-line-mask-projection-comparison"
   ));
 
-  expect(comparison).toEqual({
+  expect(comparison).toEqual(expect.objectContaining({
     type: "vertical-line-mask-projection-comparison",
-    axis: "vertical",
-    preprocessing: {
-      maskType: "vertical-line",
-      minVerticalSpan: 5,
-      sourcePixelCount: 11,
-      retainedPixelCount: 8,
-      retainedPixelRatio: 8 / 11,
-      componentCount: 3,
-      retainedComponentCount: 1
-    },
-    raw: expect.objectContaining({
-      length: 8,
-      maxStrength: 8,
-      meanStrength: 11 / 8,
-      medianStrength: 0,
-      runCount: 2,
-      topPeaks: expect.arrayContaining([
-        { position: 2, strength: 8 },
-        { position: 5, strength: 2 },
-        { position: 6, strength: 1 }
-      ]),
-      topRuns: expect.arrayContaining([
-        expect.objectContaining({
-          start: 2,
-          end: 2,
-          maxStrength: 8,
-          maxCoverage: 1
-        }),
-        expect.objectContaining({
-          start: 5,
-          end: 6,
-          maxStrength: 2,
-          maxCoverage: 2 / 8
-        })
-      ])
-    }),
-    mask: expect.objectContaining({
-      length: 8,
-      maxStrength: 8,
-      meanStrength: 1,
-      medianStrength: 0,
-      runCount: 1,
-      topPeaks: expect.arrayContaining([
-        { position: 2, strength: 8 },
-        { position: 5, strength: 0 },
-        { position: 6, strength: 0 }
-      ]),
-      topRuns: [
-        {
-          start: 2,
-          end: 2,
-          position: 2,
-          length: 1,
-          maxStrength: 8,
-          meanStrength: 8,
-          maxCoverage: 1,
-          meanCoverage: 1
-        }
-      ]
-    })
-  });
+    axis: "vertical"
+  }));
   expect(result.diagnostics).toEqual(expect.arrayContaining([
     {
       type: "candidate-counts",
@@ -288,51 +272,6 @@ test("detectGridFromImageSource reports vertical-line mask projection comparison
       totalCount: 2
     }
   ]));
-});
-
-test("detectGridFromImageSource preserves long near-vertical structures in the diagnostic mask", async () => {
-  const result = await detectGridFromImageSource({
-    source: {
-      id: "near-vertical-mask-source"
-    },
-    readImageData: jest.fn(async () => createRgbaImageFromDarkPixels({
-      width: 6,
-      height: 6,
-      darkPixels: [
-        [1, 0],
-        [1, 1],
-        [2, 2],
-        [2, 3],
-        [3, 4],
-        [3, 5],
-        [5, 0]
-      ]
-    }))
-  });
-  const comparison = result.diagnostics.find(diagnostic => (
-    diagnostic.type === "vertical-line-mask-projection-comparison"
-  ));
-
-  expect(comparison.preprocessing).toEqual({
-    maskType: "vertical-line",
-    minVerticalSpan: 4,
-    sourcePixelCount: 7,
-    retainedPixelCount: 6,
-    retainedPixelRatio: 6 / 7,
-    componentCount: 2,
-    retainedComponentCount: 1
-  });
-  expect(comparison.mask).toEqual(expect.objectContaining({
-    maxStrength: 2,
-    meanStrength: 1,
-    runCount: 1,
-    topPeaks: expect.arrayContaining([
-      { position: 1, strength: 2 },
-      { position: 2, strength: 2 },
-      { position: 3, strength: 2 },
-      { position: 5, strength: 0 }
-    ])
-  }));
 });
 
 test("detectGridFromImageSource reports candidate counts, spacing, bounds and rejection reasons", async () => {
