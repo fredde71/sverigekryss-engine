@@ -4,6 +4,17 @@ import { createProjectionProfileSummary } from "../detection/projectionDiagnosti
 const VERTICAL_LINE_MASK_MIN_SPAN_RATIO = 0.6;
 const VERTICAL_LINE_MASK_MIN_SPAN_PIXELS = 3;
 
+export const verticalLineMaskDiagnosticsExperiment = Object.freeze({
+  id: "vertical-line-mask-diagnostics",
+  description: "Compare the raw vertical projection with a connected-component vertical-line mask.",
+  run(binaryImage, context = {}) {
+    return createVerticalLineMaskProjectionComparison({
+      binaryImage,
+      rawVerticalProjection: resolveRawVerticalProjection(binaryImage, context)
+    });
+  }
+});
+
 export function createVerticalLineMaskProjectionComparison({
   binaryImage,
   rawVerticalProjection
@@ -178,4 +189,10 @@ function calculateRatio(value, total) {
   return Number.isFinite(value) && Number.isFinite(total) && total > 0
     ? value / total
     : 0;
+}
+
+function resolveRawVerticalProjection(binaryImage, context) {
+  return context.rawVerticalProjection
+    ?? context.projections?.vertical
+    ?? createVerticalProjection(binaryImage);
 }
