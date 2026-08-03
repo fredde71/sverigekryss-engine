@@ -46,6 +46,37 @@ test("preserves a perfect vertical line and suppresses short noise", () => {
   }));
   expect(findPeak(comparison.mask, 2).strength).toBe(21);
   expect(findPeak(comparison.mask, 6).strength).toBe(0);
+  expect(comparison.visualizations).toEqual([
+    {
+      id: "vertical-projection",
+      title: "Vertical Projection",
+      type: "vertical-projection",
+      data: {
+        axis: "vertical",
+        axisLength: 21,
+        length: 9,
+        series: [
+          {
+            id: "raw",
+            title: "Raw",
+            values: Array.from(createVerticalProjection(binaryImage))
+          },
+          {
+            id: "scores",
+            title: "Continuity scores",
+            values: expect.any(Array)
+          },
+          {
+            id: "mask",
+            title: "Continuity mask",
+            values: expect.any(Array)
+          }
+        ]
+      }
+    }
+  ]);
+  expect(comparison.visualizations[0].data.series[1].values).toHaveLength(9);
+  expect(comparison.visualizations[0].data.series[2].values).toHaveLength(9);
 });
 
 test("combines horizontally jittered line evidence without lowering 80 percent coverage", () => {

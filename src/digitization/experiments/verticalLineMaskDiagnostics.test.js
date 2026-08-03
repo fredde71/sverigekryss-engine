@@ -85,7 +85,31 @@ test("createVerticalLineMaskProjectionComparison suppresses short details while 
           meanCoverage: 1
         }
       ]
-    })
+    }),
+    visualizations: [
+      {
+        id: "vertical-projection",
+        title: "Vertical Projection",
+        type: "vertical-projection",
+        data: {
+          axis: "vertical",
+          axisLength: 8,
+          length: 8,
+          series: [
+            {
+              id: "raw",
+              title: "Raw",
+              values: [0, 0, 8, 0, 0, 2, 1, 0]
+            },
+            {
+              id: "mask",
+              title: "Vertical-line mask",
+              values: [0, 0, 8, 0, 0, 0, 0, 0]
+            }
+          ]
+        }
+      }
+    ]
   });
 });
 

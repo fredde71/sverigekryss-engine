@@ -1,5 +1,6 @@
 import { createVerticalProjection } from "../analysis/Projection";
 import { createProjectionProfileSummary } from "../detection/projectionDiagnostics";
+import { createVerticalProjectionVisualization } from "./visualization/verticalProjectionVisualization";
 
 const VERTICAL_LINE_MASK_MIN_SPAN_RATIO = 0.6;
 const VERTICAL_LINE_MASK_MIN_SPAN_PIXELS = 3;
@@ -44,7 +45,26 @@ export function createVerticalLineMaskProjectionComparison({
     mask: createProjectionProfileSummary({
       projection: maskProjection,
       axisLength: binaryImage.height
-    })
+    }),
+    visualizations: [
+      createVerticalProjectionVisualization({
+        id: "vertical-projection",
+        title: "Vertical Projection",
+        axisLength: binaryImage.height,
+        series: [
+          {
+            id: "raw",
+            title: "Raw",
+            values: rawVerticalProjection
+          },
+          {
+            id: "mask",
+            title: "Vertical-line mask",
+            values: maskProjection
+          }
+        ]
+      })
+    ]
   };
 }
 

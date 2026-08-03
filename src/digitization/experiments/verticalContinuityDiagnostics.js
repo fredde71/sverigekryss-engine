@@ -1,5 +1,6 @@
 import { createVerticalProjection } from "../analysis/Projection";
 import { createProjectionProfileSummary } from "../detection/projectionDiagnostics";
+import { createVerticalProjectionVisualization } from "./visualization/verticalProjectionVisualization";
 
 const DEFAULT_HORIZONTAL_RADIUS = 1;
 const DEFAULT_MIN_CONTINUITY_RATIO = 0.8;
@@ -125,7 +126,31 @@ export function createVerticalContinuityProjectionComparison({
     mask: createProjectionProfileSummary({
       projection: maskProjection,
       axisLength: binaryImage.height
-    })
+    }),
+    visualizations: [
+      createVerticalProjectionVisualization({
+        id: "vertical-projection",
+        title: "Vertical Projection",
+        axisLength: binaryImage.height,
+        series: [
+          {
+            id: "raw",
+            title: "Raw",
+            values: rawVerticalProjection
+          },
+          {
+            id: "scores",
+            title: "Continuity scores",
+            values: evidence.scoreProjection
+          },
+          {
+            id: "mask",
+            title: "Continuity mask",
+            values: maskProjection
+          }
+        ]
+      })
+    ]
   };
 }
 
