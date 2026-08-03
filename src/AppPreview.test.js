@@ -78,37 +78,49 @@ test("upload flow runs digitization through the browser ImageData adapter withou
   );
   const digitizationSection = getSourceBetween(
     appSource,
-    "const runDigitizationForUpload = async (source, targetDocumentSize) => {",
+    "const runDigitizationForUpload = async (",
     "};"
   );
 
   expect(appSource).toContain("const [digitizationResult, setDigitizationResult] = useState(null);");
+  expect(appSource).toContain("const digitizationUploadIdRef = useRef(0);");
+  expect(uploadSection).toContain("const uploadId = ++digitizationUploadIdRef.current;");
+  expect(appSource).toContain("import { runDigitizationUploadWithIdentity } from \"./digitization/digitizationUploadIdentityGuard\";");
   expect(appSource).toContain("import { readBrowserImageData } from \"./digitization/adapters/browserImageDataReader\";");
   expect(appSource).toContain("import { detectGridFromImageSource } from \"./digitization/detection/imageGridDetectionEngine\";");
+  expect(digitizationSection).toContain("await import(\"./digitization/experiments/uploadDigitizationExperimentComparison\")");
   expect(appSource).toContain("import DigitizationDiagnosticPanel from \"./digitization/DigitizationDiagnosticPanel\";");
-  expect(appSource).toContain("<DigitizationDiagnosticPanel digitizationResult={digitizationResult} />");
+  expect(appSource).toContain("experimentComparison={digitizationExperimentComparison}");
   expect(pdfStateUpdateSection).toContain("setDocumentSize(documentSize);");
   expect(pdfStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
   expect(pdfStateUpdateSection).toContain("setCompetitionCells([]);");
-  expect(pdfStateUpdateSection).toContain("scheduleDigitizationForUpload(canvas, documentSize);");
+  expect(pdfStateUpdateSection).toContain("runDigitizationForUpload(canvas, documentSize, uploadId);");
   expect(imageStateUpdateSection).toContain("setImageSrc(image);");
   expect(imageStateUpdateSection).toContain("setDocumentSize(documentSize);");
   expect(imageStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
   expect(imageStateUpdateSection).toContain("setCompetitionCells([]);");
-  expect(imageStateUpdateSection).toContain("scheduleDigitizationForUpload(image, documentSize);");
-  expect(appSource).toContain("window.setTimeout(() => {");
+  expect(imageStateUpdateSection).toContain("runDigitizationForUpload(image, documentSize, uploadId);");
+  expect(uploadSection).not.toContain("setTimeout");
+  expect(uploadSection).not.toContain("AbortController");
   expect(digitizationSection).toContain("setDigitizationResult({");
   expect(digitizationSection).toContain("status: \"pending\"");
   expect(digitizationSection).toContain("status: \"completed\"");
   expect(digitizationSection).toContain("status: \"failed\"");
   expect(digitizationSection).toContain("detectGridFromImageSource");
+  expect(digitizationSection).toContain("runDigitizationUploadWithIdentity({");
+  expect(digitizationSection).toContain("result: productionResult");
+  expect(digitizationSection).toContain("runUploadDigitizationExperimentComparison(");
+  expect(digitizationSection).toContain("productionResult");
+  expect(digitizationSection).toContain("process.env.NODE_ENV !== \"production\"");
   expect(digitizationSection).toContain("documentSize: targetDocumentSize");
   expect(digitizationSection).toContain("readImageData: readBrowserImageData");
+  expect(digitizationSection).toContain("candidateUploadId === digitizationUploadIdRef.current");
   expect(digitizationSection).toContain("console.warn(\"Digitization failed during upload\", err);");
   expect(digitizationSection).not.toContain("setGridArea");
   expect(digitizationSection).not.toContain("setRows");
   expect(digitizationSection).not.toContain("setCols");
   expect(digitizationSection).not.toContain("setCropArea");
+  expect(digitizationSection).not.toContain("setSuggestions");
 });
 
 test("editor preview renders read-only digitization suggestion overlay", () => {

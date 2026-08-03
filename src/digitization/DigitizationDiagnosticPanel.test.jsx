@@ -440,3 +440,113 @@ test("DigitizationDiagnosticPanel shows actionable no-grid state", () => {
   expect(panel).toHaveTextContent("Grid avvisat");
   expect(container.querySelector("details")).not.toHaveAttribute("open");
 });
+
+test("DigitizationDiagnosticPanel shows experimental results only inside developer details", () => {
+  const { container } = render(
+    <DigitizationDiagnosticPanel
+      digitizationResult={{
+        status: "completed",
+        result: {
+          suggestions: [],
+          gridDetection: {
+            confidence: "missing-grid-geometry",
+            geometry: null,
+            diagnostics: []
+          }
+        }
+      }}
+      experimentComparison={{
+        status: "completed",
+        result: {
+          benchmark: {
+            experiments: [
+              {
+                id: "vertical-continuity-diagnostics",
+                description: "Local vertical continuity",
+                durationMs: 1.25,
+                success: true,
+                diagnostics: {
+                  type: "vertical-continuity-projection-comparison",
+                  raw: {
+                    maxStrength: 8
+                  },
+                  scores: {
+                    maxStrength: 7.5
+                  },
+                  mask: {
+                    maxStrength: 7
+                  }
+                }
+              },
+              {
+                id: "failing-experiment",
+                description: "Synthetic failure",
+                durationMs: 0.5,
+                success: false,
+                diagnostics: {
+                  type: "digitization-experiment-failure",
+                  name: "Error",
+                  message: "synthetic failure"
+                }
+              }
+            ]
+          }
+        }
+      }}
+    />
+  );
+
+  const panel = screen.getByLabelText("Digitiseringsdiagnostik");
+  const details = container.querySelector("details");
+  const experimentalSection = screen.getByLabelText("Experimentell digitiseringsjämförelse");
+  const userFacingText = Array.from(panel.children)
+    .filter(element => element.tagName !== "DETAILS")
+    .map(element => element.textContent)
+    .join(" ");
+
+  expect(details).not.toHaveAttribute("open");
+  expect(details).toContainElement(experimentalSection);
+  expect(userFacingText).not.toContain("vertical-continuity-diagnostics");
+  expect(experimentalSection).toHaveTextContent("Experimentella resultat – endast utvecklardiagnostik");
+  expect(experimentalSection).toHaveTextContent("ID: vertical-continuity-diagnostics");
+  expect(experimentalSection).toHaveTextContent("Beskrivning: Local vertical continuity");
+  expect(experimentalSection).toHaveTextContent("Status: Lyckades");
+  expect(experimentalSection).toHaveTextContent("Tid: 1.25 ms");
+  expect(experimentalSection).toHaveTextContent("vertical-continuity-projection-comparison, rå max 8, poäng max 7.5, mask max 7");
+  expect(experimentalSection).toHaveTextContent("ID: failing-experiment");
+  expect(experimentalSection).toHaveTextContent("Status: Misslyckades");
+  expect(experimentalSection).toHaveTextContent("digitization-experiment-failure: Error: synthetic failure");
+});
+
+test("DigitizationDiagnosticPanel keeps production messaging when comparison fails", () => {
+  const { container } = render(
+    <DigitizationDiagnosticPanel
+      digitizationResult={{
+        status: "completed",
+        result: {
+          suggestions: [
+            {
+              confidence: "detected",
+              grid: {
+                rows: 2,
+                cols: 2
+              }
+            }
+          ]
+        }
+      }}
+      experimentComparison={{
+        status: "failed",
+        error: new Error("benchmark unavailable")
+      }}
+    />
+  );
+
+  const panel = screen.getByLabelText("Digitiseringsdiagnostik");
+  const experimentalSection = screen.getByLabelText("Experimentell digitiseringsjämförelse");
+
+  expect(panel).toHaveTextContent("Status: Rutnät hittat.");
+  expect(panel).toHaveTextContent("Nästa steg: Granska förhandsvisningen och justera manuellt vid behov.");
+  expect(container.querySelector("details")).toContainElement(experimentalSection);
+  expect(experimentalSection).toHaveTextContent("Experimentell jämförelse misslyckades: benchmark unavailable");
+});

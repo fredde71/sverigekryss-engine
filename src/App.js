@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import EditorWorkspace from "./editor/EditorWorkspace";
@@ -32,6 +32,7 @@ import { readBrowserImageData } from "./digitization/adapters/browserImageDataRe
 import { detectGridFromImageSource } from "./digitization/detection/imageGridDetectionEngine";
 import DigitizationDiagnosticPanel from "./digitization/DigitizationDiagnosticPanel";
 import DigitizationSuggestionOverlay from "./digitization/DigitizationSuggestionOverlay";
+import { runDigitizationUploadWithIdentity } from "./digitization/digitizationUploadIdentityGuard";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -130,6 +131,8 @@ useEffect(() => {
   const [publicationsStatus, setPublicationsStatus] = useState("idle");
   const [publicationsError, setPublicationsError] = useState("");
   const [digitizationResult, setDigitizationResult] = useState(null);
+  const [digitizationExperimentComparison, setDigitizationExperimentComparison] = useState(null);
+  const digitizationUploadIdRef = useRef(0);
 
   const refreshPublications = React.useCallback(async (targetCrosswordId) => {
     const normalizedCrosswordId = targetCrosswordId.trim();
@@ -167,6 +170,13 @@ useEffect(() => {
   const file = e.target.files?.[0];
 
   if (!file) return;
+
+  const uploadId = ++digitizationUploadIdRef.current;
+
+  setDigitizationResult({
+    status: "pending"
+  });
+  setDigitizationExperimentComparison(null);
 
   setImageFileName(file.name);
 
@@ -209,7 +219,7 @@ setCompetitionCells([]);
 
 e.target.value = "";
 
-  scheduleDigitizationForUpload(canvas, documentSize);
+  runDigitizationForUpload(canvas, documentSize, uploadId);
 
 return;
 }
@@ -225,44 +235,69 @@ return;
     setCropArea(getFullDocumentArea(documentSize));
     setCompetitionCells([]);
 
-    scheduleDigitizationForUpload(image, documentSize);
+    runDigitizationForUpload(image, documentSize, uploadId);
   };
 
   reader.readAsDataURL(file);
 
 };
 
-  const scheduleDigitizationForUpload = (source, targetDocumentSize) => {
-    window.setTimeout(() => {
-      runDigitizationForUpload(source, targetDocumentSize);
-    }, 0);
-  };
-
-  const runDigitizationForUpload = async (source, targetDocumentSize) => {
-    setDigitizationResult({
-      status: "pending"
-    });
-
-    try {
-      const result = await detectGridFromImageSource({
+  const runDigitizationForUpload = async (
+    source,
+    targetDocumentSize,
+    uploadId
+  ) => {
+    await runDigitizationUploadWithIdentity({
+      uploadId,
+      isCurrentUpload: (candidateUploadId) => (
+        candidateUploadId === digitizationUploadIdRef.current
+      ),
+      runProduction: () => detectGridFromImageSource({
         source,
         options: {
           documentSize: targetDocumentSize
         },
         readImageData: readBrowserImageData
-      });
+      }),
+      runComparison: process.env.NODE_ENV !== "production"
+        ? async (productionResult) => {
+          const {
+            runUploadDigitizationExperimentComparison
+          } = await import("./digitization/experiments/uploadDigitizationExperimentComparison");
 
-      setDigitizationResult({
-        status: "completed",
-        result
-      });
-    } catch (err) {
-      setDigitizationResult({
-        status: "failed",
-        error: err
-      });
-      console.warn("Digitization failed during upload", err);
-    }
+          return runUploadDigitizationExperimentComparison(productionResult);
+        }
+        : null,
+      onPending: () => {
+        setDigitizationResult({
+          status: "pending"
+        });
+        setDigitizationExperimentComparison(null);
+      },
+      onProductionCompleted: (productionResult) => {
+        setDigitizationResult({
+          status: "completed",
+          result: productionResult
+        });
+      },
+      onProductionFailed: (err) => {
+        setDigitizationResult({
+          status: "failed",
+          error: err
+        });
+        console.warn("Digitization failed during upload", err);
+      },
+      onComparisonCompleted: (comparisonState) => {
+        setDigitizationExperimentComparison(comparisonState);
+      },
+      onComparisonFailed: (err) => {
+        setDigitizationExperimentComparison({
+          status: "failed",
+          error: err
+        });
+        console.warn("Digitization experiment comparison failed during upload", err);
+      }
+    });
   };
 const handleTemplateImport = async (e) => {
 
@@ -520,7 +555,10 @@ const handleTemplateImport = async (e) => {
 
 	        <section style={sidebarSectionStyle}>
 	          <h5 style={sidebarTitleStyle}>Digitisering</h5>
-	          <DigitizationDiagnosticPanel digitizationResult={digitizationResult} />
+		          <DigitizationDiagnosticPanel
+		            digitizationResult={digitizationResult}
+		            experimentComparison={digitizationExperimentComparison}
+		          />
 	        </section>
 	
 	        <section style={sidebarSectionStyle}>

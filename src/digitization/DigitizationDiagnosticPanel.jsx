@@ -3,7 +3,8 @@ import React from "react";
 const DIAGNOSTIC_PREVIEW_LIMIT = 5;
 
 export default function DigitizationDiagnosticPanel({
-  digitizationResult
+  digitizationResult,
+  experimentComparison = null
 }) {
   const summary = getDigitizationSummary(digitizationResult);
 
@@ -21,9 +22,98 @@ export default function DigitizationDiagnosticPanel({
         <div>Mått: {summary.metrics}</div>
         <div>Rader/kolumner: {summary.rowsCols}</div>
         <div>Geometri: {summary.geometry}</div>
+        {process.env.NODE_ENV !== "production" && (
+          <ExperimentComparisonDetails comparisonState={experimentComparison} />
+        )}
       </details>
     </section>
   );
+}
+
+function ExperimentComparisonDetails({ comparisonState }) {
+  if (!comparisonState) {
+    return null;
+  }
+
+  if (comparisonState.status === "failed") {
+    return (
+      <section aria-label="Experimentell digitiseringsjämförelse">
+        <strong>Experimentella resultat – endast utvecklardiagnostik</strong>
+        <div>Experimentell jämförelse misslyckades: {getErrorMessage(comparisonState.error)}</div>
+      </section>
+    );
+  }
+
+  const experiments = comparisonState.result?.benchmark?.experiments;
+
+  if (!Array.isArray(experiments)) {
+    return null;
+  }
+
+  return (
+    <section aria-label="Experimentell digitiseringsjämförelse">
+      <strong>Experimentella resultat – endast utvecklardiagnostik</strong>
+      {experiments.length === 0 ? (
+        <div>Inga experiment registrerade.</div>
+      ) : (
+        <ul>
+          {experiments.map((experiment) => (
+            <li key={experiment.id}>
+              <div>Experimentellt resultat</div>
+              <div>ID: {experiment.id}</div>
+              <div>Beskrivning: {experiment.description}</div>
+              <div>Status: {experiment.success ? "Lyckades" : "Misslyckades"}</div>
+              <div>Tid: {formatNumber(experiment.durationMs)} ms</div>
+              <div>Diagnostik: {formatExperimentDiagnosticSummary(experiment.diagnostics)}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export function formatExperimentDiagnosticSummary(diagnostics) {
+  if (Array.isArray(diagnostics)) {
+    if (diagnostics.length === 0) {
+      return "Inga";
+    }
+
+    return diagnostics
+      .slice(0, DIAGNOSTIC_PREVIEW_LIMIT)
+      .map(getDiagnosticType)
+      .join(", ");
+  }
+
+  if (!diagnostics || typeof diagnostics !== "object") {
+    return "Saknas";
+  }
+
+  if (diagnostics.type === "digitization-experiment-failure") {
+    return `${diagnostics.type}: ${diagnostics.name || "Error"}: ${diagnostics.message || "Okänt fel"}`;
+  }
+
+  const parts = [getDiagnosticType(diagnostics)];
+
+  if (Number.isFinite(diagnostics.raw?.maxStrength)) {
+    parts.push(`rå max ${formatNumber(diagnostics.raw.maxStrength)}`);
+  }
+
+  if (Number.isFinite(diagnostics.scores?.maxStrength)) {
+    parts.push(`poäng max ${formatNumber(diagnostics.scores.maxStrength)}`);
+  }
+
+  if (Number.isFinite(diagnostics.mask?.maxStrength)) {
+    parts.push(`mask max ${formatNumber(diagnostics.mask.maxStrength)}`);
+  }
+
+  return parts.join(", ");
+}
+
+function getDiagnosticType(diagnostic) {
+  return diagnostic && typeof diagnostic === "object" && diagnostic.type
+    ? diagnostic.type
+    : "Okänd diagnostik";
 }
 
 export function getDigitizationSummary(digitizationResult) {
