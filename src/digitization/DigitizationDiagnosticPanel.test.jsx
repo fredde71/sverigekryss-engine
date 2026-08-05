@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { readFileSync } from "fs";
+import { fireEvent, render, screen } from "@testing-library/react";
 import DigitizationDiagnosticPanel from "./DigitizationDiagnosticPanel";
 
 test("DigitizationDiagnosticPanel shows no-result state", () => {
@@ -550,3 +551,166 @@ test("DigitizationDiagnosticPanel keeps production messaging when comparison fai
   expect(container.querySelector("details")).toContainElement(experimentalSection);
   expect(experimentalSection).toHaveTextContent("Experimentell jämförelse misslyckades: benchmark unavailable");
 });
+
+test("renders successful experiment visualizations only after developer details opens", () => {
+  const { container } = renderExperimentComparison([
+    createExperiment({
+      id: "vertical-continuity-diagnostics",
+      title: "Continuity projection"
+    })
+  ]);
+
+  expect(screen.getByText("Diagnostik: comparison-diagnostics")).toBeInTheDocument();
+  expect(screen.queryByRole("region", {
+    name: "Experimentell visualisering: Continuity projection"
+  })).not.toBeInTheDocument();
+
+  openDeveloperDetails(container);
+
+  const visualization = screen.getByRole("region", {
+    name: "Experimentell visualisering: Continuity projection"
+  });
+  expect(container.querySelector("details")).toContainElement(visualization);
+  expect(visualization).toHaveTextContent(
+    "Experimentell visualisering – endast utvecklardiagnostik"
+  );
+  expect(screen.getByRole("region", { name: "Raw" })).toBeInTheDocument();
+});
+
+test("renders multiple experiment visualizations in benchmark registry order", () => {
+  const { container } = renderExperimentComparison([
+    createExperiment({ id: "first-experiment", title: "First projection" }),
+    createExperiment({ id: "second-experiment", title: "Second projection" })
+  ]);
+
+  openDeveloperDetails(container);
+
+  expect(screen.getAllByRole("region", {
+    name: /Experimentell visualisering:/
+  }).map((region) => region.getAttribute("aria-label"))).toEqual([
+    "Experimentell visualisering: First projection",
+    "Experimentell visualisering: Second projection"
+  ]);
+});
+
+test("keeps successful experiments without visualizations readable", () => {
+  const { container } = renderExperimentComparison([
+    {
+      id: "text-only-experiment",
+      description: "Text-only diagnostics",
+      durationMs: 2,
+      success: true,
+      diagnostics: {
+        type: "text-only-diagnostics"
+      }
+    }
+  ]);
+
+  openDeveloperDetails(container);
+
+  expect(screen.getByText("ID: text-only-experiment")).toBeInTheDocument();
+  expect(screen.getByText("Diagnostik: text-only-diagnostics")).toBeInTheDocument();
+  expect(screen.queryByRole("region", {
+    name: /Experimentell visualisering:/
+  })).not.toBeInTheDocument();
+});
+
+test("failed experiments retain failure diagnostics without rendering visualizations", () => {
+  const { container } = renderExperimentComparison([
+    {
+      ...createExperiment({ id: "failed-experiment", title: "Must not render" }),
+      success: false,
+      diagnostics: {
+        type: "digitization-experiment-failure",
+        name: "Error",
+        message: "failed",
+        visualizations: [createVerticalProjectionVisualization("Must not render")]
+      }
+    }
+  ]);
+
+  openDeveloperDetails(container);
+
+  expect(screen.getByText("Status: Misslyckades")).toBeInTheDocument();
+  expect(screen.getByText(
+    "Diagnostik: digitization-experiment-failure: Error: failed"
+  )).toBeInTheDocument();
+  expect(screen.queryByRole("region", {
+    name: "Experimentell visualisering: Must not render"
+  })).not.toBeInTheDocument();
+});
+
+test("visualization integration introduces no editor-state setters", () => {
+  const source = readFileSync(
+    `${__dirname}/DigitizationDiagnosticPanel.jsx`,
+    "utf8"
+  );
+
+  expect(source).not.toMatch(
+    /setGridArea|setRows|setCols|setCropArea|setSuggestions/
+  );
+});
+
+function renderExperimentComparison(experiments) {
+  return render(
+    <DigitizationDiagnosticPanel
+      digitizationResult={{
+        status: "completed",
+        result: {
+          suggestions: [],
+          gridDetection: {
+            confidence: "missing-grid-geometry",
+            diagnostics: []
+          }
+        }
+      }}
+      experimentComparison={{
+        status: "completed",
+        result: {
+          benchmark: {
+            experiments
+          }
+        }
+      }}
+    />
+  );
+}
+
+function createExperiment({ id, title }) {
+  return {
+    id,
+    description: `${id} description`,
+    durationMs: 1,
+    success: true,
+    diagnostics: {
+      type: "comparison-diagnostics",
+      visualizations: [createVerticalProjectionVisualization(title)]
+    }
+  };
+}
+
+function createVerticalProjectionVisualization(title) {
+  return {
+    id: "vertical-projection",
+    title,
+    type: "vertical-projection",
+    data: {
+      axis: "vertical",
+      axisLength: 10,
+      length: 2,
+      series: [
+        {
+          id: "raw",
+          title: "Raw",
+          values: [2, 10]
+        }
+      ]
+    }
+  };
+}
+
+function openDeveloperDetails(container) {
+  const details = container.querySelector("details");
+  details.open = true;
+  fireEvent(details, new Event("toggle"));
+}

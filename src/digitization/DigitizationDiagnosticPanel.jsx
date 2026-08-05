@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import VisualizationRenderer from "./experiments/visualization/VisualizationRenderer";
 
 const DIAGNOSTIC_PREVIEW_LIMIT = 5;
 
@@ -7,13 +8,16 @@ export default function DigitizationDiagnosticPanel({
   experimentComparison = null
 }) {
   const summary = getDigitizationSummary(digitizationResult);
+  const [developerDetailsOpen, setDeveloperDetailsOpen] = useState(false);
 
   return (
     <section aria-label="Digitiseringsdiagnostik">
       <div>Status: {summary.userStatus}</div>
       <div>Nästa steg: {summary.nextStep}</div>
 
-      <details>
+      <details
+        onToggle={(event) => setDeveloperDetailsOpen(event.currentTarget.open)}
+      >
         <summary>Utvecklardetaljer</summary>
         <div>Status: {summary.status}</div>
         <div>Förslag: {summary.suggestionStatus}</div>
@@ -23,14 +27,20 @@ export default function DigitizationDiagnosticPanel({
         <div>Rader/kolumner: {summary.rowsCols}</div>
         <div>Geometri: {summary.geometry}</div>
         {process.env.NODE_ENV !== "production" && (
-          <ExperimentComparisonDetails comparisonState={experimentComparison} />
+          <ExperimentComparisonDetails
+            comparisonState={experimentComparison}
+            renderVisualizations={developerDetailsOpen}
+          />
         )}
       </details>
     </section>
   );
 }
 
-function ExperimentComparisonDetails({ comparisonState }) {
+function ExperimentComparisonDetails({
+  comparisonState,
+  renderVisualizations
+}) {
   if (!comparisonState) {
     return null;
   }
@@ -65,12 +75,33 @@ function ExperimentComparisonDetails({ comparisonState }) {
               <div>Status: {experiment.success ? "Lyckades" : "Misslyckades"}</div>
               <div>Tid: {formatNumber(experiment.durationMs)} ms</div>
               <div>Diagnostik: {formatExperimentDiagnosticSummary(experiment.diagnostics)}</div>
+              {experiment.success && renderVisualizations && (
+                <ExperimentVisualizations diagnostics={experiment.diagnostics} />
+              )}
             </li>
           ))}
         </ul>
       )}
     </section>
   );
+}
+
+function ExperimentVisualizations({ diagnostics }) {
+  const visualizations = diagnostics?.visualizations;
+
+  if (!Array.isArray(visualizations) || visualizations.length === 0) {
+    return null;
+  }
+
+  return visualizations.map((visualization, index) => (
+    <section
+      key={`${visualization?.id || "visualization"}-${index}`}
+      aria-label={`Experimentell visualisering: ${visualization?.title || visualization?.id || index + 1}`}
+    >
+      <strong>Experimentell visualisering – endast utvecklardiagnostik</strong>
+      <VisualizationRenderer visualization={visualization} />
+    </section>
+  ));
 }
 
 export function formatExperimentDiagnosticSummary(diagnostics) {
