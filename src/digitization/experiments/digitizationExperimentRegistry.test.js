@@ -12,7 +12,8 @@ test("lists registered digitization experiments with their public contract", () 
 
   expect(experiments.map(experiment => experiment.id)).toEqual([
     "vertical-line-mask-diagnostics",
-    "vertical-continuity-diagnostics"
+    "vertical-continuity-diagnostics",
+    "grid-confidence-diagnostics"
   ]);
 
   for (const experiment of experiments) {
@@ -25,7 +26,7 @@ test("lists registered digitization experiments with their public contract", () 
   }
 
   experiments.pop();
-  expect(listDigitizationExperiments()).toHaveLength(2);
+  expect(listDigitizationExperiments()).toHaveLength(3);
 });
 
 test("looks up experiment metadata without executing the experiment", () => {

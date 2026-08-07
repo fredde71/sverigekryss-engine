@@ -1,9 +1,11 @@
 import { verticalContinuityDiagnosticsExperiment } from "./verticalContinuityDiagnostics";
 import { verticalLineMaskDiagnosticsExperiment } from "./verticalLineMaskDiagnostics";
+import { gridConfidenceDiagnosticsExperiment } from "./gridConfidenceDiagnostics";
 
 const DIGITIZATION_EXPERIMENTS = Object.freeze([
   verticalLineMaskDiagnosticsExperiment,
-  verticalContinuityDiagnosticsExperiment
+  verticalContinuityDiagnosticsExperiment,
+  gridConfidenceDiagnosticsExperiment
 ]);
 
 const DIGITIZATION_EXPERIMENTS_BY_ID = createExperimentIndex(
