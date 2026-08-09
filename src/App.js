@@ -39,6 +39,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
+const DigitizationDatasetHarness = process.env.NODE_ENV !== "production"
+  ? React.lazy(() => import(
+    "./digitization/experiments/dataset/DigitizationDatasetHarness"
+  ))
+  : null;
+
 function App() {
   
   const { id } = useParams();
@@ -555,10 +561,15 @@ const handleTemplateImport = async (e) => {
 
 	        <section style={sidebarSectionStyle}>
 	          <h5 style={sidebarTitleStyle}>Digitisering</h5>
-		          <DigitizationDiagnosticPanel
-		            digitizationResult={digitizationResult}
-		            experimentComparison={digitizationExperimentComparison}
-		          />
+	          <DigitizationDiagnosticPanel
+	            digitizationResult={digitizationResult}
+	            experimentComparison={digitizationExperimentComparison}
+	          />
+	          {DigitizationDatasetHarness && (
+	            <React.Suspense fallback={null}>
+	              <DigitizationDatasetHarness />
+	            </React.Suspense>
+	          )}
 	        </section>
 	
 	        <section style={sidebarSectionStyle}>

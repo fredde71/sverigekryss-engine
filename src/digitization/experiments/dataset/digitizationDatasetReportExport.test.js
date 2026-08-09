@@ -1,48 +1,54 @@
 import {
   createDigitizationDatasetReportDownloader,
-  createDigitizationDatasetReportExport
+  createDigitizationDatasetReportExport,
+  createDigitizationDatasetReportProjection
 } from "./digitizationDatasetReportExport";
 
-test("serializes the completed dataset result directly with deterministic formatting", () => {
-  const datasetResult = deepFreeze(createDatasetResult());
+test("serializes a deterministic compact report projection", () => {
+  const datasetResult = deepFreeze(createDatasetResult({
+    items: [createCompletedItem()]
+  }));
 
   const first = createDigitizationDatasetReportExport(datasetResult);
   const second = createDigitizationDatasetReportExport(datasetResult);
+  const projection = createDigitizationDatasetReportProjection(datasetResult);
 
   expect(second).toEqual(first);
   expect(first.mimeType).toBe("application/json");
-  expect(first.contents).toBe(`${JSON.stringify(datasetResult, null, 2)}\n`);
+  expect(first.contents).toBe(`${JSON.stringify(projection, null, 2)}\n`);
   expect(first.contents.endsWith("\n")).toBe(true);
   expect(first.contents.endsWith("\n\n")).toBe(false);
-  expect(JSON.parse(first.contents)).toEqual(JSON.parse(JSON.stringify(datasetResult)));
+  expect(projection).toEqual(createDigitizationDatasetReportProjection(datasetResult));
   expect(Object.isFrozen(datasetResult)).toBe(true);
 });
 
 test("preserves item, experiment and metadata order without interpretation", () => {
   const datasetResult = createDatasetResult({
     items: [
-      {
+      createCompletedItem({
         id: "z-last",
         metadata: {
           labels: ["second", "first"]
         },
         comparison: {
+          status: "completed",
           result: {
+            production: { mustNotBeExported: true },
             benchmark: {
               experiments: [
-                { id: "experiment-b", success: false },
-                { id: "experiment-a", success: true }
+                createExperiment({ id: "experiment-b", success: false }),
+                createExperiment({ id: "experiment-a", success: true })
               ]
             }
           }
         }
-      },
-      {
+      }),
+      createCompletedItem({
         id: "a-first",
         metadata: {
           filename: "first.pdf"
         }
-      }
+      })
     ]
   });
 
@@ -57,33 +63,215 @@ test("preserves item, experiment and metadata order without interpretation", () 
       experiment.id
     ))
   ).toEqual(["experiment-b", "experiment-a"]);
+  expect(parsed.items[0].comparison.result).not.toHaveProperty("production");
 });
 
-test("preserves existing downstream scores but adds no export analysis", () => {
+test("preserves production grid detection and compact review diagnostics", () => {
+  const geometry = {
+    rows: 2,
+    cols: 2,
+    bounds: { top: 10, left: 20, width: 40, height: 40 },
+    horizontalLines: [10, 30, 50],
+    verticalLines: [20, 40, 60]
+  };
+  const productionDiagnostic = {
+    type: "spacing-consistency",
+    axis: "vertical",
+    status: "measured",
+    consistency: 0.95
+  };
   const datasetResult = createDatasetResult({
-    items: [{
-      id: "item",
-      observationReport: {
-        result: {
-          structuralEvidence: {
-            maximumObservedScore: 0.75
+    items: [createCompletedItem({
+      production: {
+        status: "completed",
+        result: createRuntimeProductionResult({
+          gridDetection: {
+            geometry,
+            confidence: "production-confidence-verbatim",
+            diagnostics: [productionDiagnostic]
           }
+        })
+      }
+    })]
+  });
+  const production = createDigitizationDatasetReportProjection(datasetResult)
+    .items[0].production.result;
+
+  expect(production).toEqual({
+    gridDetection: {
+      geometry,
+      confidence: "production-confidence-verbatim",
+      diagnostics: [productionDiagnostic]
+    }
+  });
+});
+
+test("never reads or exports runtime production payloads", () => {
+  const productionResult = createRuntimeProductionResult();
+
+  for (const field of ["context", "suggestions", "diagnostics"]) {
+    Object.defineProperty(productionResult, field, {
+      enumerable: true,
+      get() {
+        throw new Error(`${field} must not be read`);
+      }
+    });
+  }
+
+  const projection = createDigitizationDatasetReportProjection(createDatasetResult({
+    items: [createCompletedItem({
+      production: {
+        status: "completed",
+        result: productionResult
+      },
+      comparison: {
+        status: "completed",
+        result: {
+          production: productionResult,
+          benchmark: { experiments: [] }
         }
       }
-    }]
-  });
-  const artifact = createDigitizationDatasetReportExport(datasetResult);
-  const parsed = JSON.parse(artifact.contents);
+    })]
+  }));
+  const serialized = JSON.stringify(projection);
 
-  expect(parsed.items[0].observationReport.result.structuralEvidence).toEqual({
-    maximumObservedScore: 0.75
+  expect(serialized).not.toMatch(/imageData|binaryImage|projections|suggestions|canvas/);
+  expect(projection.items[0].comparison.result).not.toHaveProperty("production");
+});
+
+test("preserves benchmark diagnostics and visualization metadata without values", () => {
+  const diagnostics = {
+    type: "vertical-continuity-projection-comparison",
+    preprocessing: { method: "local-vertical-continuity" },
+    raw: { length: 3, maxStrength: 10 },
+    rawVerticalProjection: [3, 10, 2],
+    visualizations: [{
+      id: "vertical-projection",
+      title: "Vertical Projection",
+      type: "vertical-projection",
+      data: {
+        axis: "vertical",
+        axisLength: 100,
+        length: 3,
+        series: [{
+          id: "raw",
+          title: "Raw",
+          values: [3, 10, 2]
+        }]
+      }
+    }]
+  };
+  const item = createCompletedItem({
+    comparison: {
+      status: "completed",
+      result: {
+        production: { duplicate: true },
+        benchmark: {
+          experiments: [createExperiment({ diagnostics })]
+        }
+      }
+    }
   });
-  expect(Object.keys(parsed)).toEqual(Object.keys(datasetResult));
-  expect(artifact).not.toHaveProperty("summary");
-  expect(artifact).not.toHaveProperty("score");
-  expect(artifact).not.toHaveProperty("ranking");
-  expect(artifact).not.toHaveProperty("exportedAt");
-  expect(artifact).not.toHaveProperty("timestamp");
+  const experiment = createDigitizationDatasetReportProjection(
+    createDatasetResult({ items: [item] })
+  ).items[0].comparison.result.benchmark.experiments[0];
+
+  expect(experiment).toEqual({
+    id: "vertical-continuity",
+    description: "Continuity diagnostics",
+    durationMs: 12.5,
+    success: true,
+    diagnostics: {
+      type: "vertical-continuity-projection-comparison",
+      preprocessing: { method: "local-vertical-continuity" },
+      raw: { length: 3, maxStrength: 10 },
+      visualizations: [{
+        id: "vertical-projection",
+        title: "Vertical Projection",
+        type: "vertical-projection",
+        data: {
+          axis: "vertical",
+          axisLength: 100,
+          length: 3,
+          series: [{ id: "raw", title: "Raw" }]
+        }
+      }]
+    }
+  });
+  expect(JSON.stringify(experiment)).not.toContain("values");
+  expect(experiment.diagnostics).not.toHaveProperty("rawVerticalProjection");
+});
+
+test("preserves normalized experiment failures exactly", () => {
+  const failure = {
+    type: "digitization-experiment-failure",
+    name: "Error",
+    message: "synthetic failure"
+  };
+  const item = createCompletedItem({
+    comparison: {
+      status: "completed",
+      result: {
+        production: createRuntimeProductionResult(),
+        benchmark: {
+          experiments: [createExperiment({
+            id: "failed-experiment",
+            description: "Failure fixture",
+            durationMs: 3,
+            success: false,
+            diagnostics: failure
+          })]
+        }
+      }
+    }
+  });
+  const experiment = createDigitizationDatasetReportProjection(
+    createDatasetResult({ items: [item] })
+  ).items[0].comparison.result.benchmark.experiments[0];
+
+  expect(experiment).toEqual({
+    id: "failed-experiment",
+    description: "Failure fixture",
+    durationMs: 3,
+    success: false,
+    diagnostics: failure
+  });
+});
+
+test("output size does not depend on excluded runtime or visualization arrays", () => {
+  const small = createPayloadHeavyDatasetResult(1);
+  const large = createPayloadHeavyDatasetResult(10000);
+
+  const smallContents = createDigitizationDatasetReportExport(small).contents;
+  const largeContents = createDigitizationDatasetReportExport(large).contents;
+
+  expect(largeContents).toBe(smallContents);
+  expect(largeContents).not.toContain("987654321");
+});
+
+test("preserves observation reports and existing observations without export analysis", () => {
+  const observationReport = {
+    type: "digitization-experiment-observation-report",
+    version: 1,
+    structuralEvidence: {
+      maximumObservedScore: 0.75
+    }
+  };
+  const projection = createDigitizationDatasetReportProjection(createDatasetResult({
+    items: [createCompletedItem({
+      observationReport: {
+        status: "completed",
+        result: observationReport
+      }
+    })]
+  }));
+
+  expect(projection.items[0].observationReport.result).toEqual(observationReport);
+  expect(projection).not.toHaveProperty("summary");
+  expect(projection).not.toHaveProperty("score");
+  expect(projection).not.toHaveProperty("ranking");
+  expect(projection).not.toHaveProperty("winner");
+  expect(projection).not.toHaveProperty("recommendation");
 });
 
 test.each([
@@ -110,7 +298,7 @@ test.each([
   expect(createDigitizationDatasetReportExport(result).fileName).toBe(expected);
   expect(JSON.parse(
     createDigitizationDatasetReportExport(result).contents
-  ).datasetId).toBe(datasetId);
+  ).datasetRun.datasetId).toBe(datasetId);
 });
 
 test("uses the dataset result version in the filename", () => {
@@ -121,14 +309,36 @@ test("uses the dataset result version in the filename", () => {
   );
 });
 
-test("propagates circular-reference and BigInt serialization failures", () => {
-  const circular = createDatasetResult();
-  circular.self = circular;
+test("preserves failed and not-run stages without inventing results", () => {
+  const projection = createDigitizationDatasetReportProjection(createDatasetResult({
+    items: [{
+      id: "failed",
+      index: 0,
+      metadata: { filename: "failed.pdf" },
+      status: "failed",
+      preparation: { status: "completed" },
+      production: {
+        status: "failed",
+        error: { name: "Error", message: "production failed" }
+      },
+      comparison: { status: "not-run", reason: "production-failed" },
+      observationReport: { status: "not-run", reason: "production-failed" }
+    }]
+  }));
 
-  expect(() => createDigitizationDatasetReportExport(circular)).toThrow();
-  expect(() => createDigitizationDatasetReportExport(createDatasetResult({
-    unsupported: BigInt(1)
-  }))).toThrow();
+  expect(projection.items[0]).toEqual({
+    id: "failed",
+    index: 0,
+    metadata: { filename: "failed.pdf" },
+    status: "failed",
+    preparation: { status: "completed" },
+    production: {
+      status: "failed",
+      error: { name: "Error", message: "production failed" }
+    },
+    comparison: { status: "not-run", reason: "production-failed" },
+    observationReport: { status: "not-run", reason: "production-failed" }
+  });
 });
 
 test.each(["development", "test"])(
@@ -253,6 +463,130 @@ function createDatasetResult(overrides = {}) {
   };
 }
 
+function createCompletedItem(overrides = {}) {
+  return {
+    id: "item-1",
+    index: 0,
+    metadata: { filename: "crossword.pdf" },
+    status: "completed",
+    preparation: { status: "completed" },
+    production: {
+      status: "completed",
+      result: createRuntimeProductionResult()
+    },
+    comparison: {
+      status: "completed",
+      result: {
+        production: createRuntimeProductionResult(),
+        benchmark: { experiments: [] }
+      }
+    },
+    observationReport: {
+      status: "completed",
+      result: {
+        type: "digitization-experiment-observation-report",
+        version: 1
+      }
+    },
+    ...overrides
+  };
+}
+
+function createRuntimeProductionResult(overrides = {}) {
+  return {
+    context: {
+      imageData: {
+        width: 1,
+        height: 1,
+        data: new Uint8ClampedArray([0, 0, 0, 255])
+      },
+      binaryImage: {
+        width: 1,
+        height: 1,
+        data: new Uint8Array([1])
+      },
+      projections: {
+        horizontal: new Uint32Array([1]),
+        vertical: new Uint32Array([1])
+      }
+    },
+    gridDetection: {
+      geometry: null,
+      confidence: "missing-grid-geometry",
+      diagnostics: []
+    },
+    suggestions: [],
+    diagnostics: [],
+    ...overrides
+  };
+}
+
+function createExperiment(overrides = {}) {
+  return {
+    id: "vertical-continuity",
+    description: "Continuity diagnostics",
+    durationMs: 12.5,
+    success: true,
+    diagnostics: {
+      type: "vertical-continuity-projection-comparison"
+    },
+    ...overrides
+  };
+}
+
+function createPayloadHeavyDatasetResult(payloadLength) {
+  const runtimeValues = new Uint8Array(payloadLength);
+  runtimeValues.fill(1);
+  const visualizationValues = new Array(payloadLength).fill(987654321);
+  const productionResult = createRuntimeProductionResult({
+    context: {
+      imageData: { data: runtimeValues },
+      binaryImage: { data: runtimeValues },
+      projections: {
+        horizontal: runtimeValues,
+        vertical: runtimeValues
+      }
+    }
+  });
+
+  return createDatasetResult({
+    items: [createCompletedItem({
+      production: {
+        status: "completed",
+        result: productionResult
+      },
+      comparison: {
+        status: "completed",
+        result: {
+          production: productionResult,
+          benchmark: {
+            experiments: [createExperiment({
+              diagnostics: {
+                type: "vertical-continuity-projection-comparison",
+                visualizations: [{
+                  id: "vertical-projection",
+                  title: "Vertical Projection",
+                  type: "vertical-projection",
+                  data: {
+                    axis: "vertical",
+                    axisLength: 100,
+                    length: 100,
+                    series: [{
+                      id: "raw",
+                      title: "Raw",
+                      values: visualizationValues
+                    }]
+                  }
+                }]
+              }
+            })]
+          }
+        }
+      }
+    })]
+  });
+}
+
 function createDownloadHarness(options = {}) {
   const environment = Object.prototype.hasOwnProperty.call(options, "environment")
     ? options.environment
@@ -314,6 +648,10 @@ function createDownloadHarness(options = {}) {
 
 function deepFreeze(value) {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+    return value;
+  }
+
+  if (ArrayBuffer.isView(value)) {
     return value;
   }
 
