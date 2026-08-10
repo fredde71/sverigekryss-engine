@@ -85,6 +85,99 @@ test("downloads the exact completed dataset result", async () => {
   expect(downloadReport).toHaveBeenCalledWith(runnerResult);
 });
 
+test("creates the existing reports in order and renders the analysis view", async () => {
+  const runnerResult = createCompletedResult();
+  const datasetReport = { type: "digitization-dataset-report", marker: "dataset" };
+  const failureReport = createFailureReport();
+  const analysisSummary = createAnalysisSummary();
+  const createDatasetReportMock = jest.fn(() => datasetReport);
+  const createFailureReportMock = jest.fn(() => failureReport);
+  const createAnalysisSummaryMock = jest.fn(() => analysisSummary);
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => runnerResult)}
+      createDatasetReport={createDatasetReportMock}
+      createFailureReport={createFailureReportMock}
+      createAnalysisSummary={createAnalysisSummaryMock}
+    />
+  );
+
+  selectFiles([createPdfFile("analysis.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+
+  expect(await screen.findByRole("heading", { name: "Dataset overview" })).toBeInTheDocument();
+  expect(createDatasetReportMock).toHaveBeenCalledTimes(1);
+  expect(createDatasetReportMock).toHaveBeenCalledWith(runnerResult);
+  expect(createFailureReportMock).toHaveBeenCalledTimes(1);
+  expect(createFailureReportMock).toHaveBeenCalledWith(datasetReport);
+  expect(createAnalysisSummaryMock).toHaveBeenCalledTimes(1);
+  expect(createAnalysisSummaryMock).toHaveBeenCalledWith({
+    datasetReport,
+    failureReport
+  });
+  expect(screen.getByText("Supplied integration completion.")).toBeInTheDocument();
+});
+
+test("renders analysis from the real existing report creators after completion", async () => {
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => createCompletedResult())}
+    />
+  );
+
+  selectFiles([createPdfFile("real-chain.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+
+  expect(await screen.findByRole("heading", { name: "Dataset overview" })).toBeInTheDocument();
+  expect(screen.getByText("0 of 0 puzzles completed.")).toBeInTheDocument();
+  expect(screen.getByText("No production failure reasons were recorded.")).toBeInTheDocument();
+});
+
+test("isolates analysis creation failure from completion and download", async () => {
+  const runnerResult = createCompletedResult();
+  const downloadReport = jest.fn();
+  const createDatasetReport = jest.fn(() => {
+    throw new Error("synthetic analysis failure");
+  });
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => runnerResult)}
+      downloadReport={downloadReport}
+      createDatasetReport={createDatasetReport}
+    />
+  );
+
+  selectFiles([createPdfFile("analysis-fails.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+
+  expect(await screen.findByRole("status")).toHaveTextContent("Dataset completed");
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Dataset analysis unavailable: synthetic analysis failure"
+  );
+  expect(screen.queryByRole("heading", { name: "Dataset overview" })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Download JSON" }));
+  expect(downloadReport).toHaveBeenCalledWith(runnerResult);
+});
+
+test("clears stale analysis when a new file selection is made", async () => {
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => createCompletedResult())}
+    />
+  );
+
+  selectFiles([createPdfFile("first.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  expect(await screen.findByRole("heading", { name: "Dataset overview" })).toBeInTheDocument();
+
+  selectFiles([createPdfFile("second.pdf")]);
+
+  expect(screen.queryByRole("heading", { name: "Dataset overview" })).not.toBeInTheDocument();
+});
+
 test("clears a stale completed result when a new file selection is made", async () => {
   const runDataset = jest.fn(async () => createCompletedResult());
 
@@ -101,11 +194,17 @@ test("clears a stale completed result when a new file selection is made", async 
 });
 
 test("keeps downloads unavailable when dataset execution fails", async () => {
+  const createDatasetReport = jest.fn();
   const runDataset = jest.fn(async () => {
     throw new Error("synthetic dataset failure");
   });
 
-  render(<DigitizationDatasetHarness runDataset={runDataset} />);
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createDatasetReport={createDatasetReport}
+    />
+  );
 
   selectFiles([createPdfFile("failed.pdf")]);
   fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
@@ -114,16 +213,19 @@ test("keeps downloads unavailable when dataset execution fails", async () => {
     "Dataset failed: synthetic dataset failure"
   );
   expect(screen.queryByRole("button", { name: "Download JSON" })).not.toBeInTheDocument();
+  expect(createDatasetReport).not.toHaveBeenCalled();
 });
 
 test("does not render or invoke dataset behavior outside development and test", () => {
   const runDataset = jest.fn();
   const downloadReport = jest.fn();
+  const createDatasetReport = jest.fn();
 
   const { container } = render(
     <DigitizationDatasetHarness
       runDataset={runDataset}
       downloadReport={downloadReport}
+      createDatasetReport={createDatasetReport}
       readEnvironment={() => "production"}
     />
   );
@@ -131,6 +233,7 @@ test("does not render or invoke dataset behavior outside development and test", 
   expect(container).toBeEmptyDOMElement();
   expect(runDataset).not.toHaveBeenCalled();
   expect(downloadReport).not.toHaveBeenCalled();
+  expect(createDatasetReport).not.toHaveBeenCalled();
 });
 
 test("does not use browser persistence or add evaluation output", async () => {
@@ -174,5 +277,92 @@ function createCompletedResult() {
       failedItemCount: 0
     },
     items: []
+  };
+}
+
+function createAnalysisSummary() {
+  return {
+    type: "digitization-dataset-analysis-summary",
+    version: 1,
+    dataset: {
+      datasetId: "localhost-pdf-dataset",
+      itemCount: 0
+    },
+    sections: {
+      completion: {
+        summary: "Supplied integration completion.",
+        totalCount: 0,
+        completedCount: 0,
+        incompleteCount: 0
+      },
+      gridDetection: {
+        summary: "Supplied grid detection.",
+        detectedCount: 0,
+        notDetectedCount: 0,
+        productionFailedCount: 0,
+        productionNotRunCount: 0,
+        unavailableCount: 0
+      },
+      productionFailureReasons: {
+        summary: "No production failure reasons were recorded.",
+        affectedItemCount: 0,
+        reasons: []
+      },
+      productionConfidence: {
+        summary: "No production confidence values were recorded.",
+        availableItemCount: 0,
+        unavailableItemCount: 0,
+        values: [],
+        unavailableItemIds: []
+      },
+      frequentExperimentObservations: {
+        summary: "No available experiment observations were recorded.",
+        maximumItemCount: null,
+        observations: []
+      },
+      recurringDiagnosticPatterns: {
+        summary: "No recurring production diagnostic patterns were recorded.",
+        patterns: []
+      }
+    }
+  };
+}
+
+function createFailureReport() {
+  return {
+    type: "grid-detection-failure-report",
+    version: 1,
+    dataset: {
+      datasetId: "localhost-pdf-dataset",
+      itemCount: 0
+    },
+    production: {
+      outcomes: {
+        detectedCount: 0,
+        notDetectedCount: 0,
+        productionFailedCount: 0,
+        productionNotRunCount: 0,
+        unavailableCount: 0,
+        items: []
+      },
+      failureReasons: {
+        affectedItemCount: 0,
+        groups: []
+      },
+      confidence: {
+        availableItemCount: 0,
+        unavailableItemCount: 0,
+        values: [],
+        unavailableItemIds: []
+      }
+    },
+    experiments: {
+      itemCountWithBenchmark: 0,
+      itemCountWithoutBenchmark: 0,
+      experiments: []
+    },
+    recurringDiagnosticPatterns: {
+      patterns: []
+    }
   };
 }

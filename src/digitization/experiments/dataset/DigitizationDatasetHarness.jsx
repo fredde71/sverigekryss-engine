@@ -1,12 +1,21 @@
 import React, { useState } from "react";
 import { runLocalPdfDigitizationDataset } from "./runLocalPdfDigitizationDataset";
-import { downloadDigitizationDatasetReport } from "./digitizationDatasetReportExport";
+import {
+  createDigitizationDatasetReportProjection,
+  downloadDigitizationDatasetReport
+} from "./digitizationDatasetReportExport";
+import { createGridDetectionFailureReport } from "./gridDetectionFailureReport";
+import { createDatasetAnalysisSummary } from "./datasetAnalysisSummary";
+import DevelopmentDatasetAnalysisView from "./DevelopmentDatasetAnalysisView";
 
 const LOCAL_DATASET_ID = "localhost-pdf-dataset";
 
 export default function DigitizationDatasetHarness({
   runDataset = runLocalPdfDigitizationDataset,
   downloadReport = downloadDigitizationDatasetReport,
+  createDatasetReport = createDigitizationDatasetReportProjection,
+  createFailureReport = createGridDetectionFailureReport,
+  createAnalysisSummary = createDatasetAnalysisSummary,
   readEnvironment = () => process.env.NODE_ENV
 }) {
   const environment = readEnvironment();
@@ -14,6 +23,8 @@ export default function DigitizationDatasetHarness({
   const [status, setStatus] = useState("idle");
   const [datasetResult, setDatasetResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [analysisReports, setAnalysisReports] = useState(null);
+  const [analysisErrorMessage, setAnalysisErrorMessage] = useState("");
 
   if (environment !== "development" && environment !== "test") {
     return null;
@@ -24,12 +35,16 @@ export default function DigitizationDatasetHarness({
     setStatus("idle");
     setDatasetResult(null);
     setErrorMessage("");
+    setAnalysisReports(null);
+    setAnalysisErrorMessage("");
   };
 
   const handleRun = async () => {
     setStatus("running");
     setDatasetResult(null);
     setErrorMessage("");
+    setAnalysisReports(null);
+    setAnalysisErrorMessage("");
 
     try {
       const result = await runDataset({
@@ -39,6 +54,26 @@ export default function DigitizationDatasetHarness({
 
       setDatasetResult(result);
       setStatus("completed");
+
+      try {
+        const datasetReport = createDatasetReport(result);
+        const failureReport = createFailureReport(datasetReport);
+        const analysisSummary = createAnalysisSummary({
+          datasetReport,
+          failureReport
+        });
+
+        setAnalysisReports({
+          analysisSummary,
+          failureReport
+        });
+      } catch (analysisError) {
+        setAnalysisErrorMessage(
+          analysisError instanceof Error
+            ? analysisError.message
+            : String(analysisError)
+        );
+      }
     } catch (error) {
       setStatus("failed");
       setErrorMessage(error instanceof Error ? error.message : String(error));
@@ -94,6 +129,18 @@ export default function DigitizationDatasetHarness({
       )}
       {status === "failed" && (
         <span role="alert">Dataset failed: {errorMessage}</span>
+      )}
+      {analysisErrorMessage && (
+        <span role="alert">
+          Dataset analysis unavailable: {analysisErrorMessage}
+        </span>
+      )}
+      {analysisReports && (
+        <DevelopmentDatasetAnalysisView
+          analysisSummary={analysisReports.analysisSummary}
+          failureReport={analysisReports.failureReport}
+          readEnvironment={readEnvironment}
+        />
       )}
     </section>
   );
