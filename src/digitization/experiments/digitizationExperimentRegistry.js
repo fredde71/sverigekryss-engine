@@ -1,10 +1,12 @@
 import { verticalContinuityDiagnosticsExperiment } from "./verticalContinuityDiagnostics";
 import { verticalLineMaskDiagnosticsExperiment } from "./verticalLineMaskDiagnostics";
 import { gridConfidenceDiagnosticsExperiment } from "./gridConfidenceDiagnostics";
+import { verticalContinuityCandidateDiagnosticsExperiment } from "./verticalContinuityCandidateDiagnostics";
 
 const DIGITIZATION_EXPERIMENTS = Object.freeze([
   verticalLineMaskDiagnosticsExperiment,
   verticalContinuityDiagnosticsExperiment,
+  verticalContinuityCandidateDiagnosticsExperiment,
   gridConfidenceDiagnosticsExperiment
 ]);
 

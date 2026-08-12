@@ -117,6 +117,91 @@ test("preserves unsupported visualization types as objective inventory", () => {
   });
 });
 
+test("extracts four vertical continuity candidate-count observations", () => {
+  const report = createReport([
+    createSuccessfulExperiment("continuity-candidates", {
+      type: "vertical-continuity-candidate-comparison",
+      raw: {
+        candidateCount: 1
+      },
+      continuity: {
+        candidateCount: 3
+      },
+      comparison: {
+        candidateCountDelta: 2,
+        relation: "additional-candidates-observed"
+      }
+    })
+  ]);
+
+  expect(report.observations).toEqual({
+    available: [
+      {
+        experimentId: "continuity-candidates",
+        category: "candidate-count",
+        observationId: "raw-vertical-candidate-count",
+        value: 1
+      },
+      {
+        experimentId: "continuity-candidates",
+        category: "candidate-count",
+        observationId: "continuity-vertical-candidate-count",
+        value: 3
+      },
+      {
+        experimentId: "continuity-candidates",
+        category: "candidate-count-comparison",
+        observationId: "vertical-candidate-count-delta",
+        value: 2
+      },
+      {
+        experimentId: "continuity-candidates",
+        category: "candidate-count-comparison",
+        observationId: "vertical-candidate-count-relation",
+        value: "additional-candidates-observed"
+      }
+    ],
+    unavailable: []
+  });
+  expect(report.comparisons).toEqual([]);
+});
+
+test("reports unavailable candidate observations without guessing values", () => {
+  const report = createReport([
+    createSuccessfulExperiment("continuity-candidates", {
+      type: "vertical-continuity-candidate-comparison"
+    })
+  ]);
+
+  expect(report.observations.available).toEqual([]);
+  expect(report.observations.unavailable).toEqual([
+    {
+      experimentId: "continuity-candidates",
+      category: "candidate-count",
+      observationId: "raw-vertical-candidate-count",
+      reason: "value-unavailable"
+    },
+    {
+      experimentId: "continuity-candidates",
+      category: "candidate-count",
+      observationId: "continuity-vertical-candidate-count",
+      reason: "value-unavailable"
+    },
+    {
+      experimentId: "continuity-candidates",
+      category: "candidate-count-comparison",
+      observationId: "vertical-candidate-count-delta",
+      reason: "value-unavailable"
+    },
+    {
+      experimentId: "continuity-candidates",
+      category: "candidate-count-comparison",
+      observationId: "vertical-candidate-count-relation",
+      reason: "value-unavailable"
+    }
+  ]);
+});
+
 test("reports exact agreement for comparable raw projection observations", () => {
   const report = createReport([
     createSuccessfulExperiment(

@@ -5,6 +5,7 @@ import {
   runDigitizationExperiment
 } from "./digitizationExperimentRegistry";
 import { createVerticalContinuityProjectionComparison } from "./verticalContinuityDiagnostics";
+import { createVerticalContinuityCandidateDiagnostics } from "./verticalContinuityCandidateDiagnostics";
 import { createVerticalLineMaskProjectionComparison } from "./verticalLineMaskDiagnostics";
 
 test("lists registered digitization experiments with their public contract", () => {
@@ -13,6 +14,7 @@ test("lists registered digitization experiments with their public contract", () 
   expect(experiments.map(experiment => experiment.id)).toEqual([
     "vertical-line-mask-diagnostics",
     "vertical-continuity-diagnostics",
+    "vertical-continuity-candidate-diagnostics",
     "grid-confidence-diagnostics"
   ]);
 
@@ -26,7 +28,7 @@ test("lists registered digitization experiments with their public contract", () 
   }
 
   experiments.pop();
-  expect(listDigitizationExperiments()).toHaveLength(3);
+  expect(listDigitizationExperiments()).toHaveLength(4);
 });
 
 test("looks up experiment metadata without executing the experiment", () => {
@@ -85,6 +87,16 @@ test("looks up and runs each registered experiment without changing its existing
     rawVerticalProjection,
     options
   }));
+
+  expect(runDigitizationExperiment(
+    "vertical-continuity-candidate-diagnostics",
+    binaryImage,
+    new Proxy({}, {
+      get() {
+        throw new Error("context must not be read");
+      }
+    })
+  )).toEqual(createVerticalContinuityCandidateDiagnostics(binaryImage));
 });
 
 test("rejects an unknown experiment id", () => {

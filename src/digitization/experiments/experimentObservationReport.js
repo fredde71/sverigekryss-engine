@@ -37,6 +37,7 @@ const RAW_PROJECTION_DEFINITIONS = Object.freeze([
 const OBSERVATION_EXTRACTORS = Object.freeze({
   "vertical-line-mask-projection-comparison": extractVerticalLineMaskObservations,
   "vertical-continuity-projection-comparison": extractVerticalContinuityObservations,
+  "vertical-continuity-candidate-comparison": extractVerticalContinuityCandidateObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
 });
 
@@ -202,6 +203,61 @@ function extractVerticalContinuityObservations(experimentId, diagnostics) {
         }
       ]
     }),
+    structuralEvidence: null
+  };
+}
+
+function extractVerticalContinuityCandidateObservations(experimentId, diagnostics) {
+  const definitions = [
+    {
+      category: "candidate-count",
+      observationId: "raw-vertical-candidate-count",
+      value: diagnostics.raw?.candidateCount,
+      isAvailable: Number.isFinite(diagnostics.raw?.candidateCount)
+    },
+    {
+      category: "candidate-count",
+      observationId: "continuity-vertical-candidate-count",
+      value: diagnostics.continuity?.candidateCount,
+      isAvailable: Number.isFinite(diagnostics.continuity?.candidateCount)
+    },
+    {
+      category: "candidate-count-comparison",
+      observationId: "vertical-candidate-count-delta",
+      value: diagnostics.comparison?.candidateCountDelta,
+      isAvailable: Number.isFinite(diagnostics.comparison?.candidateCountDelta)
+    },
+    {
+      category: "candidate-count-comparison",
+      observationId: "vertical-candidate-count-relation",
+      value: diagnostics.comparison?.relation,
+      isAvailable: typeof diagnostics.comparison?.relation === "string"
+    }
+  ];
+  const available = [];
+  const unavailable = [];
+
+  for (const definition of definitions) {
+    if (definition.isAvailable) {
+      available.push({
+        experimentId,
+        category: definition.category,
+        observationId: definition.observationId,
+        value: definition.value
+      });
+    } else {
+      unavailable.push({
+        experimentId,
+        category: definition.category,
+        observationId: definition.observationId,
+        reason: "value-unavailable"
+      });
+    }
+  }
+
+  return {
+    available,
+    unavailable,
     structuralEvidence: null
   };
 }
