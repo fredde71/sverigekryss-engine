@@ -2,6 +2,8 @@ import fs from "fs";
 import { createVerticalProjection } from "../analysis/Projection";
 import { findLineCandidates } from "../analysis/LineCandidate";
 import { createProjectionProfileSummary } from "../detection/projectionDiagnostics";
+import { createDigitizationExperimentBenchmark } from "./digitizationExperimentBenchmark";
+import { createDigitizationDatasetRunner } from "./dataset/digitizationDatasetRunner";
 import {
   createVerticalContinuityCandidateDiagnostics,
   verticalContinuityCandidateDiagnosticsExperiment
@@ -33,6 +35,123 @@ test("uses only BinaryImage and ignores analysis context", () => {
     binaryImage,
     context
   )).not.toThrow();
+});
+
+test("reads accessor-backed BinaryImage data exactly once with identical diagnostics", () => {
+  const plainBinaryImage = createBinaryImage({
+    width: 8,
+    height: 20,
+    darkPixels: Array.from({ length: 20 }, (_, y) => [
+      y % 2 === 0 ? 3 : 4,
+      y
+    ])
+  });
+  const accessor = createAccessorBackedBinaryImage(plainBinaryImage);
+
+  const expected = createVerticalContinuityCandidateDiagnostics(plainBinaryImage);
+  const actual = createVerticalContinuityCandidateDiagnostics(accessor.binaryImage);
+
+  expect(accessor.getReadCount()).toBe(1);
+  expect(actual).toEqual(expected);
+});
+
+test("allows the benchmark to continue after accessor-backed candidate diagnostics", async () => {
+  const plainBinaryImage = createBinaryImage({
+    width: 8,
+    height: 20,
+    darkPixels: createVerticalPixels(3, 20)
+  });
+  const accessor = createAccessorBackedBinaryImage(plainBinaryImage);
+  const laterExperiment = {
+    id: "later-experiment",
+    description: "Runs after candidate diagnostics",
+    run: jest.fn(() => ({ type: "later-diagnostics" }))
+  };
+  const runBenchmark = createDigitizationExperimentBenchmark({
+    listExperiments: () => [
+      verticalContinuityCandidateDiagnosticsExperiment,
+      laterExperiment
+    ],
+    now: createIncrementingClock()
+  });
+
+  const benchmark = await runBenchmark(accessor.binaryImage, {});
+
+  expect(accessor.getReadCount()).toBe(1);
+  expect(laterExperiment.run).toHaveBeenCalledTimes(1);
+  expect(benchmark.experiments.map(experiment => ({
+    id: experiment.id,
+    success: experiment.success
+  }))).toEqual([
+    {
+      id: "vertical-continuity-candidate-diagnostics",
+      success: true
+    },
+    {
+      id: "later-experiment",
+      success: true
+    }
+  ]);
+});
+
+test("completes the dataset path with an accessor-backed production BinaryImage", async () => {
+  const plainBinaryImage = createBinaryImage({
+    width: 8,
+    height: 20,
+    darkPixels: createVerticalPixels(3, 20)
+  });
+  const accessor = createAccessorBackedBinaryImage(plainBinaryImage);
+  const gridDetection = {
+    geometry: null,
+    confidence: "missing-grid-geometry",
+    diagnostics: []
+  };
+  const productionResult = {
+    context: {
+      binaryImage: accessor.binaryImage,
+      projections: {
+        vertical: createVerticalProjection(plainBinaryImage)
+      },
+      gridDetection
+    },
+    gridDetection,
+    diagnostics: []
+  };
+  const runDataset = createDigitizationDatasetRunner({
+    runProduction: jest.fn(async () => productionResult)
+  });
+
+  const result = await runDataset({
+    datasetId: "accessor-regression",
+    items: [{ id: "item-1" }],
+    prepareInput: async () => ({
+      source: { id: "rendered-page" },
+      readImageData: jest.fn()
+    })
+  });
+
+  expect(result.inventory).toEqual({
+    totalItemCount: 1,
+    completedItemCount: 1,
+    failedItemCount: 0
+  });
+  expect(result.items[0].status).toBe("completed");
+  const candidateBenchmark = result.items[0].comparison.result.benchmark.experiments
+    .find(experiment => (
+      experiment.id === "vertical-continuity-candidate-diagnostics"
+    ));
+
+  expect(candidateBenchmark.success).toBe(true);
+  expect(result.items[0].observationReport.result.observations.available).toEqual(
+    expect.arrayContaining([
+      {
+        experimentId: "vertical-continuity-candidate-diagnostics",
+        category: "candidate-count-comparison",
+        observationId: "vertical-candidate-count-relation",
+        value: "equal-candidate-count"
+      }
+    ])
+  );
 });
 
 test("keeps the candidate coverage ratio exactly at 80 percent", () => {
@@ -297,6 +416,32 @@ function createBinaryImage({ width, height, darkPixels = [] }) {
 
 function createVerticalPixels(x, height) {
   return Array.from({ length: height }, (_, y) => [x, y]);
+}
+
+function createAccessorBackedBinaryImage(binaryImage) {
+  const snapshot = new Uint8Array(binaryImage.data);
+  let readCount = 0;
+
+  return {
+    binaryImage: {
+      width: binaryImage.width,
+      height: binaryImage.height,
+      get data() {
+        readCount += 1;
+        return new Uint8Array(snapshot);
+      }
+    },
+    getReadCount: () => readCount
+  };
+}
+
+function createIncrementingClock() {
+  let value = 0;
+
+  return () => {
+    value += 1;
+    return value;
+  };
 }
 
 function collectKeys(value) {

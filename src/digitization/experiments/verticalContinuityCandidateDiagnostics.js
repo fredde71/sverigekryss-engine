@@ -15,12 +15,17 @@ export const verticalContinuityCandidateDiagnosticsExperiment = Object.freeze({
 });
 
 export function createVerticalContinuityCandidateDiagnostics(binaryImage) {
-  const rawProjection = createVerticalProjection(binaryImage);
-  const continuityEvidence = createVerticalContinuityEvidence(binaryImage);
+  const stableBinaryImage = {
+    width: binaryImage.width,
+    height: binaryImage.height,
+    data: binaryImage.data
+  };
+  const rawProjection = createVerticalProjection(stableBinaryImage);
+  const continuityEvidence = createVerticalContinuityEvidence(stableBinaryImage);
   const continuityProjection = createVerticalProjection(continuityEvidence.mask);
   const candidateOptions = {
     axis: "vertical",
-    axisLength: binaryImage.height,
+    axisLength: stableBinaryImage.height,
     minCoverageRatio: CANDIDATE_COVERAGE_RATIO
   };
   const rawCandidates = findLineCandidates(rawProjection, candidateOptions);
@@ -42,7 +47,7 @@ export function createVerticalContinuityCandidateDiagnostics(binaryImage) {
     raw: {
       profile: createProjectionProfileSummary({
         projection: rawProjection,
-        axisLength: binaryImage.height
+        axisLength: stableBinaryImage.height
       }),
       candidateCount: rawCandidates.length,
       candidates: rawCandidates
@@ -50,7 +55,7 @@ export function createVerticalContinuityCandidateDiagnostics(binaryImage) {
     continuity: {
       profile: createProjectionProfileSummary({
         projection: continuityProjection,
-        axisLength: binaryImage.height
+        axisLength: stableBinaryImage.height
       }),
       candidateCount: continuityCandidates.length,
       candidates: continuityCandidates
@@ -63,7 +68,7 @@ export function createVerticalContinuityCandidateDiagnostics(binaryImage) {
       createVerticalProjectionVisualization({
         id: "vertical-candidate-projections",
         title: "Vertical Candidate Projections",
-        axisLength: binaryImage.height,
+        axisLength: stableBinaryImage.height,
         series: [
           {
             id: "raw",
