@@ -3,12 +3,14 @@ import { verticalLineMaskDiagnosticsExperiment } from "./verticalLineMaskDiagnos
 import { gridConfidenceDiagnosticsExperiment } from "./gridConfidenceDiagnostics";
 import { verticalContinuityCandidateDiagnosticsExperiment } from "./verticalContinuityCandidateDiagnostics";
 import { verticalCandidateCoverageThresholdDiagnosticsExperiment } from "./verticalCandidateCoverageThresholdDiagnostics";
+import { verticalSpanRelativeCoverageDiagnosticsExperiment } from "./verticalSpanRelativeCoverageDiagnostics";
 
 const DIGITIZATION_EXPERIMENTS = Object.freeze([
   verticalLineMaskDiagnosticsExperiment,
   verticalContinuityDiagnosticsExperiment,
   verticalContinuityCandidateDiagnosticsExperiment,
   verticalCandidateCoverageThresholdDiagnosticsExperiment,
+  verticalSpanRelativeCoverageDiagnosticsExperiment,
   gridConfidenceDiagnosticsExperiment
 ]);
 

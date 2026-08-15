@@ -308,6 +308,134 @@ test("reports malformed or missing threshold observations as unavailable", () =>
   expect(report.observations.unavailable).toHaveLength(6);
 });
 
+test("extracts ordered full-page and span-relative coverage observations", () => {
+  const report = createReport([
+    createSuccessfulExperiment(
+      "span-relative",
+      createSpanRelativeCoverageDiagnostics()
+    )
+  ]);
+
+  expect(report.observations.unavailable).toEqual([]);
+  expect(report.observations.available.map(observation => (
+    observation.observationId
+  ))).toEqual([
+    "horizontal-boundary-candidate-count",
+    "horizontal-boundary-candidate-positions",
+    "observed-vertical-span-top",
+    "observed-vertical-span-bottom",
+    "observed-vertical-span-length",
+    "full-page-vertical-coverage-denominator",
+    "full-page-vertical-minimum-strength",
+    "full-page-strongest-vertical-strength",
+    "full-page-maximum-observed-vertical-coverage",
+    "full-page-vertical-candidate-count",
+    "full-page-vertical-candidate-positions",
+    "span-relative-vertical-coverage-denominator",
+    "span-relative-vertical-minimum-strength",
+    "span-relative-strongest-vertical-strength",
+    "span-relative-maximum-observed-vertical-coverage",
+    "span-relative-vertical-candidate-count",
+    "span-relative-vertical-candidate-positions"
+  ]);
+  expect(report.observations.available).toEqual(expect.arrayContaining([
+    {
+      experimentId: "span-relative",
+      category: "span-relative-candidate-observation",
+      observationId: "full-page-maximum-observed-vertical-coverage",
+      value: 0.6
+    },
+    {
+      experimentId: "span-relative",
+      category: "span-relative-candidate-observation",
+      observationId: "span-relative-vertical-candidate-positions",
+      value: [2, 6]
+    }
+  ]));
+  expect(report.comparisons).toEqual([]);
+});
+
+test("keeps measured empty candidate positions available for span coverage", () => {
+  const diagnostics = createSpanRelativeCoverageDiagnostics();
+  diagnostics.fullPage.candidateCount = 0;
+  diagnostics.fullPage.candidatePositions = [];
+  diagnostics.spanRelative.candidateCount = 0;
+  diagnostics.spanRelative.candidatePositions = [];
+  const report = createReport([
+    createSuccessfulExperiment("span-relative", diagnostics)
+  ]);
+
+  expect(report.observations.unavailable).toEqual([]);
+  expect(report.observations.available).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      observationId: "full-page-vertical-candidate-positions",
+      value: []
+    }),
+    expect.objectContaining({
+      observationId: "span-relative-vertical-candidate-positions",
+      value: []
+    })
+  ]));
+});
+
+test("keeps full-page observations available when span evidence is unavailable", () => {
+  const diagnostics = createSpanRelativeCoverageDiagnostics();
+  diagnostics.status = "partial";
+  diagnostics.spanObservation = {
+    status: "unavailable",
+    method: "outermost-horizontal-candidate-runs",
+    reason: "fewer-than-two-horizontal-candidates",
+    boundaryEvidence: {
+      candidateCount: 1,
+      candidatePositions: [20]
+    },
+    top: null,
+    bottom: null,
+    length: null
+  };
+  diagnostics.spanRelative = {
+    status: "unavailable",
+    reason: "observed-span-unavailable",
+    denominator: null,
+    minimumStrength: null,
+    profile: null,
+    strongestEvidence: null,
+    candidateCount: null,
+    candidatePositions: null
+  };
+  const report = createReport([
+    createSuccessfulExperiment("span-relative", diagnostics)
+  ]);
+
+  expect(report.observations.available.map(observation => (
+    observation.observationId
+  ))).toEqual([
+    "horizontal-boundary-candidate-count",
+    "horizontal-boundary-candidate-positions",
+    "full-page-vertical-coverage-denominator",
+    "full-page-vertical-minimum-strength",
+    "full-page-strongest-vertical-strength",
+    "full-page-maximum-observed-vertical-coverage",
+    "full-page-vertical-candidate-count",
+    "full-page-vertical-candidate-positions"
+  ]);
+  expect(report.observations.unavailable).toHaveLength(9);
+  expect(report.observations.unavailable).toEqual(expect.arrayContaining([
+    {
+      experimentId: "span-relative",
+      category: "span-relative-candidate-observation",
+      observationId: "observed-vertical-span-length",
+      reason: "fewer-than-two-horizontal-candidates"
+    },
+    {
+      experimentId: "span-relative",
+      category: "span-relative-candidate-observation",
+      observationId: "span-relative-vertical-candidate-count",
+      reason: "observed-span-unavailable"
+    }
+  ]));
+});
+
 test("reports exact agreement for comparable raw projection observations", () => {
   const report = createReport([
     createSuccessfulExperiment(
@@ -790,6 +918,45 @@ function createCandidateCoverageThresholdDiagnostics() {
         candidatePositions: [0, ...positions.slice(index)]
       }
     }))
+  };
+}
+
+function createSpanRelativeCoverageDiagnostics() {
+  return {
+    type: "vertical-span-relative-coverage-observation",
+    status: "measured",
+    spanObservation: {
+      status: "measured",
+      boundaryEvidence: {
+        candidateCount: 2,
+        candidatePositions: [20, 79]
+      },
+      top: 20,
+      bottom: 79,
+      length: 60
+    },
+    fullPage: {
+      denominator: { top: 0, bottom: 99, length: 100 },
+      minimumStrength: 80,
+      strongestEvidence: {
+        position: 2,
+        strength: 60,
+        coverageRatio: 0.6
+      },
+      candidateCount: 0,
+      candidatePositions: []
+    },
+    spanRelative: {
+      denominator: { top: 20, bottom: 79, length: 60 },
+      minimumStrength: 48,
+      strongestEvidence: {
+        position: 2,
+        strength: 60,
+        coverageRatio: 1
+      },
+      candidateCount: 2,
+      candidatePositions: [2, 6]
+    }
   };
 }
 

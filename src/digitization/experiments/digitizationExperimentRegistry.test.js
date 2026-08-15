@@ -7,6 +7,7 @@ import {
 import { createVerticalContinuityProjectionComparison } from "./verticalContinuityDiagnostics";
 import { createVerticalContinuityCandidateDiagnostics } from "./verticalContinuityCandidateDiagnostics";
 import { createVerticalCandidateCoverageThresholdDiagnostics } from "./verticalCandidateCoverageThresholdDiagnostics";
+import { createVerticalSpanRelativeCoverageDiagnostics } from "./verticalSpanRelativeCoverageDiagnostics";
 import { createVerticalLineMaskProjectionComparison } from "./verticalLineMaskDiagnostics";
 
 test("lists registered digitization experiments with their public contract", () => {
@@ -17,6 +18,7 @@ test("lists registered digitization experiments with their public contract", () 
     "vertical-continuity-diagnostics",
     "vertical-continuity-candidate-diagnostics",
     "vertical-candidate-coverage-threshold-diagnostics",
+    "vertical-span-relative-coverage-diagnostics",
     "grid-confidence-diagnostics"
   ]);
 
@@ -30,7 +32,7 @@ test("lists registered digitization experiments with their public contract", () 
   }
 
   experiments.pop();
-  expect(listDigitizationExperiments()).toHaveLength(5);
+  expect(listDigitizationExperiments()).toHaveLength(6);
 });
 
 test("looks up experiment metadata without executing the experiment", () => {
@@ -109,6 +111,16 @@ test("looks up and runs each registered experiment without changing its existing
       }
     })
   )).toEqual(createVerticalCandidateCoverageThresholdDiagnostics(binaryImage));
+
+  expect(runDigitizationExperiment(
+    "vertical-span-relative-coverage-diagnostics",
+    binaryImage,
+    new Proxy({}, {
+      get() {
+        throw new Error("context must not be read");
+      }
+    })
+  )).toEqual(createVerticalSpanRelativeCoverageDiagnostics(binaryImage));
 });
 
 test("rejects an unknown experiment id", () => {

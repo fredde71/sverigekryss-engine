@@ -46,6 +46,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "vertical-continuity-projection-comparison": extractVerticalContinuityObservations,
   "vertical-continuity-candidate-comparison": extractVerticalContinuityCandidateObservations,
   "vertical-candidate-coverage-threshold-observation": extractVerticalCandidateCoverageThresholdObservations,
+  "vertical-span-relative-coverage-observation": extractVerticalSpanRelativeCoverageObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
 });
 
@@ -356,6 +357,140 @@ function extractCandidateThresholdValue({
 
 function isFiniteNumberArray(value) {
   return Array.isArray(value) && value.every(Number.isFinite);
+}
+
+function extractVerticalSpanRelativeCoverageObservations(
+  experimentId,
+  diagnostics
+) {
+  const span = diagnostics.spanObservation;
+  const fullPage = diagnostics.fullPage;
+  const spanRelative = diagnostics.spanRelative;
+  const definitions = [
+    createNumberObservationDefinition(
+      "horizontal-boundary-candidate-count",
+      span?.boundaryEvidence?.candidateCount
+    ),
+    createNumberArrayObservationDefinition(
+      "horizontal-boundary-candidate-positions",
+      span?.boundaryEvidence?.candidatePositions
+    ),
+    createNumberObservationDefinition(
+      "observed-vertical-span-top",
+      span?.top,
+      span?.reason
+    ),
+    createNumberObservationDefinition(
+      "observed-vertical-span-bottom",
+      span?.bottom,
+      span?.reason
+    ),
+    createNumberObservationDefinition(
+      "observed-vertical-span-length",
+      span?.length,
+      span?.reason
+    ),
+    createNumberObservationDefinition(
+      "full-page-vertical-coverage-denominator",
+      fullPage?.denominator?.length
+    ),
+    createNumberObservationDefinition(
+      "full-page-vertical-minimum-strength",
+      fullPage?.minimumStrength
+    ),
+    createNumberObservationDefinition(
+      "full-page-strongest-vertical-strength",
+      fullPage?.strongestEvidence?.strength
+    ),
+    createNumberObservationDefinition(
+      "full-page-maximum-observed-vertical-coverage",
+      fullPage?.strongestEvidence?.coverageRatio
+    ),
+    createNumberObservationDefinition(
+      "full-page-vertical-candidate-count",
+      fullPage?.candidateCount
+    ),
+    createNumberArrayObservationDefinition(
+      "full-page-vertical-candidate-positions",
+      fullPage?.candidatePositions
+    ),
+    createNumberObservationDefinition(
+      "span-relative-vertical-coverage-denominator",
+      spanRelative?.denominator?.length,
+      spanRelative?.reason
+    ),
+    createNumberObservationDefinition(
+      "span-relative-vertical-minimum-strength",
+      spanRelative?.minimumStrength,
+      spanRelative?.reason
+    ),
+    createNumberObservationDefinition(
+      "span-relative-strongest-vertical-strength",
+      spanRelative?.strongestEvidence?.strength,
+      spanRelative?.reason
+    ),
+    createNumberObservationDefinition(
+      "span-relative-maximum-observed-vertical-coverage",
+      spanRelative?.strongestEvidence?.coverageRatio,
+      spanRelative?.reason
+    ),
+    createNumberObservationDefinition(
+      "span-relative-vertical-candidate-count",
+      spanRelative?.candidateCount,
+      spanRelative?.reason
+    ),
+    createNumberArrayObservationDefinition(
+      "span-relative-vertical-candidate-positions",
+      spanRelative?.candidatePositions,
+      spanRelative?.reason
+    )
+  ];
+  const available = [];
+  const unavailable = [];
+
+  for (const definition of definitions) {
+    if (definition.isAvailable) {
+      available.push({
+        experimentId,
+        category: "span-relative-candidate-observation",
+        observationId: definition.observationId,
+        value: Array.isArray(definition.value)
+          ? definition.value.slice()
+          : definition.value
+      });
+    } else {
+      unavailable.push({
+        experimentId,
+        category: "span-relative-candidate-observation",
+        observationId: definition.observationId,
+        reason: definition.reason || "value-unavailable"
+      });
+    }
+  }
+
+  return {
+    available,
+    unavailable,
+    structuralEvidence: null
+  };
+}
+
+function createNumberObservationDefinition(observationId, value, reason) {
+  return {
+    observationId,
+    value,
+    reason,
+    isAvailable: Number.isFinite(value)
+  };
+}
+
+function createNumberArrayObservationDefinition(observationId, value, reason) {
+  return {
+    observationId,
+    value,
+    reason,
+    isAvailable: isFiniteNumberArray(value)
+  };
 }
 
 function extractProjectionObservations(experimentId, diagnostics, {
