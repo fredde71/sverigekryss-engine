@@ -202,6 +202,112 @@ test("reports unavailable candidate observations without guessing values", () =>
   ]);
 });
 
+test("extracts ordered candidate counts and positions for every coverage ratio", () => {
+  const report = createReport([
+    createSuccessfulExperiment(
+      "thresholds",
+      createCandidateCoverageThresholdDiagnostics()
+    )
+  ]);
+
+  expect(report.observations.unavailable).toEqual([]);
+  expect(report.observations.available).toHaveLength(20);
+  expect(report.observations.available.map(observation => (
+    observation.observationId
+  ))).toEqual([
+    "raw-vertical-candidate-count-at-coverage-0.70",
+    "raw-vertical-candidate-positions-at-coverage-0.70",
+    "continuity-vertical-candidate-count-at-coverage-0.70",
+    "continuity-vertical-candidate-positions-at-coverage-0.70",
+    "raw-vertical-candidate-count-at-coverage-0.75",
+    "raw-vertical-candidate-positions-at-coverage-0.75",
+    "continuity-vertical-candidate-count-at-coverage-0.75",
+    "continuity-vertical-candidate-positions-at-coverage-0.75",
+    "raw-vertical-candidate-count-at-coverage-0.80",
+    "raw-vertical-candidate-positions-at-coverage-0.80",
+    "continuity-vertical-candidate-count-at-coverage-0.80",
+    "continuity-vertical-candidate-positions-at-coverage-0.80",
+    "raw-vertical-candidate-count-at-coverage-0.85",
+    "raw-vertical-candidate-positions-at-coverage-0.85",
+    "continuity-vertical-candidate-count-at-coverage-0.85",
+    "continuity-vertical-candidate-positions-at-coverage-0.85",
+    "raw-vertical-candidate-count-at-coverage-0.90",
+    "raw-vertical-candidate-positions-at-coverage-0.90",
+    "continuity-vertical-candidate-count-at-coverage-0.90",
+    "continuity-vertical-candidate-positions-at-coverage-0.90"
+  ]);
+  expect(report.observations.available).toEqual(expect.arrayContaining([
+    {
+      experimentId: "thresholds",
+      category: "candidate-threshold-observation",
+      observationId: "raw-vertical-candidate-count-at-coverage-0.80",
+      value: 3
+    },
+    {
+      experimentId: "thresholds",
+      category: "candidate-threshold-observation",
+      observationId: "raw-vertical-candidate-positions-at-coverage-0.80",
+      value: [9, 13, 17]
+    }
+  ]));
+  expect(report.comparisons).toEqual([]);
+});
+
+test("keeps empty threshold candidate positions available", () => {
+  const diagnostics = createCandidateCoverageThresholdDiagnostics();
+  diagnostics.observations.forEach(observation => {
+    observation.raw.candidateCount = 0;
+    observation.raw.candidatePositions = [];
+    observation.continuity.candidateCount = 0;
+    observation.continuity.candidatePositions = [];
+  });
+  const report = createReport([
+    createSuccessfulExperiment("thresholds", diagnostics)
+  ]);
+
+  expect(report.observations.unavailable).toEqual([]);
+  expect(report.observations.available).toHaveLength(20);
+  expect(report.observations.available.filter(observation => (
+    observation.observationId.includes("positions")
+  )).every(observation => (
+    Array.isArray(observation.value) && observation.value.length === 0
+  ))).toBe(true);
+});
+
+test("reports malformed or missing threshold observations as unavailable", () => {
+  const diagnostics = createCandidateCoverageThresholdDiagnostics();
+  diagnostics.observations[0].raw.candidateCount = null;
+  diagnostics.observations[0].raw.candidatePositions = [1, NaN];
+  diagnostics.observations = diagnostics.observations.filter(observation => (
+    observation.candidateCoverageRatio !== 0.75
+  ));
+  const report = createReport([
+    createSuccessfulExperiment("thresholds", diagnostics)
+  ]);
+
+  expect(report.observations.unavailable).toEqual(expect.arrayContaining([
+    {
+      experimentId: "thresholds",
+      category: "candidate-threshold-observation",
+      observationId: "raw-vertical-candidate-count-at-coverage-0.70",
+      reason: "value-unavailable"
+    },
+    {
+      experimentId: "thresholds",
+      category: "candidate-threshold-observation",
+      observationId: "raw-vertical-candidate-positions-at-coverage-0.70",
+      reason: "value-unavailable"
+    },
+    {
+      experimentId: "thresholds",
+      category: "candidate-threshold-observation",
+      observationId: "continuity-vertical-candidate-count-at-coverage-0.75",
+      reason: "value-unavailable"
+    }
+  ]));
+  expect(report.observations.unavailable).toHaveLength(6);
+});
+
 test("reports exact agreement for comparable raw projection observations", () => {
   const report = createReport([
     createSuccessfulExperiment(
@@ -664,6 +770,26 @@ function createGridConfidenceDiagnostics(score, overrides = {}) {
     scoreMeaning: STRUCTURAL_SCORE_MEANING,
     factors: [],
     ...overrides
+  };
+}
+
+function createCandidateCoverageThresholdDiagnostics() {
+  const counts = [5, 4, 3, 2, 1];
+  const positions = [1, 5, 9, 13, 17];
+
+  return {
+    type: "vertical-candidate-coverage-threshold-observation",
+    observations: [0.7, 0.75, 0.8, 0.85, 0.9].map((ratio, index) => ({
+      candidateCoverageRatio: ratio,
+      raw: {
+        candidateCount: counts[index],
+        candidatePositions: positions.slice(index)
+      },
+      continuity: {
+        candidateCount: counts[index] + 1,
+        candidatePositions: [0, ...positions.slice(index)]
+      }
+    }))
   };
 }
 

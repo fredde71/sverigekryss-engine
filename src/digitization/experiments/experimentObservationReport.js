@@ -1,5 +1,12 @@
 const REPORT_VERSION = 1;
 const STRUCTURAL_SCORE_MEANING = "experimental-structural-score-not-calibrated-probability";
+const VERTICAL_CANDIDATE_COVERAGE_RATIOS = Object.freeze([
+  0.7,
+  0.75,
+  0.8,
+  0.85,
+  0.9
+]);
 
 const RAW_PROJECTION_DEFINITIONS = Object.freeze([
   {
@@ -38,6 +45,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "vertical-line-mask-projection-comparison": extractVerticalLineMaskObservations,
   "vertical-continuity-projection-comparison": extractVerticalContinuityObservations,
   "vertical-continuity-candidate-comparison": extractVerticalContinuityCandidateObservations,
+  "vertical-candidate-coverage-threshold-observation": extractVerticalCandidateCoverageThresholdObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
 });
 
@@ -260,6 +268,94 @@ function extractVerticalContinuityCandidateObservations(experimentId, diagnostic
     unavailable,
     structuralEvidence: null
   };
+}
+
+function extractVerticalCandidateCoverageThresholdObservations(
+  experimentId,
+  diagnostics
+) {
+  const available = [];
+  const unavailable = [];
+  const observations = Array.isArray(diagnostics.observations)
+    ? diagnostics.observations
+    : [];
+
+  for (const ratio of VERTICAL_CANDIDATE_COVERAGE_RATIOS) {
+    const observation = observations.find(candidate => (
+      candidate?.candidateCoverageRatio === ratio
+    ));
+    const ratioLabel = ratio.toFixed(2);
+
+    extractCandidateThresholdValue({
+      experimentId,
+      observationId: `raw-vertical-candidate-count-at-coverage-${ratioLabel}`,
+      value: observation?.raw?.candidateCount,
+      isAvailable: Number.isFinite(observation?.raw?.candidateCount),
+      available,
+      unavailable
+    });
+    extractCandidateThresholdValue({
+      experimentId,
+      observationId: `raw-vertical-candidate-positions-at-coverage-${ratioLabel}`,
+      value: observation?.raw?.candidatePositions,
+      isAvailable: isFiniteNumberArray(observation?.raw?.candidatePositions),
+      available,
+      unavailable
+    });
+    extractCandidateThresholdValue({
+      experimentId,
+      observationId: `continuity-vertical-candidate-count-at-coverage-${ratioLabel}`,
+      value: observation?.continuity?.candidateCount,
+      isAvailable: Number.isFinite(observation?.continuity?.candidateCount),
+      available,
+      unavailable
+    });
+    extractCandidateThresholdValue({
+      experimentId,
+      observationId: `continuity-vertical-candidate-positions-at-coverage-${ratioLabel}`,
+      value: observation?.continuity?.candidatePositions,
+      isAvailable: isFiniteNumberArray(
+        observation?.continuity?.candidatePositions
+      ),
+      available,
+      unavailable
+    });
+  }
+
+  return {
+    available,
+    unavailable,
+    structuralEvidence: null
+  };
+}
+
+function extractCandidateThresholdValue({
+  experimentId,
+  observationId,
+  value,
+  isAvailable,
+  available,
+  unavailable
+}) {
+  if (isAvailable) {
+    available.push({
+      experimentId,
+      category: "candidate-threshold-observation",
+      observationId,
+      value: Array.isArray(value) ? value.slice() : value
+    });
+  } else {
+    unavailable.push({
+      experimentId,
+      category: "candidate-threshold-observation",
+      observationId,
+      reason: "value-unavailable"
+    });
+  }
+}
+
+function isFiniteNumberArray(value) {
+  return Array.isArray(value) && value.every(Number.isFinite);
 }
 
 function extractProjectionObservations(experimentId, diagnostics, {
