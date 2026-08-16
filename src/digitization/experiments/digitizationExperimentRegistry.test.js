@@ -10,6 +10,7 @@ import { createVerticalCandidateCoverageThresholdDiagnostics } from "./verticalC
 import { createVerticalSpanRelativeCoverageDiagnostics } from "./verticalSpanRelativeCoverageDiagnostics";
 import { createVerticalLineMaskProjectionComparison } from "./verticalLineMaskDiagnostics";
 import { createShadowAnalysisRegionDiagnostics } from "./shadowAnalysisRegionDiagnostics";
+import { runShadowGridAnalysisDiagnostics } from "./shadowGridAnalysisDiagnostics";
 
 test("lists registered digitization experiments with their public contract", () => {
   const experiments = listDigitizationExperiments();
@@ -21,6 +22,7 @@ test("lists registered digitization experiments with their public contract", () 
     "vertical-candidate-coverage-threshold-diagnostics",
     "vertical-span-relative-coverage-diagnostics",
     "shadow-analysis-region-observations",
+    "shadow-grid-analysis-diagnostics",
     "grid-confidence-diagnostics"
   ]);
 
@@ -34,7 +36,7 @@ test("lists registered digitization experiments with their public contract", () 
   }
 
   experiments.pop();
-  expect(listDigitizationExperiments()).toHaveLength(7);
+  expect(listDigitizationExperiments()).toHaveLength(8);
 });
 
 test("looks up experiment metadata without executing the experiment", () => {
@@ -48,7 +50,7 @@ test("looks up experiment metadata without executing the experiment", () => {
   expect(getDigitizationExperiment("not-registered")).toBeNull();
 });
 
-test("looks up and runs each registered experiment without changing its existing output", () => {
+test("looks up and runs each registered experiment without changing its existing output", async () => {
   const binaryImage = createBinaryImage({
     width: 6,
     height: 6,
@@ -133,6 +135,28 @@ test("looks up and runs each registered experiment without changing its existing
       }
     })
   )).toEqual(createShadowAnalysisRegionDiagnostics(binaryImage));
+
+  await expect(runDigitizationExperiment(
+    "shadow-grid-analysis-diagnostics",
+    binaryImage,
+    new Proxy({}, {
+      get() {
+        throw new Error("context must not be read");
+      }
+    })
+  )).resolves.toEqual(expect.objectContaining({
+    type: "shadow-grid-analysis-diagnostics",
+    version: 1,
+    status: "complete",
+    providers: expect.any(Array)
+  }));
+
+  await expect(runShadowGridAnalysisDiagnostics(binaryImage)).resolves.toEqual(
+    expect.objectContaining({
+      type: "shadow-grid-analysis-diagnostics",
+      providers: expect.any(Array)
+    })
+  );
 });
 
 test("rejects an unknown experiment id", () => {
@@ -148,7 +172,7 @@ test("rejects an unknown experiment id", () => {
   )).toThrow("Unknown digitization experiment: not-registered");
 });
 
-test("executes every registered experiment deterministically without mutating input", () => {
+test("executes every registered experiment deterministically without mutating input", async () => {
   const binaryImage = createBinaryImage({
     width: 7,
     height: 9,
@@ -168,10 +192,10 @@ test("executes every registered experiment deterministically without mutating in
   const sourceSnapshot = new Uint8Array(binaryImage.data);
 
   for (const experiment of listDigitizationExperiments()) {
-    const first = runDigitizationExperiment(experiment.id, binaryImage);
-    const second = runDigitizationExperiment(experiment.id, binaryImage);
+    const first = await runDigitizationExperiment(experiment.id, binaryImage);
+    const second = await runDigitizationExperiment(experiment.id, binaryImage);
 
-    expect(second).toEqual(first);
+    expect(removeDurations(second)).toEqual(removeDurations(first));
   }
 
   expect(binaryImage.data).toEqual(sourceSnapshot);
@@ -193,4 +217,20 @@ function createBinaryImage({
     height,
     data
   };
+}
+
+function removeDurations(value) {
+  if (Array.isArray(value)) {
+    return value.map(removeDurations);
+  }
+
+  if (!value || typeof value !== "object" || ArrayBuffer.isView(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => key !== "durationMs")
+      .map(([key, nestedValue]) => [key, removeDurations(nestedValue)])
+  );
 }

@@ -48,6 +48,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "vertical-candidate-coverage-threshold-observation": extractVerticalCandidateCoverageThresholdObservations,
   "vertical-span-relative-coverage-observation": extractVerticalSpanRelativeCoverageObservations,
   "shadow-analysis-region-observations": extractShadowAnalysisRegionObservations,
+  "shadow-grid-analysis-diagnostics": extractShadowGridAnalysisObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
 });
 
@@ -617,6 +618,163 @@ function normalizeObservationReason(reason) {
   }
 
   return "reason-unavailable";
+}
+
+function extractShadowGridAnalysisObservations(experimentId, diagnostics) {
+  const available = [];
+  const unavailable = [];
+  const providers = Array.isArray(diagnostics.providers)
+    ? diagnostics.providers
+    : [];
+
+  for (const provider of providers) {
+    const providerNamespace = `provider.${provider?.id || "unknown"}`;
+
+    addShadowGridObservation({
+      experimentId,
+      observationId: `${providerNamespace}.status`,
+      value: provider?.status,
+      isAvailable: typeof provider?.status === "string",
+      available,
+      unavailable
+    });
+    addShadowGridObservation({
+      experimentId,
+      observationId: `${providerNamespace}.region-count`,
+      value: provider?.regionCount,
+      isAvailable: Number.isInteger(provider?.regionCount)
+        && provider.regionCount >= 0,
+      available,
+      unavailable
+    });
+
+    if (["unavailable", "ambiguous", "failed"].includes(provider?.status)) {
+      unavailable.push({
+        experimentId,
+        category: "shadow-grid-analysis",
+        observationId: `${providerNamespace}.reason`,
+        reason: normalizeObservationReason(provider?.reason)
+      });
+    }
+
+    const gridAnalyses = Array.isArray(provider?.gridAnalyses)
+      ? provider.gridAnalyses
+      : [];
+
+    for (const gridAnalysis of gridAnalyses) {
+      extractShadowGridRegionObservations({
+        experimentId,
+        providerNamespace,
+        gridAnalysis,
+        available,
+        unavailable
+      });
+    }
+  }
+
+  return {
+    available,
+    unavailable,
+    structuralEvidence: null
+  };
+}
+
+function extractShadowGridRegionObservations({
+  experimentId,
+  providerNamespace,
+  gridAnalysis,
+  available,
+  unavailable
+}) {
+  const regionNamespace = `${providerNamespace}.region.${gridAnalysis?.regionId || "unknown"}`;
+  const definitions = [
+    ["bounds", gridAnalysis?.regionBounds, isObjectValue(gridAnalysis?.regionBounds)],
+    ["dimensions", gridAnalysis?.regionDimensions, isObjectValue(gridAnalysis?.regionDimensions)],
+    ["execution-status", gridAnalysis?.status, typeof gridAnalysis?.status === "string"],
+    ["grid-analysis-status", gridAnalysis?.gridAnalysisStatus, typeof gridAnalysis?.gridAnalysisStatus === "string"],
+    ["duration-ms", gridAnalysis?.durationMs, Number.isFinite(gridAnalysis?.durationMs)],
+    ["horizontal-candidate-count", gridAnalysis?.candidateCounts?.horizontal, Number.isFinite(gridAnalysis?.candidateCounts?.horizontal)],
+    ["vertical-candidate-count", gridAnalysis?.candidateCounts?.vertical, Number.isFinite(gridAnalysis?.candidateCounts?.vertical)],
+    ["horizontal-candidate-positions", gridAnalysis?.candidatePositions?.horizontal, isFiniteNumberArray(gridAnalysis?.candidatePositions?.horizontal)],
+    ["vertical-candidate-positions", gridAnalysis?.candidatePositions?.vertical, isFiniteNumberArray(gridAnalysis?.candidatePositions?.vertical)],
+    ["spacing-diagnostics", gridAnalysis?.spacingDiagnostics, Array.isArray(gridAnalysis?.spacingDiagnostics)],
+    ["geometry-status", gridAnalysis?.geometry?.status, typeof gridAnalysis?.geometry?.status === "string"]
+  ];
+
+  for (const [observationSuffix, value, isAvailable] of definitions) {
+    addShadowGridObservation({
+      experimentId,
+      observationId: `${regionNamespace}.${observationSuffix}`,
+      value,
+      isAvailable,
+      available,
+      unavailable
+    });
+  }
+
+  if (gridAnalysis?.geometry?.status === "available") {
+    for (const [observationSuffix, value, isAvailable] of [
+      ["geometry-rows", gridAnalysis.geometry.rows, Number.isFinite(gridAnalysis.geometry.rows)],
+      ["geometry-cols", gridAnalysis.geometry.cols, Number.isFinite(gridAnalysis.geometry.cols)],
+      ["geometry-bounds", gridAnalysis.geometry.bounds, isObjectValue(gridAnalysis.geometry.bounds)]
+    ]) {
+      addShadowGridObservation({
+        experimentId,
+        observationId: `${regionNamespace}.${observationSuffix}`,
+        value,
+        isAvailable,
+        available,
+        unavailable
+      });
+    }
+  } else {
+    addShadowGridObservation({
+      experimentId,
+      observationId: `${regionNamespace}.rejection-reasons`,
+      value: gridAnalysis?.rejectionReasons,
+      isAvailable: Array.isArray(gridAnalysis?.rejectionReasons),
+      available,
+      unavailable
+    });
+  }
+
+  if (gridAnalysis?.status === "failed") {
+    unavailable.push({
+      experimentId,
+      category: "shadow-grid-analysis",
+      observationId: `${regionNamespace}.failure`,
+      reason: normalizeObservationReason(gridAnalysis?.error)
+    });
+  }
+}
+
+function addShadowGridObservation({
+  experimentId,
+  observationId,
+  value,
+  isAvailable,
+  available,
+  unavailable
+}) {
+  if (isAvailable) {
+    available.push({
+      experimentId,
+      category: "shadow-grid-analysis",
+      observationId,
+      value: cloneValue(value)
+    });
+  } else {
+    unavailable.push({
+      experimentId,
+      category: "shadow-grid-analysis",
+      observationId,
+      reason: "value-unavailable"
+    });
+  }
+}
+
+function isObjectValue(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function extractProjectionObservations(experimentId, diagnostics, {

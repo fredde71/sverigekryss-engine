@@ -891,6 +891,145 @@ test("extracts ordered shadow provider status, regions and provenance", () => {
   expect(report.structuralEvidence.observations).toEqual([]);
 });
 
+test("extracts compact ordered shadow GridAnalysis observations without runtime payloads", () => {
+  const report = createReport([
+    createSuccessfulExperiment("shadow-grid", {
+      type: "shadow-grid-analysis-diagnostics",
+      providers: [
+        {
+          id: "outer-span",
+          status: "available",
+          regionCount: 1,
+          reason: null,
+          gridAnalyses: [
+            {
+              regionId: "outer-span-001",
+              regionBounds: { top: 10, left: 0, width: 100, height: 80 },
+              regionDimensions: { width: 100, height: 80 },
+              status: "completed",
+              gridAnalysisStatus: "measured",
+              durationMs: 2.5,
+              candidateCounts: { horizontal: 3, vertical: 4 },
+              candidatePositions: {
+                horizontal: [0, 40, 79],
+                vertical: [2, 32, 62, 92]
+              },
+              spacingDiagnostics: [
+                {
+                  type: "spacing-consistency",
+                  axis: "vertical",
+                  status: "measured",
+                  consistency: 1
+                }
+              ],
+              geometry: {
+                status: "available",
+                rows: 2,
+                cols: 3,
+                bounds: { top: 0, left: 2, width: 90, height: 79 }
+              },
+              rejectionReasons: [],
+              binaryImage: { mustNotBeExtracted: true },
+              projections: { mustNotBeExtracted: true }
+            }
+          ]
+        }
+      ]
+    })
+  ]);
+  const observations = report.observations.available;
+
+  expect(observations.map(observation => observation.observationId)).toEqual([
+    "provider.outer-span.status",
+    "provider.outer-span.region-count",
+    "provider.outer-span.region.outer-span-001.bounds",
+    "provider.outer-span.region.outer-span-001.dimensions",
+    "provider.outer-span.region.outer-span-001.execution-status",
+    "provider.outer-span.region.outer-span-001.grid-analysis-status",
+    "provider.outer-span.region.outer-span-001.duration-ms",
+    "provider.outer-span.region.outer-span-001.horizontal-candidate-count",
+    "provider.outer-span.region.outer-span-001.vertical-candidate-count",
+    "provider.outer-span.region.outer-span-001.horizontal-candidate-positions",
+    "provider.outer-span.region.outer-span-001.vertical-candidate-positions",
+    "provider.outer-span.region.outer-span-001.spacing-diagnostics",
+    "provider.outer-span.region.outer-span-001.geometry-status",
+    "provider.outer-span.region.outer-span-001.geometry-rows",
+    "provider.outer-span.region.outer-span-001.geometry-cols",
+    "provider.outer-span.region.outer-span-001.geometry-bounds"
+  ]);
+  expect(observations.find(observation => (
+    observation.observationId.endsWith("vertical-candidate-positions")
+  )).value).toEqual([2, 32, 62, 92]);
+  expect(observations.find(observation => (
+    observation.observationId.endsWith("geometry-bounds")
+  )).value).toEqual({ top: 0, left: 2, width: 90, height: 79 });
+  expect(JSON.stringify(report)).not.toMatch(/binaryImage|projections|mustNotBeExtracted/);
+  expect(report.comparisons).toEqual([]);
+});
+
+test("preserves shadow GridAnalysis rejection and failure observations", () => {
+  const report = createReport([
+    createSuccessfulExperiment("shadow-grid", {
+      type: "shadow-grid-analysis-diagnostics",
+      providers: [
+        {
+          id: "outer-span",
+          status: "available",
+          regionCount: 1,
+          gridAnalyses: [
+            {
+              regionId: "failed-region",
+              regionBounds: { top: 0, left: 0, width: 10, height: 10 },
+              regionDimensions: { width: 10, height: 10 },
+              status: "failed",
+              gridAnalysisStatus: "failed",
+              durationMs: 1,
+              candidateCounts: { horizontal: null, vertical: null },
+              candidatePositions: { horizontal: null, vertical: null },
+              spacingDiagnostics: [],
+              geometry: { status: "unavailable" },
+              rejectionReasons: [],
+              error: { name: "Error", message: "synthetic failure" }
+            }
+          ]
+        },
+        {
+          id: "ambiguous",
+          status: "ambiguous",
+          regionCount: 2,
+          reason: "multiple-regions",
+          gridAnalyses: []
+        }
+      ]
+    })
+  ]);
+
+  expect(report.observations.available).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      observationId: "provider.outer-span.region.failed-region.rejection-reasons",
+      value: []
+    }),
+    expect.objectContaining({
+      observationId: "provider.ambiguous.status",
+      value: "ambiguous"
+    })
+  ]));
+  expect(report.observations.unavailable).toEqual(expect.arrayContaining([
+    {
+      experimentId: "shadow-grid",
+      category: "shadow-grid-analysis",
+      observationId: "provider.outer-span.region.failed-region.failure",
+      reason: "synthetic failure"
+    },
+    {
+      experimentId: "shadow-grid",
+      category: "shadow-grid-analysis",
+      observationId: "provider.ambiguous.reason",
+      reason: "multiple-regions"
+    }
+  ]));
+});
+
 const STRUCTURAL_SCORE_MEANING = "experimental-structural-score-not-calibrated-probability";
 
 function createReport(experiments) {

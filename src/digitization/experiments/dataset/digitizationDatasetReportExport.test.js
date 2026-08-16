@@ -202,6 +202,97 @@ test("preserves benchmark diagnostics and visualization metadata without values"
   expect(experiment.diagnostics).not.toHaveProperty("rawVerticalProjection");
 });
 
+test("exports compact shadow GridAnalysis observations without runtime BinaryImage payloads", () => {
+  const shadowDiagnostics = {
+    type: "shadow-grid-analysis-diagnostics",
+    version: 1,
+    status: "complete",
+    providers: [
+      {
+        id: "outer-span",
+        status: "available",
+        regionCount: 1,
+        gridAnalyses: [
+          {
+            regionId: "outer-span-001",
+            regionBounds: { top: 10, left: 0, width: 100, height: 80 },
+            regionDimensions: { width: 100, height: 80 },
+            status: "completed",
+            gridAnalysisStatus: "measured",
+            durationMs: 2,
+            candidateCounts: { horizontal: 3, vertical: 4 },
+            candidatePositions: {
+              horizontal: [0, 40, 79],
+              vertical: [2, 32, 62, 92]
+            },
+            spacingDiagnostics: [],
+            geometry: {
+              status: "available",
+              rows: 2,
+              cols: 3,
+              bounds: { top: 0, left: 2, width: 90, height: 79 }
+            },
+            rejectionReasons: [],
+            binaryImage: {
+              width: 100,
+              height: 80,
+              data: new Uint8Array(8000)
+            },
+            projections: {
+              horizontal: new Uint32Array(80),
+              vertical: new Uint32Array(100)
+            }
+          }
+        ]
+      }
+    ]
+  };
+  const projection = createDigitizationDatasetReportProjection(
+    createDatasetResult({
+      items: [createCompletedItem({
+        comparison: {
+          status: "completed",
+          result: {
+            production: createRuntimeProductionResult(),
+            benchmark: {
+              experiments: [createExperiment({
+                id: "shadow-grid-analysis-diagnostics",
+                diagnostics: shadowDiagnostics
+              })]
+            }
+          }
+        }
+      })]
+    })
+  );
+  const diagnostics = projection.items[0].comparison.result.benchmark
+    .experiments[0].diagnostics;
+  const serialized = JSON.stringify(diagnostics);
+
+  expect(diagnostics.providers[0].gridAnalyses[0]).toEqual({
+    regionId: "outer-span-001",
+    regionBounds: { top: 10, left: 0, width: 100, height: 80 },
+    regionDimensions: { width: 100, height: 80 },
+    status: "completed",
+    gridAnalysisStatus: "measured",
+    durationMs: 2,
+    candidateCounts: { horizontal: 3, vertical: 4 },
+    candidatePositions: {
+      horizontal: [0, 40, 79],
+      vertical: [2, 32, 62, 92]
+    },
+    spacingDiagnostics: [],
+    geometry: {
+      status: "available",
+      rows: 2,
+      cols: 3,
+      bounds: { top: 0, left: 2, width: 90, height: 79 }
+    },
+    rejectionReasons: []
+  });
+  expect(serialized).not.toMatch(/binaryImage|projections|Uint8Array|Uint32Array/);
+});
+
 test("preserves normalized experiment failures exactly", () => {
   const failure = {
     type: "digitization-experiment-failure",
