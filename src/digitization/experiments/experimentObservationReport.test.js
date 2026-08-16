@@ -787,6 +787,110 @@ test("requires an existing production result and benchmark experiment array", ()
   })).toThrow("benchmark.experiments must be an array");
 });
 
+test("extracts ordered shadow provider status, regions and provenance", () => {
+  const provenance = {
+    source: "horizontal-image-evidence",
+    method: "outermost-horizontal-candidate-runs",
+    candidateCoverageRatio: 0.8
+  };
+  const report = createReport([
+    createSuccessfulExperiment("shadow-regions", {
+      type: "shadow-analysis-region-observations",
+      providers: [
+        {
+          id: "horizontal-outer-span",
+          status: "available",
+          regionCount: 1,
+          regions: [
+            {
+              bounds: { top: 20, left: 0, width: 100, height: 80 },
+              dimensions: { width: 100, height: 80 },
+              provenance
+            }
+          ],
+          provenance,
+          reason: null
+        },
+        {
+          id: "synthetic-ambiguous",
+          status: "ambiguous",
+          regionCount: 2,
+          regions: [],
+          provenance: { source: "synthetic" },
+          reason: "multiple-observed-spans"
+        }
+      ]
+    })
+  ]);
+
+  expect(report.observations.available).toEqual([
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region-provider",
+      observationId: "provider.horizontal-outer-span.status",
+      value: "available"
+    },
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region-provider",
+      observationId: "provider.horizontal-outer-span.region-count",
+      value: 1
+    },
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region-provenance",
+      observationId: "provider.horizontal-outer-span.provenance",
+      value: provenance
+    },
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region",
+      observationId: "provider.horizontal-outer-span.region.0.bounds",
+      value: { top: 20, left: 0, width: 100, height: 80 }
+    },
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region",
+      observationId: "provider.horizontal-outer-span.region.0.dimensions",
+      value: { width: 100, height: 80 }
+    },
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region-provenance",
+      observationId: "provider.horizontal-outer-span.region.0.provenance",
+      value: provenance
+    },
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region-provider",
+      observationId: "provider.synthetic-ambiguous.status",
+      value: "ambiguous"
+    },
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region-provider",
+      observationId: "provider.synthetic-ambiguous.region-count",
+      value: 2
+    },
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region-provenance",
+      observationId: "provider.synthetic-ambiguous.provenance",
+      value: { source: "synthetic" }
+    }
+  ]);
+  expect(report.observations.unavailable).toEqual([
+    {
+      experimentId: "shadow-regions",
+      category: "analysis-region-provider",
+      observationId: "provider.synthetic-ambiguous.reason",
+      reason: "multiple-observed-spans"
+    }
+  ]);
+  expect(report.comparisons).toEqual([]);
+  expect(report.structuralEvidence.observations).toEqual([]);
+});
+
 const STRUCTURAL_SCORE_MEANING = "experimental-structural-score-not-calibrated-probability";
 
 function createReport(experiments) {

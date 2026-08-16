@@ -9,6 +9,7 @@ import { createVerticalContinuityCandidateDiagnostics } from "./verticalContinui
 import { createVerticalCandidateCoverageThresholdDiagnostics } from "./verticalCandidateCoverageThresholdDiagnostics";
 import { createVerticalSpanRelativeCoverageDiagnostics } from "./verticalSpanRelativeCoverageDiagnostics";
 import { createVerticalLineMaskProjectionComparison } from "./verticalLineMaskDiagnostics";
+import { createShadowAnalysisRegionDiagnostics } from "./shadowAnalysisRegionDiagnostics";
 
 test("lists registered digitization experiments with their public contract", () => {
   const experiments = listDigitizationExperiments();
@@ -19,6 +20,7 @@ test("lists registered digitization experiments with their public contract", () 
     "vertical-continuity-candidate-diagnostics",
     "vertical-candidate-coverage-threshold-diagnostics",
     "vertical-span-relative-coverage-diagnostics",
+    "shadow-analysis-region-observations",
     "grid-confidence-diagnostics"
   ]);
 
@@ -32,7 +34,7 @@ test("lists registered digitization experiments with their public contract", () 
   }
 
   experiments.pop();
-  expect(listDigitizationExperiments()).toHaveLength(6);
+  expect(listDigitizationExperiments()).toHaveLength(7);
 });
 
 test("looks up experiment metadata without executing the experiment", () => {
@@ -121,6 +123,16 @@ test("looks up and runs each registered experiment without changing its existing
       }
     })
   )).toEqual(createVerticalSpanRelativeCoverageDiagnostics(binaryImage));
+
+  expect(runDigitizationExperiment(
+    "shadow-analysis-region-observations",
+    binaryImage,
+    new Proxy({}, {
+      get() {
+        throw new Error("context must not be read");
+      }
+    })
+  )).toEqual(createShadowAnalysisRegionDiagnostics(binaryImage));
 });
 
 test("rejects an unknown experiment id", () => {

@@ -47,6 +47,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "vertical-continuity-candidate-comparison": extractVerticalContinuityCandidateObservations,
   "vertical-candidate-coverage-threshold-observation": extractVerticalCandidateCoverageThresholdObservations,
   "vertical-span-relative-coverage-observation": extractVerticalSpanRelativeCoverageObservations,
+  "shadow-analysis-region-observations": extractShadowAnalysisRegionObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
 });
 
@@ -491,6 +492,131 @@ function createNumberArrayObservationDefinition(observationId, value, reason) {
     reason,
     isAvailable: isFiniteNumberArray(value)
   };
+}
+
+function extractShadowAnalysisRegionObservations(experimentId, diagnostics) {
+  const available = [];
+  const unavailable = [];
+  const providers = Array.isArray(diagnostics.providers)
+    ? diagnostics.providers
+    : [];
+
+  for (const provider of providers) {
+    const providerNamespace = `provider.${provider?.id || "unknown"}`;
+
+    available.push({
+      experimentId,
+      category: "analysis-region-provider",
+      observationId: `${providerNamespace}.status`,
+      value: provider?.status ?? null
+    });
+
+    if (Number.isInteger(provider?.regionCount) && provider.regionCount >= 0) {
+      available.push({
+        experimentId,
+        category: "analysis-region-provider",
+        observationId: `${providerNamespace}.region-count`,
+        value: provider.regionCount
+      });
+    } else {
+      unavailable.push({
+        experimentId,
+        category: "analysis-region-provider",
+        observationId: `${providerNamespace}.region-count`,
+        reason: "value-unavailable"
+      });
+    }
+
+    if (provider?.provenance && typeof provider.provenance === "object") {
+      available.push({
+        experimentId,
+        category: "analysis-region-provenance",
+        observationId: `${providerNamespace}.provenance`,
+        value: cloneValue(provider.provenance)
+      });
+    }
+
+    const regions = Array.isArray(provider?.regions) ? provider.regions : [];
+
+    regions.forEach((region, index) => {
+      const regionNamespace = `${providerNamespace}.region.${index}`;
+
+      extractShadowRegionValue({
+        experimentId,
+        observationId: `${regionNamespace}.bounds`,
+        value: region?.bounds,
+        available,
+        unavailable
+      });
+      extractShadowRegionValue({
+        experimentId,
+        observationId: `${regionNamespace}.dimensions`,
+        value: region?.dimensions,
+        available,
+        unavailable
+      });
+      extractShadowRegionValue({
+        experimentId,
+        observationId: `${regionNamespace}.provenance`,
+        value: region?.provenance,
+        available,
+        unavailable,
+        category: "analysis-region-provenance"
+      });
+    });
+
+    if (["unavailable", "ambiguous", "failed"].includes(provider?.status)) {
+      unavailable.push({
+        experimentId,
+        category: "analysis-region-provider",
+        observationId: `${providerNamespace}.reason`,
+        reason: normalizeObservationReason(provider?.reason)
+      });
+    }
+  }
+
+  return {
+    available,
+    unavailable,
+    structuralEvidence: null
+  };
+}
+
+function extractShadowRegionValue({
+  experimentId,
+  observationId,
+  value,
+  available,
+  unavailable,
+  category = "analysis-region"
+}) {
+  if (value && typeof value === "object") {
+    available.push({
+      experimentId,
+      category,
+      observationId,
+      value: cloneValue(value)
+    });
+  } else {
+    unavailable.push({
+      experimentId,
+      category,
+      observationId,
+      reason: "value-unavailable"
+    });
+  }
+}
+
+function normalizeObservationReason(reason) {
+  if (typeof reason === "string") {
+    return reason;
+  }
+
+  if (reason && typeof reason.message === "string") {
+    return reason.message;
+  }
+
+  return "reason-unavailable";
 }
 
 function extractProjectionObservations(experimentId, diagnostics, {

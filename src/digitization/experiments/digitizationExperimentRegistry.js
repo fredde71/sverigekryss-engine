@@ -4,6 +4,7 @@ import { gridConfidenceDiagnosticsExperiment } from "./gridConfidenceDiagnostics
 import { verticalContinuityCandidateDiagnosticsExperiment } from "./verticalContinuityCandidateDiagnostics";
 import { verticalCandidateCoverageThresholdDiagnosticsExperiment } from "./verticalCandidateCoverageThresholdDiagnostics";
 import { verticalSpanRelativeCoverageDiagnosticsExperiment } from "./verticalSpanRelativeCoverageDiagnostics";
+import { shadowAnalysisRegionDiagnosticsExperiment } from "./shadowAnalysisRegionDiagnostics";
 
 const DIGITIZATION_EXPERIMENTS = Object.freeze([
   verticalLineMaskDiagnosticsExperiment,
@@ -11,6 +12,7 @@ const DIGITIZATION_EXPERIMENTS = Object.freeze([
   verticalContinuityCandidateDiagnosticsExperiment,
   verticalCandidateCoverageThresholdDiagnosticsExperiment,
   verticalSpanRelativeCoverageDiagnosticsExperiment,
+  shadowAnalysisRegionDiagnosticsExperiment,
   gridConfidenceDiagnosticsExperiment
 ]);
 
