@@ -7,6 +7,9 @@ import {
 import { createGridDetectionFailureReport } from "./gridDetectionFailureReport";
 import { createDatasetAnalysisSummary } from "./datasetAnalysisSummary";
 import DevelopmentDatasetAnalysisView from "./DevelopmentDatasetAnalysisView";
+import GridGroundTruthAnnotationHarness from "./GridGroundTruthAnnotationHarness";
+import { createShadowGridValidationReport } from "./shadowGridValidationReport";
+import { downloadShadowGridValidationReport } from "./shadowGridValidationReportExport";
 
 const LOCAL_DATASET_ID = "localhost-pdf-dataset";
 
@@ -16,6 +19,8 @@ export default function DigitizationDatasetHarness({
   createDatasetReport = createDigitizationDatasetReportProjection,
   createFailureReport = createGridDetectionFailureReport,
   createAnalysisSummary = createDatasetAnalysisSummary,
+  createValidationReport = createShadowGridValidationReport,
+  downloadValidationReport = downloadShadowGridValidationReport,
   readEnvironment = () => process.env.NODE_ENV
 }) {
   const environment = readEnvironment();
@@ -25,6 +30,10 @@ export default function DigitizationDatasetHarness({
   const [errorMessage, setErrorMessage] = useState("");
   const [analysisReports, setAnalysisReports] = useState(null);
   const [analysisErrorMessage, setAnalysisErrorMessage] = useState("");
+  const [datasetReport, setDatasetReport] = useState(null);
+  const [validationReport, setValidationReport] = useState(null);
+  const [validationErrorMessage, setValidationErrorMessage] = useState("");
+  const datasetItems = createDatasetItems(selectedFiles);
 
   if (environment !== "development" && environment !== "test") {
     return null;
@@ -37,6 +46,9 @@ export default function DigitizationDatasetHarness({
     setErrorMessage("");
     setAnalysisReports(null);
     setAnalysisErrorMessage("");
+    setDatasetReport(null);
+    setValidationReport(null);
+    setValidationErrorMessage("");
   };
 
   const handleRun = async () => {
@@ -45,11 +57,14 @@ export default function DigitizationDatasetHarness({
     setErrorMessage("");
     setAnalysisReports(null);
     setAnalysisErrorMessage("");
+    setDatasetReport(null);
+    setValidationReport(null);
+    setValidationErrorMessage("");
 
     try {
       const result = await runDataset({
         datasetId: LOCAL_DATASET_ID,
-        items: createDatasetItems(selectedFiles)
+        items: datasetItems
       });
 
       setDatasetResult(result);
@@ -57,6 +72,7 @@ export default function DigitizationDatasetHarness({
 
       try {
         const datasetReport = createDatasetReport(result);
+        setDatasetReport(datasetReport);
         const failureReport = createFailureReport(datasetReport);
         const analysisSummary = createAnalysisSummary({
           datasetReport,
@@ -82,6 +98,26 @@ export default function DigitizationDatasetHarness({
 
   const handleDownload = () => {
     downloadReport(datasetResult);
+  };
+
+  const handleGroundTruthChange = groundTruth => {
+    setValidationReport(null);
+    setValidationErrorMessage("");
+
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setValidationReport(createValidationReport({
+        datasetReport,
+        groundTruth
+      }));
+    } catch (error) {
+      setValidationErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   };
 
   return (
@@ -135,12 +171,37 @@ export default function DigitizationDatasetHarness({
           Dataset analysis unavailable: {analysisErrorMessage}
         </span>
       )}
+      {validationErrorMessage && (
+        <span role="alert">
+          Grid validation unavailable: {validationErrorMessage}
+        </span>
+      )}
       {analysisReports && (
         <DevelopmentDatasetAnalysisView
           analysisSummary={analysisReports.analysisSummary}
           failureReport={analysisReports.failureReport}
           readEnvironment={readEnvironment}
         />
+      )}
+      {status === "completed" && datasetReport && (
+        <GridGroundTruthAnnotationHarness
+          datasetId={LOCAL_DATASET_ID}
+          items={datasetItems}
+          validationReport={validationReport}
+          onGroundTruthChange={handleGroundTruthChange}
+          readEnvironment={readEnvironment}
+        />
+      )}
+      {validationReport && (
+        <>
+          <span role="status">Shadow grid validation report completed</span>
+          <button
+            type="button"
+            onClick={() => downloadValidationReport(validationReport)}
+          >
+            Download validation JSON
+          </button>
+        </>
       )}
     </section>
   );

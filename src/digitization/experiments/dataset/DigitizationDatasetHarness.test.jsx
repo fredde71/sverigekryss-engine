@@ -6,6 +6,7 @@ import {
   waitFor
 } from "@testing-library/react";
 import DigitizationDatasetHarness from "./DigitizationDatasetHarness";
+import { GRID_GROUND_TRUTH_COORDINATE_POLICY } from "./gridGroundTruth";
 
 jest.mock("pdfjs-dist", () => ({
   getDocument: jest.fn()
@@ -253,6 +254,62 @@ test("does not use browser persistence or add evaluation output", async () => {
   }
 });
 
+test("creates and downloads a separate validation report after ground truth is loaded", async () => {
+  const runnerResult = createCompletedResult();
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const validationReport = {
+    type: "shadow-grid-validation-report",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const createValidationReport = jest.fn(() => validationReport);
+  const downloadValidationReport = jest.fn();
+  const groundTruthFile = {
+    name: "ground-truth.json",
+    text: jest.fn(async () => JSON.stringify(createGroundTruthFixture()))
+  };
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => runnerResult)}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createValidationReport={createValidationReport}
+      downloadValidationReport={downloadValidationReport}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByRole("heading", { name: "Dataset overview" });
+  fireEvent.change(screen.getByLabelText("Load ground truth JSON"), {
+    target: { files: [groundTruthFile] }
+  });
+
+  await waitFor(() => expect(createValidationReport).toHaveBeenCalledTimes(1));
+  const invocation = createValidationReport.mock.calls[0][0];
+
+  expect(invocation.datasetReport).toBe(datasetReport);
+  expect(invocation.groundTruth).toEqual(expect.objectContaining({
+    type: "digitization-grid-ground-truth",
+    datasetId: "localhost-pdf-dataset"
+  }));
+  expect(datasetReport).not.toHaveProperty("validation");
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download validation JSON"
+  }));
+  expect(downloadValidationReport).toHaveBeenCalledTimes(1);
+  expect(downloadValidationReport).toHaveBeenCalledWith(validationReport);
+});
+
 function selectFiles(files) {
   fireEvent.change(screen.getByLabelText("Select local PDFs"), {
     target: { files }
@@ -277,6 +334,28 @@ function createCompletedResult() {
       failedItemCount: 0
     },
     items: []
+  };
+}
+
+function createGroundTruthFixture() {
+  return {
+    type: "digitization-grid-ground-truth",
+    version: 1,
+    datasetId: "localhost-pdf-dataset",
+    coordinatePolicy: GRID_GROUND_TRUTH_COORDINATE_POLICY,
+    annotations: [
+      {
+        itemId: "local-pdf-001",
+        filename: "one.pdf",
+        document: { width: 100, height: 120 },
+        gridBounds: { top: 10, left: 5, width: 20, height: 20 },
+        horizontalLinePositions: [10, 20, 30],
+        verticalLinePositions: [5, 15, 25],
+        rows: 2,
+        cols: 2,
+        annotation: { status: "human-confirmed" }
+      }
+    ]
   };
 }
 
