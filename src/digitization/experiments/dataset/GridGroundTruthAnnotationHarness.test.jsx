@@ -53,6 +53,33 @@ test("renders only in development and test", () => {
   })).toBeInTheDocument();
 });
 
+test("keeps hook order stable when the environment guard changes", () => {
+  const props = {
+    datasetId: "dataset",
+    items: createItems(),
+    readHostname: () => "localhost"
+  };
+  const { container, rerender } = render(
+    <GridGroundTruthAnnotationHarness
+      {...props}
+      readEnvironment={() => "production"}
+    />
+  );
+
+  expect(container).toBeEmptyDOMElement();
+
+  rerender(
+    <GridGroundTruthAnnotationHarness
+      {...props}
+      readEnvironment={() => "test"}
+    />
+  );
+
+  expect(screen.getByRole("region", {
+    name: "Grid ground truth annotation"
+  })).toBeInTheDocument();
+});
+
 test("selects a dataset item and renders it through the existing PDF adapter boundary only", async () => {
   const source = createCanvas();
   const readImageData = jest.fn();

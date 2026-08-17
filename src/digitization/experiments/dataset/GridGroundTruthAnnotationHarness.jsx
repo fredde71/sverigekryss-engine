@@ -78,6 +78,10 @@ export default function GridGroundTruthAnnotationHarness({
     }
   }, [rendered]);
 
+  const shadowComparison = useMemo(() => (
+    findShadowComparison(validationReport, selectedItemId)
+  ), [selectedItemId, validationReport]);
+
   if (
     environment !== "test"
     && (
@@ -469,9 +473,6 @@ export default function GridGroundTruthAnnotationHarness({
     }
   };
 
-  const shadowComparison = useMemo(() => (
-    findShadowComparison(validationReport, selectedItemId)
-  ), [selectedItemId, validationReport]);
   const shadowObservation = shadowComparison?.normalizedObservation ?? null;
   const canConfirm = Boolean(
     rendered
