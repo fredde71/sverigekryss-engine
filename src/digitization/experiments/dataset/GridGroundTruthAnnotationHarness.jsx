@@ -704,7 +704,7 @@ export default function GridGroundTruthAnnotationHarness({
       )}
       {groundTruth && (
         <button type="button" onClick={() => downloadGroundTruth(groundTruth)}>
-          Download ground truth JSON
+          Download grid ground-truth JSON
         </button>
       )}
       {errorMessage && <span role="alert">Annotation unavailable: {errorMessage}</span>}

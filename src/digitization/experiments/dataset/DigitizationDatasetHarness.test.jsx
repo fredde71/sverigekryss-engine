@@ -22,7 +22,30 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
   expect(input).toHaveAttribute("accept", "application/pdf,.pdf");
   expect(input).toHaveAttribute("multiple");
   expect(screen.getByRole("button", { name: "Run dataset" })).toBeDisabled();
-  expect(screen.queryByRole("button", { name: "Download JSON" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Download digitization dataset report JSON"
+  })).not.toBeInTheDocument();
+  const workflow = screen.getByRole("list", {
+    name: "Phase 5A validation workflow"
+  });
+  expect(Array.from(workflow.querySelectorAll("strong"), element => (
+    element.textContent
+  ))).toEqual([
+    "Run dataset",
+    "Annotate ground truth",
+    "Confirm ground truth",
+    "Create shadow grid validation report",
+    "Download validation report"
+  ]);
+  expect(screen.getByLabelText("Run dataset status")).toHaveTextContent("Not started");
+  expect(screen.getByLabelText("Annotate ground truth status"))
+    .toHaveTextContent("Waiting for a completed dataset report");
+  expect(screen.getByLabelText("Confirm ground truth status"))
+    .toHaveTextContent("No confirmed ground truth");
+  expect(screen.getByLabelText("Create shadow grid validation report status"))
+    .toHaveTextContent("Waiting for confirmed ground truth");
+  expect(screen.getByLabelText("Download validation report status"))
+    .toHaveTextContent("Waiting for a completed validation report");
 });
 
 test("preserves selected file order with stable IDs and filename metadata", async () => {
@@ -57,7 +80,8 @@ test("preserves selected file order with stable IDs and filename metadata", asyn
     { filename: "a-first.pdf" }
   ]);
   expect(Object.keys(invocation)).toEqual(["datasetId", "items"]);
-  expect(await screen.findByRole("status")).toHaveTextContent("Dataset completed");
+  expect(await screen.findByRole("status", { name: "Dataset status" }))
+    .toHaveTextContent("Dataset completed");
 });
 
 test("downloads the exact completed dataset result", async () => {
@@ -76,7 +100,7 @@ test("downloads the exact completed dataset result", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
 
   const downloadButton = await screen.findByRole("button", {
-    name: "Download JSON"
+    name: "Download digitization dataset report JSON"
   });
   expect(downloadReport).not.toHaveBeenCalled();
 
@@ -153,13 +177,16 @@ test("isolates analysis creation failure from completion and download", async ()
   selectFiles([createPdfFile("analysis-fails.pdf")]);
   fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Dataset completed");
+  expect(await screen.findByRole("status", { name: "Dataset status" }))
+    .toHaveTextContent("Dataset completed");
   expect(screen.getByRole("alert")).toHaveTextContent(
     "Dataset analysis unavailable: synthetic analysis failure"
   );
   expect(screen.queryByRole("heading", { name: "Dataset overview" })).not.toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole("button", { name: "Download JSON" }));
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download digitization dataset report JSON"
+  }));
   expect(downloadReport).toHaveBeenCalledWith(runnerResult);
 });
 
@@ -186,11 +213,15 @@ test("clears a stale completed result when a new file selection is made", async 
 
   selectFiles([createPdfFile("first.pdf")]);
   fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
-  expect(await screen.findByRole("button", { name: "Download JSON" })).toBeInTheDocument();
+  expect(await screen.findByRole("button", {
+    name: "Download digitization dataset report JSON"
+  })).toBeInTheDocument();
 
   selectFiles([createPdfFile("second.pdf")]);
 
-  expect(screen.queryByRole("button", { name: "Download JSON" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Download digitization dataset report JSON"
+  })).not.toBeInTheDocument();
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
 });
 
@@ -213,11 +244,13 @@ test("keeps downloads unavailable when dataset execution fails", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "Dataset failed: synthetic dataset failure"
   );
-  expect(screen.queryByRole("button", { name: "Download JSON" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Download digitization dataset report JSON"
+  })).not.toBeInTheDocument();
   expect(createDatasetReport).not.toHaveBeenCalled();
 });
 
-test("does not render or invoke dataset behavior outside development and test", () => {
+test("does not render or invoke dataset behavior outside localhost development and test", () => {
   const runDataset = jest.fn();
   const downloadReport = jest.fn();
   const createDatasetReport = jest.fn();
@@ -235,6 +268,19 @@ test("does not render or invoke dataset behavior outside development and test", 
   expect(runDataset).not.toHaveBeenCalled();
   expect(downloadReport).not.toHaveBeenCalled();
   expect(createDatasetReport).not.toHaveBeenCalled();
+
+  const remoteDevelopment = render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      downloadReport={downloadReport}
+      createDatasetReport={createDatasetReport}
+      readEnvironment={() => "development"}
+      readHostname={() => "example.com"}
+    />
+  );
+
+  expect(remoteDevelopment.container).toBeEmptyDOMElement();
+  expect(runDataset).not.toHaveBeenCalled();
 });
 
 test("does not use browser persistence or add evaluation output", async () => {
@@ -254,7 +300,7 @@ test("does not use browser persistence or add evaluation output", async () => {
   }
 });
 
-test("creates and downloads a separate validation report after ground truth is loaded", async () => {
+test("creates and downloads a separate validation report only after explicit action", async () => {
   const runnerResult = createCompletedResult();
   const datasetReport = {
     type: "digitization-dataset-report",
@@ -293,7 +339,18 @@ test("creates and downloads a separate validation report after ground truth is l
     target: { files: [groundTruthFile] }
   });
 
-  await waitFor(() => expect(createValidationReport).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(screen.getByLabelText("Confirm ground truth status"))
+    .toHaveTextContent("Confirmed for all 1 item(s)"));
+  expect(createValidationReport).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", {
+    name: "Download shadow grid validation report JSON"
+  })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create shadow grid validation report"
+  }));
+
+  expect(createValidationReport).toHaveBeenCalledTimes(1);
   const invocation = createValidationReport.mock.calls[0][0];
 
   expect(invocation.datasetReport).toBe(datasetReport);
@@ -302,17 +359,71 @@ test("creates and downloads a separate validation report after ground truth is l
     datasetId: "localhost-pdf-dataset"
   }));
   expect(datasetReport).not.toHaveProperty("validation");
+  expect(screen.getByLabelText("Create shadow grid validation report status"))
+    .toHaveTextContent("Completed");
 
   fireEvent.click(screen.getByRole("button", {
-    name: "Download validation JSON"
+    name: "Download shadow grid validation report JSON"
   }));
   expect(downloadValidationReport).toHaveBeenCalledTimes(1);
   expect(downloadValidationReport).toHaveBeenCalledWith(validationReport);
 });
 
+test("replacing ground truth invalidates an existing validation report", async () => {
+  const validationReport = {
+    type: "shadow-grid-validation-report",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const createValidationReport = jest.fn(() => validationReport);
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => createCompletedResult())}
+      createValidationReport={createValidationReport}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create shadow grid validation report"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create shadow grid validation report"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download shadow grid validation report JSON"
+  })).toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+
+  await waitFor(() => expect(screen.queryByRole("button", {
+    name: "Download shadow grid validation report JSON"
+  })).not.toBeInTheDocument());
+  expect(createValidationReport).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText("Create shadow grid validation report status"))
+    .toHaveTextContent("Ready to create");
+});
+
 function selectFiles(files) {
   fireEvent.change(screen.getByLabelText("Select local PDFs"), {
     target: { files }
+  });
+}
+
+function loadGroundTruth(groundTruth) {
+  fireEvent.change(screen.getByLabelText("Load ground truth JSON"), {
+    target: {
+      files: [{
+        name: "ground-truth.json",
+        text: jest.fn(async () => JSON.stringify(groundTruth))
+      }]
+    }
   });
 }
 

@@ -120,7 +120,7 @@ test("creates draft handles but exports only after explicit human confirmation",
   expect(screen.getAllByRole("slider", { name: /Vertical line/ })).toHaveLength(3);
   expect(onGroundTruthChange).not.toHaveBeenCalled();
   expect(screen.queryByRole("button", {
-    name: "Download ground truth JSON"
+    name: "Download grid ground-truth JSON"
   })).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", {
@@ -153,7 +153,7 @@ test("creates draft handles but exports only after explicit human confirmation",
     })
   ]);
   expect(screen.getByRole("button", {
-    name: "Download ground truth JSON"
+    name: "Download grid ground-truth JSON"
   })).toBeInTheDocument();
 });
 
@@ -263,7 +263,7 @@ test("downloads the exact confirmed ground-truth artifact", async () => {
   }));
   const artifact = onGroundTruthChange.mock.calls[0][0];
   fireEvent.click(screen.getByRole("button", {
-    name: "Download ground truth JSON"
+    name: "Download grid ground-truth JSON"
   }));
 
   expect(downloadGroundTruth).toHaveBeenCalledTimes(1);
@@ -309,7 +309,7 @@ test("loads a confirmed ground-truth artifact without rendering or detection", a
   }));
   expect(file.text).toHaveBeenCalledTimes(1);
   expect(prepareInput).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: "Download ground truth JSON" }))
+  expect(screen.getByRole("button", { name: "Download grid ground-truth JSON" }))
     .toBeInTheDocument();
 });
 

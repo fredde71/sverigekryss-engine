@@ -21,9 +21,13 @@ export default function DigitizationDatasetHarness({
   createAnalysisSummary = createDatasetAnalysisSummary,
   createValidationReport = createShadowGridValidationReport,
   downloadValidationReport = downloadShadowGridValidationReport,
-  readEnvironment = () => process.env.NODE_ENV
+  readEnvironment = () => process.env.NODE_ENV,
+  readHostname = () => (
+    typeof window === "undefined" ? "" : window.location.hostname
+  )
 }) {
   const environment = readEnvironment();
+  const hostname = readHostname();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [status, setStatus] = useState("idle");
   const [datasetResult, setDatasetResult] = useState(null);
@@ -31,11 +35,18 @@ export default function DigitizationDatasetHarness({
   const [analysisReports, setAnalysisReports] = useState(null);
   const [analysisErrorMessage, setAnalysisErrorMessage] = useState("");
   const [datasetReport, setDatasetReport] = useState(null);
+  const [groundTruth, setGroundTruth] = useState(null);
   const [validationReport, setValidationReport] = useState(null);
   const [validationErrorMessage, setValidationErrorMessage] = useState("");
   const datasetItems = createDatasetItems(selectedFiles);
 
-  if (environment !== "development" && environment !== "test") {
+  if (
+    environment !== "test"
+    && (
+      environment !== "development"
+      || !isLocalHostname(hostname)
+    )
+  ) {
     return null;
   }
 
@@ -47,6 +58,7 @@ export default function DigitizationDatasetHarness({
     setAnalysisReports(null);
     setAnalysisErrorMessage("");
     setDatasetReport(null);
+    setGroundTruth(null);
     setValidationReport(null);
     setValidationErrorMessage("");
   };
@@ -58,6 +70,7 @@ export default function DigitizationDatasetHarness({
     setAnalysisReports(null);
     setAnalysisErrorMessage("");
     setDatasetReport(null);
+    setGroundTruth(null);
     setValidationReport(null);
     setValidationErrorMessage("");
 
@@ -96,14 +109,17 @@ export default function DigitizationDatasetHarness({
     }
   };
 
-  const handleDownload = () => {
+  const handleDatasetReportDownload = () => {
     downloadReport(datasetResult);
   };
 
   const handleGroundTruthChange = groundTruth => {
+    setGroundTruth(groundTruth);
     setValidationReport(null);
     setValidationErrorMessage("");
+  };
 
+  const handleCreateValidationReport = () => {
     if (!groundTruth || !datasetReport) {
       return;
     }
@@ -120,6 +136,26 @@ export default function DigitizationDatasetHarness({
     }
   };
 
+  const confirmedItemCount = groundTruth?.annotations?.length ?? 0;
+  const datasetStatus = describeDatasetStatus(status, selectedFiles.length);
+  const annotationStatus = datasetReport
+    ? "Ready for annotation or ground-truth loading"
+    : "Waiting for a completed dataset report";
+  const groundTruthStatus = describeGroundTruthStatus(
+    groundTruth,
+    datasetItems.length
+  );
+  const validationStatus = validationReport
+    ? "Completed"
+    : validationErrorMessage
+      ? "Failed"
+      : groundTruth && datasetReport
+        ? "Ready to create"
+        : "Waiting for confirmed ground truth";
+  const validationDownloadStatus = validationReport
+    ? "Ready"
+    : "Waiting for a completed validation report";
+
   return (
     <section
       aria-label="Digitization Lab"
@@ -133,6 +169,19 @@ export default function DigitizationDatasetHarness({
       }}
     >
       <h6 style={{ fontSize: "13px", margin: 0 }}>Digitization Lab</h6>
+      <ol aria-label="Phase 5A validation workflow">
+        <WorkflowStep title="Run dataset" status={datasetStatus} />
+        <WorkflowStep title="Annotate ground truth" status={annotationStatus} />
+        <WorkflowStep title="Confirm ground truth" status={groundTruthStatus} />
+        <WorkflowStep
+          title="Create shadow grid validation report"
+          status={validationStatus}
+        />
+        <WorkflowStep
+          title="Download validation report"
+          status={validationDownloadStatus}
+        />
+      </ol>
       <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
         Select local PDFs
         <input
@@ -156,12 +205,12 @@ export default function DigitizationDatasetHarness({
         {status === "running" ? "Running dataset…" : "Run dataset"}
       </button>
       {status === "completed" && datasetResult && (
-        <button type="button" onClick={handleDownload}>
-          Download JSON
+        <button type="button" onClick={handleDatasetReportDownload}>
+          Download digitization dataset report JSON
         </button>
       )}
       {status === "completed" && (
-        <span role="status">Dataset completed</span>
+        <span role="status" aria-label="Dataset status">Dataset completed</span>
       )}
       {status === "failed" && (
         <span role="alert">Dataset failed: {errorMessage}</span>
@@ -190,21 +239,79 @@ export default function DigitizationDatasetHarness({
           validationReport={validationReport}
           onGroundTruthChange={handleGroundTruthChange}
           readEnvironment={readEnvironment}
+          readHostname={readHostname}
         />
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateValidationReport}
+        >
+          Create shadow grid validation report
+        </button>
       )}
       {validationReport && (
         <>
-          <span role="status">Shadow grid validation report completed</span>
+          <span role="status" aria-label="Validation status">
+            Shadow grid validation report completed
+          </span>
           <button
             type="button"
             onClick={() => downloadValidationReport(validationReport)}
           >
-            Download validation JSON
+            Download shadow grid validation report JSON
           </button>
         </>
       )}
     </section>
   );
+}
+
+function WorkflowStep({ title, status }) {
+  return (
+    <li>
+      <strong>{title}</strong>{" "}
+      <span aria-label={`${title} status`}>{status}</span>
+    </li>
+  );
+}
+
+function describeDatasetStatus(status, selectedFileCount) {
+  if (status === "running") {
+    return "Running";
+  }
+
+  if (status === "completed") {
+    return "Completed";
+  }
+
+  if (status === "failed") {
+    return "Failed";
+  }
+
+  return selectedFileCount > 0 ? "Ready to run" : "Not started";
+}
+
+function describeGroundTruthStatus(groundTruth, itemCount) {
+  const confirmedCount = groundTruth?.annotations?.length ?? 0;
+
+  if (confirmedCount === 0) {
+    return "No confirmed ground truth";
+  }
+
+  if (confirmedCount === itemCount) {
+    return `Confirmed for all ${itemCount} item(s)`;
+  }
+
+  return `Confirmed for ${confirmedCount} of ${itemCount} item(s)`;
+}
+
+function isLocalHostname(hostname) {
+  return hostname === "localhost"
+    || hostname === "127.0.0.1"
+    || hostname === "[::1]"
+    || hostname === "::1";
 }
 
 function createDatasetItems(files) {
