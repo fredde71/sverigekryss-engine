@@ -4,6 +4,7 @@ import React, {
   useRef,
   useState
 } from "react";
+import { createPortal } from "react-dom";
 import { preparePdfDatasetInput } from "./pdfDatasetAdapter";
 import {
   createGridGroundTruth,
@@ -38,12 +39,17 @@ export default function GridGroundTruthAnnotationHarness({
   const [horizontalLines, setHorizontalLines] = useState([]);
   const [verticalLines, setVerticalLines] = useState([]);
   const [dragging, setDragging] = useState(null);
+  const [selectedLine, setSelectedLine] = useState(null);
   const [zoom, setZoom] = useState(1);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [panEnabled, setPanEnabled] = useState(false);
+  const [panning, setPanning] = useState(null);
   const [confirmedAnnotations, setConfirmedAnnotations] = useState({});
   const [groundTruth, setGroundTruth] = useState(null);
   const [showShadowOverlay, setShowShadowOverlay] = useState(false);
   const canvasHostRef = useRef(null);
   const surfaceRef = useRef(null);
+  const viewportRef = useRef(null);
   const selectedItem = items.find(item => item.id === selectedItemId) ?? null;
   const currentAnnotation = confirmedAnnotations[selectedItemId] ?? null;
 
@@ -76,7 +82,7 @@ export default function GridGroundTruthAnnotationHarness({
       source.style.display = "block";
       host.appendChild(source);
     }
-  }, [rendered]);
+  }, [rendered, workspaceOpen]);
 
   const shadowComparison = useMemo(() => (
     findShadowComparison(validationReport, selectedItemId)
@@ -101,6 +107,10 @@ export default function GridGroundTruthAnnotationHarness({
     setRenderStatus("idle");
     setErrorMessage("");
     setActiveTool(null);
+    setSelectedLine(null);
+    setWorkspaceOpen(false);
+    setPanEnabled(false);
+    setPanning(null);
     setShowShadowOverlay(false);
 
     if (annotation) {
@@ -147,6 +157,10 @@ export default function GridGroundTruthAnnotationHarness({
         width: source.width,
         height: source.height
       });
+      setSelectedLine(null);
+      setWorkspaceOpen(true);
+      setPanEnabled(false);
+      setPanning(null);
       setRenderStatus("rendered");
     } catch (error) {
       setRendered(null);
@@ -233,12 +247,14 @@ export default function GridGroundTruthAnnotationHarness({
       }));
       setHorizontalLines([]);
       setVerticalLines([]);
+      setSelectedLine(null);
       invalidateCurrentConfirmation();
     }
 
     if (activeTool === "add-horizontal") {
       const next = insertPosition(horizontalLines, point.y);
       setHorizontalLines(next);
+      setSelectedLine({ axis: "horizontal", index: next.indexOf(point.y) });
       setRows(String(Math.max(1, next.length - 1)));
       if (next.length > 0) {
         setBoundaries(previous => ({
@@ -253,6 +269,7 @@ export default function GridGroundTruthAnnotationHarness({
     if (activeTool === "add-vertical") {
       const next = insertPosition(verticalLines, point.x);
       setVerticalLines(next);
+      setSelectedLine({ axis: "vertical", index: next.indexOf(point.x) });
       setCols(String(Math.max(1, next.length - 1)));
       if (next.length > 0) {
         setBoundaries(previous => ({
@@ -289,6 +306,7 @@ export default function GridGroundTruthAnnotationHarness({
     try {
       setHorizontalLines(createDraftLines(boundaries.top, boundaries.bottom, rowCount));
       setVerticalLines(createDraftLines(boundaries.left, boundaries.right, colCount));
+      setSelectedLine(null);
       setErrorMessage("");
       invalidateCurrentConfirmation();
     } catch (error) {
@@ -385,10 +403,18 @@ export default function GridGroundTruthAnnotationHarness({
   };
 
   const handleLineKeyDown = (event, axis, index) => {
+    const isSelected = selectedLine?.axis === axis && selectedLine.index === index;
+
+    if ((event.key === "Delete" || event.key === "Backspace") && isSelected) {
+      event.preventDefault();
+      removeLine(axis, index);
+      return;
+    }
+
     const negative = axis === "horizontal" ? "ArrowUp" : "ArrowLeft";
     const positive = axis === "horizontal" ? "ArrowDown" : "ArrowRight";
 
-    if (event.key !== negative && event.key !== positive) {
+    if (!isSelected || (event.key !== negative && event.key !== positive)) {
       return;
     }
 
@@ -427,7 +453,35 @@ export default function GridGroundTruthAnnotationHarness({
       }));
     }
 
+    setSelectedLine(null);
     invalidateCurrentConfirmation();
+  };
+
+  const handleViewportMouseDown = event => {
+    if (!panEnabled || !viewportRef.current) {
+      return;
+    }
+
+    event.preventDefault();
+    setPanning({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      scrollLeft: viewportRef.current.scrollLeft,
+      scrollTop: viewportRef.current.scrollTop
+    });
+  };
+
+  const handleViewportMouseMove = event => {
+    if (!panning || !viewportRef.current) {
+      return;
+    }
+
+    viewportRef.current.scrollLeft = (
+      panning.scrollLeft - (event.clientX - panning.clientX)
+    );
+    viewportRef.current.scrollTop = (
+      panning.scrollTop - (event.clientY - panning.clientY)
+    );
   };
 
   const handleConfirm = () => {
@@ -481,6 +535,12 @@ export default function GridGroundTruthAnnotationHarness({
     && Number(rows) === horizontalLines.length - 1
     && Number(cols) === verticalLines.length - 1
   );
+  const selectedLinePosition = selectedLine
+    ? (selectedLine.axis === "horizontal" ? horizontalLines : verticalLines)[
+      selectedLine.index
+    ]
+    : null;
+  const portalTarget = typeof document === "undefined" ? null : document.body;
 
   return (
     <section aria-label="Grid ground truth annotation">
@@ -521,7 +581,67 @@ export default function GridGroundTruthAnnotationHarness({
       </button>
       {renderStatus === "rendered" && rendered && (
         <>
-          <div>
+          <span role="status">PDF ready for annotation</span>
+          <button
+            type="button"
+            disabled={workspaceOpen}
+            onClick={() => setWorkspaceOpen(true)}
+          >
+            {workspaceOpen ? "Annotation workspace open" : "Open annotation workspace"}
+          </button>
+        </>
+      )}
+      {groundTruth && (
+        <button type="button" onClick={() => downloadGroundTruth(groundTruth)}>
+          Download grid ground-truth JSON
+        </button>
+      )}
+      {errorMessage && <span role="alert">Annotation unavailable: {errorMessage}</span>}
+      {workspaceOpen && rendered && portalTarget && createPortal(
+        <div
+          role="dialog"
+          aria-label="Grid ground truth annotation workspace"
+          aria-modal="false"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            display: "flex",
+            flexDirection: "column",
+            background: "#f8fafc",
+            color: "#0f172a"
+          }}
+        >
+          <header style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            padding: "8px 12px",
+            borderBottom: "1px solid #cbd5e1",
+            background: "#ffffff"
+          }}>
+            <div>
+              <strong>Grid ground-truth workspace</strong>{" "}
+              <span>{selectedItem?.metadata?.filename}</span>
+            </div>
+            <button type="button" onClick={() => setWorkspaceOpen(false)}>
+              Close annotation workspace
+            </button>
+          </header>
+          <div
+            role="toolbar"
+            aria-label="Grid annotation tools"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "6px",
+              padding: "8px 12px",
+              borderBottom: "1px solid #cbd5e1",
+              background: "#f1f5f9"
+            }}
+          >
             {[
               ["top", "Place top boundary"],
               ["bottom", "Place bottom boundary"],
@@ -532,73 +652,127 @@ export default function GridGroundTruthAnnotationHarness({
                 key={tool}
                 type="button"
                 aria-pressed={activeTool === tool}
-                onClick={() => setActiveTool(tool)}
+                onClick={() => {
+                  setActiveTool(tool);
+                  setPanEnabled(false);
+                  setSelectedLine(null);
+                }}
               >
                 {label}
               </button>
             ))}
+            <label>
+              Rows{" "}
+              <input
+                aria-label="Rows"
+                type="number"
+                min="1"
+                step="1"
+                value={rows}
+                onChange={event => {
+                  setRows(event.target.value);
+                  invalidateCurrentConfirmation();
+                }}
+                style={{ width: "64px" }}
+              />
+            </label>
+            <label>
+              Columns{" "}
+              <input
+                aria-label="Columns"
+                type="number"
+                min="1"
+                step="1"
+                value={cols}
+                onChange={event => {
+                  setCols(event.target.value);
+                  invalidateCurrentConfirmation();
+                }}
+                style={{ width: "64px" }}
+              />
+            </label>
+            <button type="button" onClick={handleGenerateDraft}>
+              Generate draft line handles
+            </button>
+            <button
+              type="button"
+              aria-pressed={activeTool === "add-horizontal"}
+              onClick={() => {
+                setActiveTool("add-horizontal");
+                setPanEnabled(false);
+                setSelectedLine(null);
+              }}
+            >
+              Add horizontal line
+            </button>
+            <button
+              type="button"
+              aria-pressed={activeTool === "add-vertical"}
+              onClick={() => {
+                setActiveTool("add-vertical");
+                setPanEnabled(false);
+                setSelectedLine(null);
+              }}
+            >
+              Add vertical line
+            </button>
+            <button
+              type="button"
+              aria-label="Zoom out"
+              onClick={() => setZoom(value => Math.max(0.25, value - 0.25))}
+            >
+              −
+            </button>
+            <output aria-label="Annotation zoom">{Math.round(zoom * 100)}%</output>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              onClick={() => setZoom(value => Math.min(3, value + 0.25))}
+            >
+              +
+            </button>
+            <button type="button" onClick={() => setZoom(1)}>
+              Reset zoom
+            </button>
+            <button
+              type="button"
+              aria-pressed={panEnabled}
+              onClick={() => {
+                setPanEnabled(value => !value);
+                setActiveTool(null);
+                setPanning(null);
+              }}
+            >
+              Pan workspace
+            </button>
+            <output aria-label="Selected grid line">
+              {selectedLine && Number.isFinite(selectedLinePosition)
+                ? `${capitalize(selectedLine.axis)} line ${selectedLine.index + 1} at ${selectedLinePosition}px`
+                : "No line selected"}
+            </output>
+            <button type="button" disabled={!canConfirm} onClick={handleConfirm}>
+              Confirm ground truth for selected item
+            </button>
           </div>
-          <label>
-            Rows
-            <input
-              aria-label="Rows"
-              type="number"
-              min="1"
-              step="1"
-              value={rows}
-              onChange={event => {
-                setRows(event.target.value);
-                invalidateCurrentConfirmation();
-              }}
-            />
-          </label>
-          <label>
-            Columns
-            <input
-              aria-label="Columns"
-              type="number"
-              min="1"
-              step="1"
-              value={cols}
-              onChange={event => {
-                setCols(event.target.value);
-                invalidateCurrentConfirmation();
-              }}
-            />
-          </label>
-          <button type="button" onClick={handleGenerateDraft}>
-            Generate draft line handles
-          </button>
-          <button
-            type="button"
-            aria-pressed={activeTool === "add-horizontal"}
-            onClick={() => setActiveTool("add-horizontal")}
+          <p style={{ margin: "6px 12px", fontSize: "12px" }}>
+            Draft lines are not ground truth until confirmed. Select a line before
+            moving it with arrow keys or removing it with Delete/Backspace.
+          </p>
+          <div
+            ref={viewportRef}
+            aria-label="PDF annotation viewport"
+            onMouseDown={handleViewportMouseDown}
+            onMouseMove={handleViewportMouseMove}
+            onMouseUp={() => setPanning(null)}
+            onMouseLeave={() => setPanning(null)}
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: "auto",
+              background: "#334155",
+              cursor: panEnabled ? (panning ? "grabbing" : "grab") : "default"
+            }}
           >
-            Add horizontal line
-          </button>
-          <button
-            type="button"
-            aria-pressed={activeTool === "add-vertical"}
-            onClick={() => setActiveTool("add-vertical")}
-          >
-            Add vertical line
-          </button>
-          <button
-            type="button"
-            aria-label="Zoom out"
-            onClick={() => setZoom(value => Math.max(0.25, value - 0.25))}
-          >
-            Zoom out
-          </button>
-          <output aria-label="Annotation zoom">{Math.round(zoom * 100)}%</output>
-          <button
-            type="button"
-            aria-label="Zoom in"
-            onClick={() => setZoom(value => Math.min(3, value + 0.25))}
-          >
-            Zoom in
-          </button>
-          <div style={{ maxHeight: "600px", overflow: "auto" }}>
             <div
               ref={surfaceRef}
               data-testid="ground-truth-surface"
@@ -648,9 +822,13 @@ export default function GridGroundTruthAnnotationHarness({
                   index={index}
                   position={position}
                   zoom={zoom}
-                  onMouseDown={() => setDragging({ axis: "horizontal", index })}
+                  selected={selectedLine?.axis === "horizontal" && selectedLine.index === index}
+                  onSelect={() => setSelectedLine({ axis: "horizontal", index })}
+                  onMouseDown={() => {
+                    setSelectedLine({ axis: "horizontal", index });
+                    setDragging({ axis: "horizontal", index });
+                  }}
                   onKeyDown={handleLineKeyDown}
-                  onRemove={removeLine}
                 />
               ))}
               {verticalLines.map((position, index) => (
@@ -660,9 +838,13 @@ export default function GridGroundTruthAnnotationHarness({
                   index={index}
                   position={position}
                   zoom={zoom}
-                  onMouseDown={() => setDragging({ axis: "vertical", index })}
+                  selected={selectedLine?.axis === "vertical" && selectedLine.index === index}
+                  onSelect={() => setSelectedLine({ axis: "vertical", index })}
+                  onMouseDown={() => {
+                    setSelectedLine({ axis: "vertical", index });
+                    setDragging({ axis: "vertical", index });
+                  }}
                   onKeyDown={handleLineKeyDown}
-                  onRemove={removeLine}
                 />
               ))}
               {showShadowOverlay && shadowObservation && (
@@ -670,44 +852,46 @@ export default function GridGroundTruthAnnotationHarness({
               )}
             </div>
           </div>
-          <button type="button" disabled={!canConfirm} onClick={handleConfirm}>
-            Confirm ground truth for selected item
-          </button>
-          {currentAnnotation && (
-            <span role="status">Ground truth confirmed for {selectedItemId}</span>
-          )}
-          {currentAnnotation && validationReport && (
-            <label>
-              <input
-                aria-label="Show experimental shadow overlay"
-                type="checkbox"
-                checked={showShadowOverlay}
-                onChange={event => setShowShadowOverlay(event.target.checked)}
-              />
-              Show experimental shadow overlay and comparison
-            </label>
-          )}
-          {showShadowOverlay && shadowComparison && (
-            <output aria-label="Shadow grid comparison">
-              Region {shadowComparison.regionId}: bounds {formatComparisonState(
-                shadowComparison.bounds
-              )}, horizontal lines {formatComparisonState(
-                shadowComparison.horizontalLines
-              )}, vertical lines {formatComparisonState(
-                shadowComparison.verticalLines
-              )}, rows {formatComparisonState(shadowComparison.rows)}, columns {formatComparisonState(
-                shadowComparison.cols
-              )}.
-            </output>
-          )}
-        </>
+          <footer style={{
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "12px",
+            padding: "8px 12px",
+            borderTop: "1px solid #cbd5e1",
+            background: "#ffffff"
+          }}>
+            {currentAnnotation
+              ? <span role="status">Ground truth confirmed for {selectedItemId}</span>
+              : <span>Ground truth not confirmed for {selectedItemId}</span>}
+            {currentAnnotation && validationReport && (
+              <label>
+                <input
+                  aria-label="Show experimental shadow overlay"
+                  type="checkbox"
+                  checked={showShadowOverlay}
+                  onChange={event => setShowShadowOverlay(event.target.checked)}
+                />
+                Show experimental shadow overlay and comparison
+              </label>
+            )}
+            {showShadowOverlay && shadowComparison && (
+              <output aria-label="Shadow grid comparison">
+                Region {shadowComparison.regionId}: bounds {formatComparisonState(
+                  shadowComparison.bounds
+                )}, horizontal lines {formatComparisonState(
+                  shadowComparison.horizontalLines
+                )}, vertical lines {formatComparisonState(
+                  shadowComparison.verticalLines
+                )}, rows {formatComparisonState(shadowComparison.rows)}, columns {formatComparisonState(
+                  shadowComparison.cols
+                )}.
+              </output>
+            )}
+          </footer>
+        </div>,
+        portalTarget
       )}
-      {groundTruth && (
-        <button type="button" onClick={() => downloadGroundTruth(groundTruth)}>
-          Download grid ground-truth JSON
-        </button>
-      )}
-      {errorMessage && <span role="alert">Annotation unavailable: {errorMessage}</span>}
     </section>
   );
 
@@ -717,6 +901,7 @@ export default function GridGroundTruthAnnotationHarness({
     setCols("");
     setHorizontalLines([]);
     setVerticalLines([]);
+    setSelectedLine(null);
   }
 
   function applyAnnotationToDraft(annotation) {
@@ -730,6 +915,7 @@ export default function GridGroundTruthAnnotationHarness({
     setCols(String(annotation.cols));
     setHorizontalLines(annotation.horizontalLinePositions.slice());
     setVerticalLines(annotation.verticalLinePositions.slice());
+    setSelectedLine(null);
   }
 
   function commitConfirmedAnnotations(next) {
@@ -784,51 +970,76 @@ function LineHandle({
   index,
   position,
   zoom,
+  selected,
+  onSelect,
   onMouseDown,
-  onKeyDown,
-  onRemove
+  onKeyDown
 }) {
   const label = `${capitalize(axis)} line ${index + 1}`;
   const horizontal = axis === "horizontal";
 
   return (
-    <>
-      <div
-        role="slider"
-        aria-label={label}
-        aria-valuenow={position}
-        tabIndex="0"
-        onMouseDown={event => {
-          event.stopPropagation();
-          onMouseDown();
-        }}
-        onKeyDown={event => onKeyDown(event, axis, index)}
+    <div
+      role="slider"
+      aria-label={label}
+      aria-valuenow={position}
+      data-selected={selected ? "true" : "false"}
+      tabIndex="0"
+      onClick={event => {
+        event.stopPropagation();
+        onSelect();
+      }}
+      onMouseDown={event => {
+        event.stopPropagation();
+        event.currentTarget.focus();
+        onMouseDown();
+      }}
+      onKeyDown={event => onKeyDown(event, axis, index)}
+      style={{
+        position: "absolute",
+        zIndex: selected ? 5 : 2,
+        cursor: horizontal ? "row-resize" : "col-resize",
+        ...(horizontal
+          ? {
+            left: 0,
+            right: 0,
+            top: `${(position * zoom) - 6}px`,
+            height: "12px"
+          }
+          : {
+            top: 0,
+            bottom: 0,
+            left: `${(position * zoom) - 6}px`,
+            width: "12px"
+          })
+      }}
+    >
+      <span
+        aria-hidden="true"
         style={{
           position: "absolute",
-          zIndex: 2,
-          background: horizontal ? "rgba(70, 90, 120, 0.75)" : "rgba(110, 120, 135, 0.75)",
-          cursor: horizontal ? "row-resize" : "col-resize",
+          background: selected
+            ? "#dc2626"
+            : horizontal
+              ? "rgba(70, 90, 120, 0.8)"
+              : "rgba(110, 120, 135, 0.8)",
+          boxShadow: selected ? "0 0 0 1px #ffffff" : "none",
           ...(horizontal
-            ? { left: 0, right: 0, top: `${position * zoom}px`, height: "2px" }
-            : { top: 0, bottom: 0, left: `${position * zoom}px`, width: "2px" })
+            ? {
+              left: 0,
+              right: 0,
+              top: selected ? "4px" : "5px",
+              height: selected ? "4px" : "2px"
+            }
+            : {
+              top: 0,
+              bottom: 0,
+              left: selected ? "4px" : "5px",
+              width: selected ? "4px" : "2px"
+            })
         }}
       />
-      <button
-        type="button"
-        aria-label={`Remove ${axis} line ${index + 1}`}
-        onClick={() => onRemove(axis, index)}
-        style={{
-          position: "absolute",
-          zIndex: 4,
-          fontSize: "10px",
-          ...(horizontal
-            ? { right: 0, top: `${position * zoom}px` }
-            : { top: 0, left: `${position * zoom}px` })
-        }}
-      >
-        Remove
-      </button>
-    </>
+    </div>
   );
 }
 

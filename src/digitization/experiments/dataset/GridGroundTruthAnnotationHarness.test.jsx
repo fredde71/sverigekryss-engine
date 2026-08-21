@@ -98,6 +98,40 @@ test("selects a dataset item and renders it through the existing PDF adapter bou
   expect(screen.getByTestId("ground-truth-surface")).toContainElement(source);
 });
 
+test("opens the PDF in a full-workspace portal with a compact toolbar", async () => {
+  renderHarness();
+  await renderPdf();
+
+  const workspace = screen.getByRole("dialog", {
+    name: "Grid ground truth annotation workspace"
+  });
+  const annotationSection = screen.getByRole("region", {
+    name: "Grid ground truth annotation"
+  });
+
+  expect(workspace.parentElement).toBe(document.body);
+  expect(annotationSection).not.toContainElement(workspace);
+  expect(screen.getByRole("toolbar", {
+    name: "Grid annotation tools"
+  })).toBeInTheDocument();
+  expect(screen.getByLabelText("PDF annotation viewport")).toContainElement(
+    screen.getByLabelText("Rendered PDF page 1 at scale 2")
+  );
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Close annotation workspace"
+  }));
+  expect(screen.queryByRole("dialog", {
+    name: "Grid ground truth annotation workspace"
+  })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Open annotation workspace"
+  }));
+  expect(screen.getByLabelText("Rendered PDF page 1 at scale 2"))
+    .toContainElement(screen.getByTestId("ground-truth-surface").querySelector("canvas"));
+});
+
 test("creates draft handles but exports only after explicit human confirmation", async () => {
   const onGroundTruthChange = jest.fn();
 
@@ -179,12 +213,16 @@ test("supports drag movement and half-pixel keyboard movement", async () => {
     .toHaveAttribute("aria-valuenow", "21.5");
 
   const vertical = screen.getByRole("slider", { name: "Vertical line 2" });
+  fireEvent.click(vertical);
+  expect(vertical).toHaveAttribute("data-selected", "true");
+  expect(screen.getByLabelText("Selected grid line"))
+    .toHaveTextContent("Vertical line 2 at 15px");
   fireEvent.keyDown(vertical, { key: "ArrowRight" });
   expect(screen.getByRole("slider", { name: "Vertical line 2" }))
     .toHaveAttribute("aria-valuenow", "15.5");
 });
 
-test("allows lines to be added and removed while keeping counts explicit", async () => {
+test("requires line selection before Delete or Backspace removes a line", async () => {
   renderHarness();
   await renderPdf();
   placeBoundaries({ top: 10, bottom: 30, left: 5, right: 25 });
@@ -197,12 +235,28 @@ test("allows lines to be added and removed while keeping counts explicit", async
   });
   expect(screen.getAllByRole("slider", { name: /Horizontal line/ })).toHaveLength(4);
   expect(screen.getByLabelText("Rows")).toHaveValue(3);
+  expect(screen.queryByRole("button", { name: /Remove horizontal line/ }))
+    .not.toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole("button", {
-    name: "Remove horizontal line 3"
-  }));
+  fireEvent.keyDown(screen.getByRole("slider", { name: "Horizontal line 2" }), {
+    key: "Delete"
+  });
+  expect(screen.getAllByRole("slider", { name: /Horizontal line/ })).toHaveLength(4);
+
+  const selected = screen.getByRole("slider", { name: "Horizontal line 3" });
+  expect(selected).toHaveAttribute("data-selected", "true");
+  fireEvent.keyDown(selected, { key: "Backspace" });
   expect(screen.getAllByRole("slider", { name: /Horizontal line/ })).toHaveLength(3);
   expect(screen.getByLabelText("Rows")).toHaveValue(2);
+  expect(screen.getByLabelText("Selected grid line"))
+    .toHaveTextContent("No line selected");
+
+  fireEvent.click(screen.getByRole("slider", { name: "Horizontal line 2" }));
+  fireEvent.keyDown(screen.getByRole("slider", { name: "Horizontal line 2" }), {
+    key: "Delete"
+  });
+  expect(screen.getAllByRole("slider", { name: /Horizontal line/ })).toHaveLength(2);
+  expect(screen.getByLabelText("Rows")).toHaveValue(1);
 });
 
 test("supports zoom without changing confirmed coordinates", async () => {
@@ -224,6 +278,29 @@ test("supports zoom without changing confirmed coordinates", async () => {
 
   expect(onGroundTruthChange.mock.calls[0][0].annotations[0].gridBounds)
     .toEqual({ top: 10, left: 5, width: 20, height: 20 });
+});
+
+test("pans the zoomed workspace without changing line coordinates", async () => {
+  renderHarness();
+  await renderPdf();
+  placeBoundaries({ top: 10, bottom: 30, left: 5, right: 25 });
+  setCountsAndGenerate();
+  fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+
+  const viewport = screen.getByLabelText("PDF annotation viewport");
+  viewport.scrollLeft = 40;
+  viewport.scrollTop = 50;
+  fireEvent.click(screen.getByRole("button", { name: "Pan workspace" }));
+  fireEvent.mouseDown(viewport, { clientX: 100, clientY: 100 });
+  fireEvent.mouseMove(viewport, { clientX: 70, clientY: 60 });
+  fireEvent.mouseUp(viewport);
+
+  expect(viewport.scrollLeft).toBe(70);
+  expect(viewport.scrollTop).toBe(90);
+  expect(screen.getByRole("slider", { name: "Horizontal line 2" }))
+    .toHaveAttribute("aria-valuenow", "20");
+  expect(screen.getByRole("slider", { name: "Vertical line 2" }))
+    .toHaveAttribute("aria-valuenow", "15");
 });
 
 test("keeps shadow overlays hidden until confirmation and an explicit opt-in", async () => {
