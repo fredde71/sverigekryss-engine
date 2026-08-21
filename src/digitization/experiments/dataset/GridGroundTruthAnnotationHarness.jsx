@@ -581,7 +581,11 @@ export default function GridGroundTruthAnnotationHarness({
       </button>
       {renderStatus === "rendered" && rendered && (
         <>
-          <span role="status">PDF ready for annotation</span>
+          <span role="status" aria-label="Annotation item status">
+            {currentAnnotation
+              ? `Ground truth confirmed for ${selectedItemId}`
+              : "PDF ready for annotation"}
+          </span>
           <button
             type="button"
             disabled={workspaceOpen}
@@ -1023,19 +1027,18 @@ function LineHandle({
             : horizontal
               ? "rgba(70, 90, 120, 0.8)"
               : "rgba(110, 120, 135, 0.8)",
-          boxShadow: selected ? "0 0 0 1px #ffffff" : "none",
           ...(horizontal
             ? {
               left: 0,
               right: 0,
-              top: selected ? "4px" : "5px",
-              height: selected ? "4px" : "2px"
+              top: "5px",
+              height: "2px"
             }
             : {
               top: 0,
               bottom: 0,
-              left: selected ? "4px" : "5px",
-              width: selected ? "4px" : "2px"
+              left: "5px",
+              width: "2px"
             })
         }}
       />

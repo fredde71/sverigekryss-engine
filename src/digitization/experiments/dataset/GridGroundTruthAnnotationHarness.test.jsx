@@ -189,6 +189,48 @@ test("creates draft handles but exports only after explicit human confirmation",
   expect(screen.getByRole("button", {
     name: "Download grid ground-truth JSON"
   })).toBeInTheDocument();
+  expect(screen.getByLabelText("Annotation item status"))
+    .toHaveTextContent("Ground truth confirmed for item-001");
+});
+
+test("uses color-only selection without changing the precise line thickness", async () => {
+  renderHarness();
+  await renderPdf();
+  placeBoundaries({ top: 10, bottom: 30, left: 5, right: 25 });
+  setCountsAndGenerate();
+
+  const horizontal = screen.getByRole("slider", { name: "Horizontal line 2" });
+  const horizontalStroke = horizontal.querySelector("span");
+  const unselectedHorizontalColor = horizontalStroke.style.background;
+
+  expect(horizontal).toHaveStyle({ height: "12px" });
+  expect(horizontalStroke).toHaveStyle({ height: "2px", top: "5px" });
+
+  fireEvent.click(horizontal);
+
+  expect(horizontal).toHaveAttribute("data-selected", "true");
+  expect(horizontal.querySelector("span")).toHaveStyle({
+    height: "2px",
+    top: "5px"
+  });
+  expect(horizontal.querySelector("span").style.background)
+    .not.toBe(unselectedHorizontalColor);
+
+  const vertical = screen.getByRole("slider", { name: "Vertical line 2" });
+  const verticalStroke = vertical.querySelector("span");
+
+  expect(vertical).toHaveStyle({ width: "12px" });
+  expect(verticalStroke).toHaveStyle({ width: "2px", left: "5px" });
+
+  fireEvent.click(vertical);
+
+  expect(vertical).toHaveAttribute("data-selected", "true");
+  expect(vertical.querySelector("span")).toHaveStyle({
+    width: "2px",
+    left: "5px"
+  });
+  expect(screen.getByLabelText("Selected grid line"))
+    .toHaveTextContent("Vertical line 2 at 15px");
 });
 
 test("supports drag movement and half-pixel keyboard movement", async () => {
