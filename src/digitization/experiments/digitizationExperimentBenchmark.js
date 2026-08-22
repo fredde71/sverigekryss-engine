@@ -12,7 +12,11 @@ export function createDigitizationExperimentBenchmark({
       const startTime = now();
 
       try {
-        const diagnostics = await experiment.run(binaryImage, context);
+        const diagnostics = await experiment.run(
+          binaryImage,
+          context,
+          createExperimentExecutionContext(results)
+        );
 
         results.push({
           id: experiment.id,
@@ -36,6 +40,20 @@ export function createDigitizationExperimentBenchmark({
       experiments: results
     };
   };
+}
+
+function createExperimentExecutionContext(results) {
+  const completedResults = results.slice();
+
+  return Object.freeze({
+    getSuccessfulDiagnostics(experimentId) {
+      const result = completedResults.find(experiment => (
+        experiment.id === experimentId && experiment.success === true
+      ));
+
+      return result?.diagnostics ?? null;
+    }
+  });
 }
 
 export const runDigitizationExperimentBenchmark = createDigitizationExperimentBenchmark();

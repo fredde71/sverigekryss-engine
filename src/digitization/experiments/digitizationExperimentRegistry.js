@@ -6,6 +6,7 @@ import { verticalCandidateCoverageThresholdDiagnosticsExperiment } from "./verti
 import { verticalSpanRelativeCoverageDiagnosticsExperiment } from "./verticalSpanRelativeCoverageDiagnostics";
 import { shadowAnalysisRegionDiagnosticsExperiment } from "./shadowAnalysisRegionDiagnostics";
 import { shadowGridAnalysisDiagnosticsExperiment } from "./shadowGridAnalysisDiagnostics";
+import { shadowGridReconstructionDiagnosticsExperiment } from "./shadowGridReconstructionDiagnostics";
 
 const DIGITIZATION_EXPERIMENTS = Object.freeze([
   verticalLineMaskDiagnosticsExperiment,
@@ -15,6 +16,7 @@ const DIGITIZATION_EXPERIMENTS = Object.freeze([
   verticalSpanRelativeCoverageDiagnosticsExperiment,
   shadowAnalysisRegionDiagnosticsExperiment,
   shadowGridAnalysisDiagnosticsExperiment,
+  shadowGridReconstructionDiagnosticsExperiment,
   gridConfidenceDiagnosticsExperiment
 ]);
 

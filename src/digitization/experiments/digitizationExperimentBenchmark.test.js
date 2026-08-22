@@ -167,6 +167,37 @@ test("preserves the exact diagnostic object returned by a successful experiment"
   });
 });
 
+test("exposes prior successful diagnostics without changing existing arguments", async () => {
+  const binaryImage = createBinaryImage();
+  const context = { source: "exact-context" };
+  const firstDiagnostics = { type: "first-diagnostic" };
+  const laterRun = jest.fn((_binaryImage, _context, execution) => ({
+    type: "dependent-diagnostic",
+    source: execution.getSuccessfulDiagnostics("first"),
+    missing: execution.getSuccessfulDiagnostics("missing")
+  }));
+  const runBenchmark = createDigitizationExperimentBenchmark({
+    listExperiments: () => [
+      createExperiment("first", () => firstDiagnostics),
+      createExperiment("later", laterRun)
+    ],
+    now: () => 1
+  });
+
+  const result = await runBenchmark(binaryImage, context);
+
+  expect(laterRun.mock.calls[0][0]).toBe(binaryImage);
+  expect(laterRun.mock.calls[0][1]).toBe(context);
+  expect(laterRun.mock.calls[0][2]).toEqual(expect.objectContaining({
+    getSuccessfulDiagnostics: expect.any(Function)
+  }));
+  expect(result.experiments[1].diagnostics).toEqual({
+    type: "dependent-diagnostic",
+    source: firstDiagnostics,
+    missing: null
+  });
+});
+
 test("measures each experiment independently", async () => {
   const timeValues = [10, 12.5, 20, 27.25];
   const now = jest.fn(() => timeValues.shift());

@@ -49,6 +49,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "vertical-span-relative-coverage-observation": extractVerticalSpanRelativeCoverageObservations,
   "shadow-analysis-region-observations": extractShadowAnalysisRegionObservations,
   "shadow-grid-analysis-diagnostics": extractShadowGridAnalysisObservations,
+  "shadow-grid-reconstruction-diagnostics": extractShadowGridReconstructionObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
 });
 
@@ -771,6 +772,77 @@ function addShadowGridObservation({
       reason: "value-unavailable"
     });
   }
+}
+
+function extractShadowGridReconstructionObservations(experimentId, diagnostics) {
+  const available = [];
+  const unavailable = [];
+  const providers = Array.isArray(diagnostics.providers)
+    ? diagnostics.providers
+    : [];
+
+  if (diagnostics.status !== "complete") {
+    unavailable.push({
+      experimentId,
+      category: "shadow-grid-reconstruction",
+      observationId: "source",
+      reason: normalizeObservationReason(diagnostics.reason)
+    });
+  }
+
+  for (const provider of providers) {
+    const providerNamespace = `provider.${provider?.id || "unknown"}`;
+
+    available.push({
+      experimentId,
+      category: "shadow-grid-reconstruction",
+      observationId: `${providerNamespace}.status`,
+      value: provider?.status
+    });
+
+    if (provider?.status !== "available") {
+      unavailable.push({
+        experimentId,
+        category: "shadow-grid-reconstruction",
+        observationId: `${providerNamespace}.reconstruction`,
+        reason: normalizeObservationReason(provider?.reason)
+      });
+      continue;
+    }
+
+    const reconstructions = Array.isArray(provider?.reconstructions)
+      ? provider.reconstructions
+      : [];
+
+    for (const region of reconstructions) {
+      const regionNamespace = `${providerNamespace}.region.${region?.regionId || "unknown"}`;
+
+      for (const [suffix, value, isAvailable] of [
+        ["execution-status", region?.status, typeof region?.status === "string"],
+        ["reconstruction-status", region?.reconstructionStatus, typeof region?.reconstructionStatus === "string"],
+        ["coordinate-provenance", region?.coordinateProvenance, isObjectValue(region?.coordinateProvenance)],
+        ["reconstruction", region?.reconstruction, isObjectValue(region?.reconstruction)]
+      ]) {
+        if (isAvailable) {
+          available.push({
+            experimentId,
+            category: "shadow-grid-reconstruction",
+            observationId: `${regionNamespace}.${suffix}`,
+            value: cloneValue(value)
+          });
+        } else {
+          unavailable.push({
+            experimentId,
+            category: "shadow-grid-reconstruction",
+            observationId: `${regionNamespace}.${suffix}`,
+            reason: normalizeObservationReason(region?.error)
+          });
+        }
+      }
+    }
+  }
+
+  return { available, unavailable, structuralEvidence: null };
 }
 
 function isObjectValue(value) {
