@@ -65,19 +65,27 @@ export function reconstructUniformOrthogonalLattice({
 }
 
 function reconstructAxis({ axis, candidates, bounds, parameters }) {
+  const diagnostic = createAxisDiagnostic(axis, candidates, bounds);
+
   if (!bounds) {
-    return unavailableAxis(axis, "axis-bounds-unavailable", 0);
+    return unavailableAxis(
+      axis,
+      "axis-bounds-unavailable",
+      0,
+      diagnostic
+    );
   }
 
   if (!Array.isArray(candidates)) {
-    return unavailableAxis(axis, "candidate-evidence-invalid", 0);
+    return unavailableAxis(axis, "candidate-evidence-invalid", 0, diagnostic);
   }
 
   if (candidates.length < parameters.minimumObservedCandidatesPerAxis) {
     return unavailableAxis(
       axis,
       "insufficient-observed-candidates",
-      candidates.length
+      candidates.length,
+      diagnostic
     );
   }
 
@@ -88,7 +96,7 @@ function reconstructAxis({ axis, candidates, bounds, parameters }) {
     intervalCount <= parameters.permittedIntervalCount.maximum;
     intervalCount += 1
   ) {
-    const hypothesis = createCompatibleAxisHypothesis({
+    const interpretation = evaluateAxisInterpretation({
       axis,
       candidates,
       bounds,
@@ -96,19 +104,33 @@ function reconstructAxis({ axis, candidates, bounds, parameters }) {
       parameters
     });
 
-    if (hypothesis) {
-      compatible.push(hypothesis);
+    diagnostic.interpretations.push(interpretation.diagnostic);
+
+    if (interpretation.hypothesis) {
+      compatible.push(interpretation.hypothesis);
     }
   }
 
+  diagnostic.totalAttemptedInterpretations = diagnostic.interpretations.length;
+  diagnostic.totalRejectedInterpretations = diagnostic.interpretations.filter(
+    interpretation => interpretation.status === "rejected"
+  ).length;
+  diagnostic.totalSurvivingHypotheses = compatible.length;
+
   if (compatible.length === 0) {
-    return unavailableAxis(axis, "no-compatible-lattice", candidates.length);
+    return unavailableAxis(
+      axis,
+      "no-compatible-lattice",
+      candidates.length,
+      diagnostic
+    );
   }
 
   if (compatible.length > parameters.maximumHypothesisCount) {
     return {
       compatibleCount: compatible.length,
       overflow: true,
+      diagnostic,
       reason: {
         code: "axis-hypothesis-limit-exceeded",
         axis,
@@ -125,6 +147,7 @@ function reconstructAxis({ axis, candidates, bounds, parameters }) {
   return {
     compatibleCount: compatible.length,
     overflow: false,
+    diagnostic,
     reason: compatible.length > 1
       ? {
         code: "multiple-compatible-axis-hypotheses",
@@ -139,7 +162,7 @@ function reconstructAxis({ axis, candidates, bounds, parameters }) {
   };
 }
 
-function createCompatibleAxisHypothesis({
+function evaluateAxisInterpretation({
   axis,
   candidates,
   bounds,
@@ -147,37 +170,61 @@ function createCompatibleAxisHypothesis({
   parameters
 }) {
   const spacing = (bounds.end - bounds.start) / intervalCount;
+  const diagnostic = createInterpretationDiagnostic({
+    intervalCount,
+    spacing,
+    bounds,
+    parameters
+  });
 
   if (
     spacing < parameters.permittedCellSpacing.minimum
     || spacing > parameters.permittedCellSpacing.maximum
   ) {
-    return null;
+    diagnostic.rejectionReasons.push({
+      code: "spacing-out-of-range",
+      spacing,
+      minimum: parameters.permittedCellSpacing.minimum,
+      maximum: parameters.permittedCellSpacing.maximum
+    });
+    return rejectInterpretation(diagnostic);
   }
 
-  const linePositions = createLinePositions(
+  const linePositionResult = createLinePositions(
     bounds.start,
     bounds.end,
     intervalCount,
-    parameters.positionQuantum
+    parameters.positionQuantum,
+    parameters.boundsAlignmentTolerancePx
   );
+  diagnostic.quantumCompatibility = linePositionResult.quantumCompatibility;
+  diagnostic.boundCompatibility = linePositionResult.boundCompatibility;
 
-  if (!linePositions) {
-    return null;
+  if (!linePositionResult.positions) {
+    diagnostic.rejectionReasons.push(...linePositionResult.rejectionReasons);
+    return rejectInterpretation(diagnostic);
   }
 
-  const assignments = assignCandidates(
+  const linePositions = linePositionResult.positions;
+
+  const assignmentResult = assignCandidates(
     candidates,
     linePositions,
     parameters.candidateAlignmentTolerancePx
   );
+  diagnostic.candidateAssignmentAttempts = assignmentResult.attempts;
 
-  if (!assignments || !candidateGapsArePermitted(
+  if (!assignmentResult.assignments) {
+    diagnostic.rejectionReasons.push(...assignmentResult.rejectionReasons);
+    return rejectInterpretation(diagnostic);
+  }
+
+  const assignments = assignmentResult.assignments;
+  const skippedIntervalResult = inspectSkippedIntervals(
     assignments,
     parameters.maximumSkippedIntervalsBetweenCandidates
-  )) {
-    return null;
-  }
+  );
+  diagnostic.skippedIntervalCounts = skippedIntervalResult.counts;
 
   const assignedByLineIndex = new Map(
     assignments.map(assignment => [assignment.lineIndex, assignment])
@@ -208,50 +255,101 @@ function createCompatibleAxisHypothesis({
   )).length;
   const maximumInferredRun = findMaximumInferredRun(lines);
   const inferredLineFraction = inferredLineCount / lines.length;
+  diagnostic.inferredLineCount = inferredLineCount;
+  diagnostic.longestInferredRun = maximumInferredRun;
+  diagnostic.inferredLineFraction = inferredLineFraction;
 
-  if (
-    maximumInferredRun > parameters.maximumConsecutiveInferredLines
-    || inferredLineFraction > parameters.maximumInferredLineFraction
-  ) {
-    return null;
+  if (!skippedIntervalResult.permitted) {
+    diagnostic.rejectionReasons.push(...skippedIntervalResult.rejectionReasons);
+    return rejectInterpretation(diagnostic);
+  }
+
+  if (maximumInferredRun > parameters.maximumConsecutiveInferredLines) {
+    diagnostic.rejectionReasons.push({
+      code: "consecutive-inference-limit-exceeded",
+      longestInferredRun: maximumInferredRun,
+      maximumConsecutiveInferredLines:
+        parameters.maximumConsecutiveInferredLines
+    });
+  }
+
+  if (inferredLineFraction > parameters.maximumInferredLineFraction) {
+    diagnostic.rejectionReasons.push({
+      code: "inferred-fraction-limit-exceeded",
+      inferredLineFraction,
+      maximumInferredLineFraction: parameters.maximumInferredLineFraction
+    });
+  }
+
+  if (diagnostic.rejectionReasons.length > 0) {
+    return rejectInterpretation(diagnostic);
   }
 
   const id = `${axis}-uniform-intervals-${intervalCount}`;
 
+  diagnostic.status = "survived";
+
   return {
-    id,
-    intervalCount,
-    origin: linePositions[0],
-    spacing,
-    lines,
-    candidateAssignments: assignments.map(assignment => ({
-      candidateIndex: assignment.candidateIndex,
-      lineIndex: assignment.lineIndex,
-      observedPosition: assignment.observedPosition,
-      linePosition: assignment.linePosition,
-      delta: assignment.delta
-    })),
-    diagnostics: [
-      {
-        type: "uniform-axis-lattice",
-        axis,
-        intervalCount,
-        observedLineCount: assignments.length,
-        inferredLineCount,
-        inferredLineFraction,
-        maximumInferredRun,
-        bounds: {
-          start: bounds.start,
-          end: bounds.end
+    diagnostic,
+    hypothesis: {
+      id,
+      intervalCount,
+      origin: linePositions[0],
+      spacing,
+      lines,
+      candidateAssignments: assignments.map(assignment => ({
+        candidateIndex: assignment.candidateIndex,
+        lineIndex: assignment.lineIndex,
+        observedPosition: assignment.observedPosition,
+        linePosition: assignment.linePosition,
+        delta: assignment.delta
+      })),
+      diagnostics: [
+        {
+          type: "uniform-axis-lattice",
+          axis,
+          intervalCount,
+          observedLineCount: assignments.length,
+          inferredLineCount,
+          inferredLineFraction,
+          maximumInferredRun,
+          bounds: {
+            start: bounds.start,
+            end: bounds.end
+          }
         }
-      }
-    ]
+      ]
+    }
   };
 }
 
-function createLinePositions(start, end, intervalCount, positionQuantum) {
+function createLinePositions(
+  start,
+  end,
+  intervalCount,
+  positionQuantum,
+  boundsAlignmentTolerancePx
+) {
   const spacing = (end - start) / intervalCount;
   const positions = [];
+  const quantumCompatibility = {
+    status: "compatible",
+    positionQuantum,
+    incompatibleLineIndex: null,
+    unquantizedPosition: null,
+    quantizedPosition: null,
+    residual: null
+  };
+  const boundCompatibility = {
+    status: "compatible",
+    start,
+    end,
+    reconstructedStart: start,
+    reconstructedEnd: end,
+    startResidual: 0,
+    endResidual: 0,
+    tolerancePx: boundsAlignmentTolerancePx
+  };
 
   for (let index = 0; index <= intervalCount; index += 1) {
     const unquantized = index === intervalCount
@@ -270,7 +368,41 @@ function createLinePositions(start, end, intervalCount, positionQuantum) {
       positionQuantum !== null
       && Math.abs(quantizedPosition - unquantized) > roundingMargin
     ) {
-      return null;
+      quantumCompatibility.status = "incompatible";
+      quantumCompatibility.incompatibleLineIndex = index;
+      quantumCompatibility.unquantizedPosition = unquantized;
+      quantumCompatibility.quantizedPosition = quantizedPosition;
+      quantumCompatibility.residual = quantizedPosition - unquantized;
+      const rejectionReasons = [{
+        code: "quantum-incompatible",
+        lineIndex: index,
+        unquantizedPosition: unquantized,
+        quantizedPosition,
+        residual: quantizedPosition - unquantized,
+        positionQuantum
+      }];
+
+      if (
+        (index === 0 || index === intervalCount)
+        && Math.abs(quantizedPosition - unquantized) > boundsAlignmentTolerancePx
+      ) {
+        boundCompatibility.status = "failed";
+        rejectionReasons.push({
+          code: "bound-alignment-failed",
+          boundary: index === 0 ? "start" : "end",
+          expectedPosition: unquantized,
+          reconstructedPosition: quantizedPosition,
+          residual: quantizedPosition - unquantized,
+          tolerancePx: boundsAlignmentTolerancePx
+        });
+      }
+
+      return {
+        positions: null,
+        quantumCompatibility,
+        boundCompatibility,
+        rejectionReasons
+      };
     }
 
     const position = index === 0
@@ -280,21 +412,39 @@ function createLinePositions(start, end, intervalCount, positionQuantum) {
         : quantizedPosition;
 
     if (position < start || position > end) {
-      return null;
+      return incompatibleIntervalCount({
+        index,
+        position,
+        reason: "line-outside-declared-bounds",
+        quantumCompatibility,
+        boundCompatibility
+      });
     }
 
     if (positions.length > 0 && position <= positions[positions.length - 1]) {
-      return null;
+      return incompatibleIntervalCount({
+        index,
+        position,
+        reason: "line-positions-not-strictly-increasing",
+        quantumCompatibility,
+        boundCompatibility
+      });
     }
 
     positions.push(position);
   }
 
-  return positions;
+  return {
+    positions,
+    quantumCompatibility,
+    boundCompatibility,
+    rejectionReasons: []
+  };
 }
 
 function assignCandidates(candidates, linePositions, tolerance) {
   const assignments = [];
+  const attempts = [];
   const occupiedLines = new Set();
 
   for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
@@ -311,39 +461,101 @@ function assignCandidates(candidates, linePositions, tolerance) {
       }
     }
 
-    if (nearestDistance > tolerance || occupiedLines.has(nearestLineIndex)) {
-      return null;
+    const linePosition = linePositions[nearestLineIndex];
+    const delta = candidate.position - linePosition;
+    const occupied = occupiedLines.has(nearestLineIndex);
+    const aligned = nearestDistance <= tolerance;
+    const attempt = {
+      candidateIndex,
+      candidatePosition: candidate.position,
+      lineIndex: nearestLineIndex,
+      linePosition,
+      residual: delta,
+      absoluteResidual: nearestDistance,
+      tolerancePx: tolerance,
+      status: aligned && !occupied ? "assigned" : "rejected"
+    };
+
+    attempts.push(attempt);
+
+    if (!aligned) {
+      return {
+        assignments: null,
+        attempts,
+        rejectionReasons: [{
+          code: "candidate-alignment-failed",
+          candidateIndex,
+          candidatePosition: candidate.position,
+          lineIndex: nearestLineIndex,
+          linePosition,
+          residual: delta,
+          absoluteResidual: nearestDistance,
+          tolerancePx: tolerance
+        }]
+      };
+    }
+
+    if (occupied) {
+      return {
+        assignments: null,
+        attempts,
+        rejectionReasons: [{
+          code: "interval-count-incompatible",
+          candidateIndex,
+          candidatePosition: candidate.position,
+          lineIndex: nearestLineIndex,
+          reason: "multiple-candidates-assigned-to-one-line"
+        }]
+      };
     }
 
     occupiedLines.add(nearestLineIndex);
-    const linePosition = linePositions[nearestLineIndex];
 
     assignments.push({
       candidateIndex,
       lineIndex: nearestLineIndex,
       observedPosition: candidate.position,
       linePosition,
-      delta: candidate.position - linePosition
+      delta
     });
   }
 
-  return assignments;
+  return { assignments, attempts, rejectionReasons: [] };
 }
 
-function candidateGapsArePermitted(assignments, maximumSkippedIntervals) {
+function inspectSkippedIntervals(assignments, maximumSkippedIntervals) {
   const ordered = [...assignments].sort((left, right) => (
     left.lineIndex - right.lineIndex || left.candidateIndex - right.candidateIndex
   ));
+  const counts = [];
+  const rejectionReasons = [];
 
   for (let index = 1; index < ordered.length; index += 1) {
     const skipped = ordered[index].lineIndex - ordered[index - 1].lineIndex - 1;
+    const count = {
+      fromCandidateIndex: ordered[index - 1].candidateIndex,
+      toCandidateIndex: ordered[index].candidateIndex,
+      fromLineIndex: ordered[index - 1].lineIndex,
+      toLineIndex: ordered[index].lineIndex,
+      skippedIntervalCount: skipped
+    };
+
+    counts.push(count);
 
     if (skipped > maximumSkippedIntervals) {
-      return false;
+      rejectionReasons.push({
+        code: "skipped-interval-limit-exceeded",
+        ...count,
+        maximumSkippedIntervalsBetweenCandidates: maximumSkippedIntervals
+      });
     }
   }
 
-  return true;
+  return {
+    permitted: rejectionReasons.length === 0,
+    counts,
+    rejectionReasons
+  };
 }
 
 function findMaximumInferredRun(lines) {
@@ -475,10 +687,115 @@ function resolveAxisBounds(observedBounds, axis) {
   return { start, end: start + extent };
 }
 
-function unavailableAxis(axis, code, observedCandidateCount) {
+function createAxisDiagnostic(axis, candidates, bounds) {
+  const orderedCandidates = Array.isArray(candidates)
+    ? candidates
+      .map((candidate, candidateIndex) => ({
+        candidateIndex,
+        position: candidate?.position
+      }))
+      .filter(candidate => Number.isFinite(candidate.position))
+      .sort((left, right) => (
+        left.position - right.position
+        || left.candidateIndex - right.candidateIndex
+      ))
+    : [];
+  const candidateGaps = [];
+
+  for (let index = 1; index < orderedCandidates.length; index += 1) {
+    candidateGaps.push({
+      fromCandidateIndex: orderedCandidates[index - 1].candidateIndex,
+      toCandidateIndex: orderedCandidates[index].candidateIndex,
+      fromPosition: orderedCandidates[index - 1].position,
+      toPosition: orderedCandidates[index].position,
+      gap: orderedCandidates[index].position
+        - orderedCandidates[index - 1].position
+    });
+  }
+
+  return {
+    axis,
+    candidatePositions: Array.isArray(candidates)
+      ? candidates.map(candidate => candidate?.position)
+      : [],
+    candidateGaps,
+    observedBounds: bounds
+      ? { start: bounds.start, end: bounds.end }
+      : null,
+    totalAttemptedInterpretations: 0,
+    totalRejectedInterpretations: 0,
+    totalSurvivingHypotheses: 0,
+    interpretations: []
+  };
+}
+
+function createInterpretationDiagnostic({
+  intervalCount,
+  spacing,
+  bounds,
+  parameters
+}) {
+  return {
+    intervalCount,
+    derivedSpacing: spacing,
+    status: "rejected",
+    boundCompatibility: {
+      status: "not-assessed",
+      start: bounds.start,
+      end: bounds.end,
+      reconstructedStart: null,
+      reconstructedEnd: null,
+      startResidual: null,
+      endResidual: null,
+      tolerancePx: parameters.boundsAlignmentTolerancePx
+    },
+    quantumCompatibility: {
+      status: "not-assessed",
+      positionQuantum: parameters.positionQuantum,
+      incompatibleLineIndex: null,
+      unquantizedPosition: null,
+      quantizedPosition: null,
+      residual: null
+    },
+    candidateAssignmentAttempts: [],
+    skippedIntervalCounts: [],
+    inferredLineCount: null,
+    longestInferredRun: null,
+    inferredLineFraction: null,
+    rejectionReasons: []
+  };
+}
+
+function rejectInterpretation(diagnostic) {
+  diagnostic.status = "rejected";
+  return { diagnostic, hypothesis: null };
+}
+
+function incompatibleIntervalCount({
+  index,
+  position,
+  reason,
+  quantumCompatibility,
+  boundCompatibility
+}) {
+  return {
+    positions: null,
+    quantumCompatibility,
+    boundCompatibility,
+    rejectionReasons: [{
+      code: "interval-count-incompatible",
+      lineIndex: index,
+      position,
+      reason
+    }]
+  };
+}
+
+function unavailableAxis(axis, code, observedCandidateCount, diagnostic) {
   return {
     compatibleCount: 0,
     overflow: false,
+    diagnostic,
     reason: { code, axis, observedCandidateCount },
     result: { status: "unavailable", hypotheses: [] }
   };
@@ -492,12 +809,32 @@ function createStrategyDiagnostic(horizontal, vertical, assembled) {
       horizontal: {
         status: horizontal.result.status,
         compatibleHypothesisCount: horizontal.compatibleCount,
-        hypothesisLimitExceeded: horizontal.overflow
+        hypothesisLimitExceeded: horizontal.overflow,
+        candidatePositions: horizontal.diagnostic.candidatePositions,
+        candidateGaps: horizontal.diagnostic.candidateGaps,
+        observedBounds: horizontal.diagnostic.observedBounds,
+        totalAttemptedInterpretations:
+          horizontal.diagnostic.totalAttemptedInterpretations,
+        totalRejectedInterpretations:
+          horizontal.diagnostic.totalRejectedInterpretations,
+        totalSurvivingHypotheses:
+          horizontal.diagnostic.totalSurvivingHypotheses,
+        interpretations: horizontal.diagnostic.interpretations
       },
       vertical: {
         status: vertical.result.status,
         compatibleHypothesisCount: vertical.compatibleCount,
-        hypothesisLimitExceeded: vertical.overflow
+        hypothesisLimitExceeded: vertical.overflow,
+        candidatePositions: vertical.diagnostic.candidatePositions,
+        candidateGaps: vertical.diagnostic.candidateGaps,
+        observedBounds: vertical.diagnostic.observedBounds,
+        totalAttemptedInterpretations:
+          vertical.diagnostic.totalAttemptedInterpretations,
+        totalRejectedInterpretations:
+          vertical.diagnostic.totalRejectedInterpretations,
+        totalSurvivingHypotheses:
+          vertical.diagnostic.totalSurvivingHypotheses,
+        interpretations: vertical.diagnostic.interpretations
       }
     }
   };

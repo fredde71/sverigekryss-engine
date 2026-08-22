@@ -325,6 +325,220 @@ test("is deterministic across repeated execution", () => {
     .toBe(JSON.stringify(reconstructUniformOrthogonalLattice(input)));
 });
 
+test("adds rejection diagnostics without changing reconstruction behavior", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [0, 10, 20],
+    verticalPositions: [0, 13, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 2, maximum: 2 },
+    parameterOverrides: { candidateAlignmentTolerancePx: 1 }
+  }));
+
+  expect(projectReconstructionBehavior(result)).toEqual({
+    status: "partial",
+    axisStatuses: {
+      horizontal: "available",
+      vertical: "unavailable"
+    },
+    axisHypotheses: {
+      horizontal: [{
+        id: "horizontal-uniform-intervals-2",
+        intervalCount: 2,
+        linePositions: [0, 10, 20],
+        candidateLineIndexes: [0, 1, 2]
+      }],
+      vertical: []
+    },
+    gridHypotheses: [],
+    reasons: [{
+      code: "no-compatible-lattice",
+      axis: "vertical",
+      observedCandidateCount: 3
+    }]
+  });
+});
+
+test("records candidate gaps, interpretations, assignments and exact residuals", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [20, 0, 9.5],
+    verticalPositions: [0, 10, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 2, maximum: 2 },
+    parameterOverrides: { candidateAlignmentTolerancePx: 0.5 }
+  }));
+  const diagnostic = getAxisDiagnostic(result, "horizontal");
+
+  expect(diagnostic.candidatePositions).toEqual([20, 0, 9.5]);
+  expect(diagnostic.candidateGaps).toEqual([
+    {
+      fromCandidateIndex: 1,
+      toCandidateIndex: 2,
+      fromPosition: 0,
+      toPosition: 9.5,
+      gap: 9.5
+    },
+    {
+      fromCandidateIndex: 2,
+      toCandidateIndex: 0,
+      fromPosition: 9.5,
+      toPosition: 20,
+      gap: 10.5
+    }
+  ]);
+  expect(diagnostic).toMatchObject({
+    totalAttemptedInterpretations: 1,
+    totalRejectedInterpretations: 0,
+    totalSurvivingHypotheses: 1
+  });
+  expect(diagnostic.interpretations[0]).toMatchObject({
+    intervalCount: 2,
+    derivedSpacing: 10,
+    status: "survived",
+    boundCompatibility: {
+      status: "compatible",
+      startResidual: 0,
+      endResidual: 0
+    },
+    quantumCompatibility: { status: "compatible" },
+    inferredLineCount: 0,
+    longestInferredRun: 0,
+    inferredLineFraction: 0,
+    rejectionReasons: []
+  });
+  expect(diagnostic.interpretations[0].candidateAssignmentAttempts.map(
+    attempt => attempt.residual
+  )).toEqual([0, 0, -0.5]);
+  expect(diagnostic.interpretations[0].skippedIntervalCounts).toEqual([
+    {
+      fromCandidateIndex: 1,
+      toCandidateIndex: 2,
+      fromLineIndex: 0,
+      toLineIndex: 1,
+      skippedIntervalCount: 0
+    },
+    {
+      fromCandidateIndex: 2,
+      toCandidateIndex: 0,
+      fromLineIndex: 1,
+      toLineIndex: 2,
+      skippedIntervalCount: 0
+    }
+  ]);
+});
+
+test.each([
+  {
+    code: "spacing-out-of-range",
+    positions: [0, 10, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    overrides: { permittedCellSpacing: { minimum: 11, maximum: 100 } }
+  },
+  {
+    code: "quantum-incompatible",
+    positions: [0, 10, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 3, maximum: 3 }
+  },
+  {
+    code: "bound-alignment-failed",
+    positions: [0.25, 10.25, 20.25],
+    bounds: { top: 0.25, left: 0.25, width: 20, height: 20 }
+  },
+  {
+    code: "candidate-alignment-failed",
+    positions: [0, 13, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    overrides: { candidateAlignmentTolerancePx: 1 }
+  },
+  {
+    code: "interval-count-incompatible",
+    positions: [0, 0.5, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    overrides: { candidateAlignmentTolerancePx: 1 }
+  },
+  {
+    code: "skipped-interval-limit-exceeded",
+    positions: [0, 40],
+    bounds: { top: 0, left: 0, width: 40, height: 40 },
+    intervals: { minimum: 4, maximum: 4 },
+    overrides: {
+      maximumSkippedIntervalsBetweenCandidates: 2,
+      maximumConsecutiveInferredLines: 3,
+      maximumInferredLineFraction: 1
+    }
+  },
+  {
+    code: "consecutive-inference-limit-exceeded",
+    positions: [0, 40],
+    bounds: { top: 0, left: 0, width: 40, height: 40 },
+    intervals: { minimum: 4, maximum: 4 },
+    overrides: {
+      maximumSkippedIntervalsBetweenCandidates: 3,
+      maximumConsecutiveInferredLines: 2,
+      maximumInferredLineFraction: 1
+    }
+  },
+  {
+    code: "inferred-fraction-limit-exceeded",
+    positions: [0, 40],
+    bounds: { top: 0, left: 0, width: 40, height: 40 },
+    intervals: { minimum: 4, maximum: 4 },
+    overrides: {
+      maximumSkippedIntervalsBetweenCandidates: 3,
+      maximumConsecutiveInferredLines: 3,
+      maximumInferredLineFraction: 0.5
+    }
+  }
+])("exposes the $code rejection path", ({
+  code,
+  positions,
+  bounds,
+  intervals = { minimum: 2, maximum: 2 },
+  overrides = {}
+}) => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: positions,
+    verticalPositions: positions,
+    bounds,
+    intervals,
+    parameterOverrides: overrides
+  }));
+  const diagnostic = getAxisDiagnostic(result, "horizontal");
+
+  expect(diagnostic.totalAttemptedInterpretations).toBe(1);
+  expect(diagnostic.totalRejectedInterpretations).toBe(1);
+  expect(diagnostic.totalSurvivingHypotheses).toBe(0);
+  expect(diagnostic.interpretations[0].rejectionReasons.map(
+    reason => reason.code
+  )).toContain(code);
+});
+
+test("preserves enumeration order and accounts for every interpretation", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [0, 20],
+    verticalPositions: [0, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 1, maximum: 4 },
+    parameterOverrides: {
+      maximumSkippedIntervalsBetweenCandidates: 3,
+      maximumConsecutiveInferredLines: 3,
+      maximumInferredLineFraction: 0.6,
+      maximumHypothesisCount: 20
+    }
+  }));
+  const diagnostic = getAxisDiagnostic(result, "horizontal");
+
+  expect(diagnostic.interpretations.map(value => value.intervalCount))
+    .toEqual([1, 2, 3, 4]);
+  expect(diagnostic.interpretations.map(value => value.status))
+    .toEqual(["survived", "survived", "rejected", "survived"]);
+  expect(diagnostic).toMatchObject({
+    totalAttemptedInterpretations: 4,
+    totalRejectedInterpretations: 1,
+    totalSurvivingHypotheses: 3
+  });
+});
+
 test("validates strategy id through the explicit parameters contract", () => {
   const input = createInput();
   input.parameters.strategyId = "another-strategy";
@@ -469,4 +683,37 @@ function collectKeys(value) {
 
 function normalizeKey(key) {
   return key.replace(/[-_]/g, "").toLowerCase();
+}
+
+function getAxisDiagnostic(result, axis) {
+  return result.diagnostics.find(diagnostic => (
+    diagnostic.type === "uniform-orthogonal-lattice-strategy"
+  )).axes[axis];
+}
+
+function projectReconstructionBehavior(result) {
+  return {
+    status: result.status,
+    axisStatuses: {
+      horizontal: result.axes.horizontal.status,
+      vertical: result.axes.vertical.status
+    },
+    axisHypotheses: {
+      horizontal: result.axes.horizontal.hypotheses.map(projectAxisHypothesis),
+      vertical: result.axes.vertical.hypotheses.map(projectAxisHypothesis)
+    },
+    gridHypotheses: result.gridHypotheses,
+    reasons: result.reasons
+  };
+}
+
+function projectAxisHypothesis(hypothesis) {
+  return {
+    id: hypothesis.id,
+    intervalCount: hypothesis.intervalCount,
+    linePositions: hypothesis.lines.map(line => line.position),
+    candidateLineIndexes: hypothesis.candidateAssignments.map(
+      assignment => assignment.lineIndex
+    )
+  };
 }
