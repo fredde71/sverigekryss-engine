@@ -3,6 +3,7 @@ import {
   createGridReconstructionValidationReport
 } from "./gridReconstructionValidationReport";
 import {
+  createGridReconstructionValidationReportDownloader,
   createGridReconstructionValidationReportExport
 } from "./gridReconstructionValidationReportExport";
 
@@ -39,6 +40,48 @@ test("rejects incomplete and unrelated reports", () => {
   })).toThrow(
     "Completed version 1 grid reconstruction validation report is required"
   );
+});
+
+test("downloads through the existing deterministic export in development", () => {
+  const report = createReport();
+  const artifact = createGridReconstructionValidationReportExport(report);
+  const anchor = { click: jest.fn() };
+  const documentRef = { createElement: jest.fn(() => anchor) };
+  const urlApi = {
+    createObjectURL: jest.fn(() => "blob:reconstruction-validation"),
+    revokeObjectURL: jest.fn()
+  };
+  const BlobCtor = jest.fn(function Blob(parts, options) {
+    this.parts = parts;
+    this.options = options;
+  });
+  const download = createGridReconstructionValidationReportDownloader({
+    createExport: jest.fn(() => artifact),
+    readEnvironment: () => "development",
+    documentRef,
+    urlApi,
+    BlobCtor
+  });
+
+  expect(download(report)).toBe(artifact);
+  expect(anchor.download).toBe(artifact.fileName);
+  expect(anchor.href).toBe("blob:reconstruction-validation");
+  expect(anchor.click).toHaveBeenCalledTimes(1);
+  expect(urlApi.revokeObjectURL)
+    .toHaveBeenCalledWith("blob:reconstruction-validation");
+});
+
+test("rejects browser downloads outside development and test", () => {
+  const createExport = jest.fn();
+  const download = createGridReconstructionValidationReportDownloader({
+    createExport,
+    readEnvironment: () => "production"
+  });
+
+  expect(() => download(createReport())).toThrow(
+    "Grid reconstruction validation downloads are development-only"
+  );
+  expect(createExport).not.toHaveBeenCalled();
 });
 
 function createReport() {

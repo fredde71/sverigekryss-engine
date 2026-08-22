@@ -10,6 +10,12 @@ import DevelopmentDatasetAnalysisView from "./DevelopmentDatasetAnalysisView";
 import GridGroundTruthAnnotationHarness from "./GridGroundTruthAnnotationHarness";
 import { createShadowGridValidationReport } from "./shadowGridValidationReport";
 import { downloadShadowGridValidationReport } from "./shadowGridValidationReportExport";
+import {
+  createGridReconstructionValidationReport
+} from "./gridReconstructionValidationReport";
+import {
+  downloadGridReconstructionValidationReport
+} from "./gridReconstructionValidationReportExport";
 
 const LOCAL_DATASET_ID = "localhost-pdf-dataset";
 
@@ -21,6 +27,8 @@ export default function DigitizationDatasetHarness({
   createAnalysisSummary = createDatasetAnalysisSummary,
   createValidationReport = createShadowGridValidationReport,
   downloadValidationReport = downloadShadowGridValidationReport,
+  createReconstructionValidationReport = createGridReconstructionValidationReport,
+  downloadReconstructionValidationReport = downloadGridReconstructionValidationReport,
   readEnvironment = () => process.env.NODE_ENV,
   readHostname = () => (
     typeof window === "undefined" ? "" : window.location.hostname
@@ -38,6 +46,10 @@ export default function DigitizationDatasetHarness({
   const [groundTruth, setGroundTruth] = useState(null);
   const [validationReport, setValidationReport] = useState(null);
   const [validationErrorMessage, setValidationErrorMessage] = useState("");
+  const [reconstructionValidationReport, setReconstructionValidationReport] =
+    useState(null);
+  const [reconstructionValidationErrorMessage, setReconstructionValidationErrorMessage] =
+    useState("");
   const datasetItems = createDatasetItems(selectedFiles);
 
   if (
@@ -61,6 +73,8 @@ export default function DigitizationDatasetHarness({
     setGroundTruth(null);
     setValidationReport(null);
     setValidationErrorMessage("");
+    setReconstructionValidationReport(null);
+    setReconstructionValidationErrorMessage("");
   };
 
   const handleRun = async () => {
@@ -73,6 +87,8 @@ export default function DigitizationDatasetHarness({
     setGroundTruth(null);
     setValidationReport(null);
     setValidationErrorMessage("");
+    setReconstructionValidationReport(null);
+    setReconstructionValidationErrorMessage("");
 
     try {
       const result = await runDataset({
@@ -117,6 +133,8 @@ export default function DigitizationDatasetHarness({
     setGroundTruth(groundTruth);
     setValidationReport(null);
     setValidationErrorMessage("");
+    setReconstructionValidationReport(null);
+    setReconstructionValidationErrorMessage("");
   };
 
   const handleCreateValidationReport = () => {
@@ -131,6 +149,24 @@ export default function DigitizationDatasetHarness({
       }));
     } catch (error) {
       setValidationErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
+  const handleCreateReconstructionValidationReport = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setReconstructionValidationReport(createReconstructionValidationReport({
+        datasetReport,
+        groundTruth
+      }));
+      setReconstructionValidationErrorMessage("");
+    } catch (error) {
+      setReconstructionValidationErrorMessage(
         error instanceof Error ? error.message : String(error)
       );
     }
@@ -155,6 +191,16 @@ export default function DigitizationDatasetHarness({
   const validationDownloadStatus = validationReport
     ? "Ready"
     : "Waiting for a completed validation report";
+  const reconstructionValidationStatus = reconstructionValidationReport
+    ? "Completed"
+    : reconstructionValidationErrorMessage
+      ? "Failed"
+      : groundTruth && datasetReport
+        ? "Ready to create"
+        : "Waiting for confirmed ground truth";
+  const reconstructionValidationDownloadStatus = reconstructionValidationReport
+    ? "Ready"
+    : "Waiting for a completed reconstruction validation report";
 
   return (
     <section
@@ -180,6 +226,14 @@ export default function DigitizationDatasetHarness({
         <WorkflowStep
           title="Download validation report"
           status={validationDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create grid reconstruction validation report"
+          status={reconstructionValidationStatus}
+        />
+        <WorkflowStep
+          title="Download grid reconstruction validation report"
+          status={reconstructionValidationDownloadStatus}
         />
       </ol>
       <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -225,6 +279,12 @@ export default function DigitizationDatasetHarness({
           Grid validation unavailable: {validationErrorMessage}
         </span>
       )}
+      {reconstructionValidationErrorMessage && (
+        <span role="alert">
+          Grid reconstruction validation unavailable:{" "}
+          {reconstructionValidationErrorMessage}
+        </span>
+      )}
       {analysisReports && (
         <DevelopmentDatasetAnalysisView
           analysisSummary={analysisReports.analysisSummary}
@@ -261,6 +321,30 @@ export default function DigitizationDatasetHarness({
             onClick={() => downloadValidationReport(validationReport)}
           >
             Download shadow grid validation report JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateReconstructionValidationReport}
+        >
+          Create grid reconstruction validation report
+        </button>
+      )}
+      {reconstructionValidationReport && (
+        <>
+          <span role="status" aria-label="Reconstruction validation status">
+            Grid reconstruction validation report completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadReconstructionValidationReport(
+              reconstructionValidationReport
+            )}
+          >
+            Download grid reconstruction validation report JSON
           </button>
         </>
       )}

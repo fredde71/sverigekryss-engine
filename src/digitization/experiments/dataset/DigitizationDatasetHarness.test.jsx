@@ -35,7 +35,9 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     "Annotate ground truth",
     "Confirm ground truth",
     "Create shadow grid validation report",
-    "Download validation report"
+    "Download validation report",
+    "Create grid reconstruction validation report",
+    "Download grid reconstruction validation report"
   ]);
   expect(screen.getByLabelText("Run dataset status")).toHaveTextContent("Not started");
   expect(screen.getByLabelText("Annotate ground truth status"))
@@ -46,6 +48,10 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     .toHaveTextContent("Waiting for confirmed ground truth");
   expect(screen.getByLabelText("Download validation report status"))
     .toHaveTextContent("Waiting for a completed validation report");
+  expect(screen.getByLabelText("Create grid reconstruction validation report status"))
+    .toHaveTextContent("Waiting for confirmed ground truth");
+  expect(screen.getByLabelText("Download grid reconstruction validation report status"))
+    .toHaveTextContent("Waiting for a completed reconstruction validation report");
 });
 
 test("preserves selected file order with stable IDs and filename metadata", async () => {
@@ -367,6 +373,116 @@ test("creates and downloads a separate validation report only after explicit act
   }));
   expect(downloadValidationReport).toHaveBeenCalledTimes(1);
   expect(downloadValidationReport).toHaveBeenCalledWith(validationReport);
+});
+
+test("creates and downloads reconstruction validation only after explicit action", async () => {
+  const runnerResult = createCompletedResult();
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const reconstructionValidationReport = {
+    type: "grid-reconstruction-validation-report",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const createReconstructionValidationReport = jest.fn(
+    () => reconstructionValidationReport
+  );
+  const downloadReconstructionValidationReport = jest.fn();
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => runnerResult)}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createReconstructionValidationReport={createReconstructionValidationReport}
+      downloadReconstructionValidationReport={downloadReconstructionValidationReport}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create grid reconstruction validation report"
+  })).toBeEnabled());
+
+  expect(createReconstructionValidationReport).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", {
+    name: "Download grid reconstruction validation report JSON"
+  })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create grid reconstruction validation report"
+  }));
+
+  expect(createReconstructionValidationReport).toHaveBeenCalledTimes(1);
+  const invocation = createReconstructionValidationReport.mock.calls[0][0];
+  expect(invocation.datasetReport).toBe(datasetReport);
+  expect(invocation.groundTruth).toEqual(expect.objectContaining({
+    type: "digitization-grid-ground-truth",
+    datasetId: "localhost-pdf-dataset"
+  }));
+  expect(datasetReport).not.toHaveProperty("validation");
+  expect(screen.getByLabelText(
+    "Create grid reconstruction validation report status"
+  )).toHaveTextContent("Completed");
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download grid reconstruction validation report JSON"
+  }));
+  expect(downloadReconstructionValidationReport).toHaveBeenCalledTimes(1);
+  expect(downloadReconstructionValidationReport)
+    .toHaveBeenCalledWith(reconstructionValidationReport);
+});
+
+test("replacing ground truth invalidates reconstruction validation", async () => {
+  const reconstructionValidationReport = {
+    type: "grid-reconstruction-validation-report",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const createReconstructionValidationReport = jest.fn(
+    () => reconstructionValidationReport
+  );
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => createCompletedResult())}
+      createReconstructionValidationReport={createReconstructionValidationReport}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create grid reconstruction validation report"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create grid reconstruction validation report"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download grid reconstruction validation report JSON"
+  })).toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+
+  await waitFor(() => expect(screen.queryByRole("button", {
+    name: "Download grid reconstruction validation report JSON"
+  })).not.toBeInTheDocument());
+  expect(createReconstructionValidationReport).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText(
+    "Create grid reconstruction validation report status"
+  )).toHaveTextContent("Ready to create");
 });
 
 test("replacing ground truth invalidates an existing validation report", async () => {
