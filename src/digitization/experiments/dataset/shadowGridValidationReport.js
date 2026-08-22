@@ -346,7 +346,7 @@ function normalizeRegionObservation(gridAnalysis) {
   };
 }
 
-function compareLinePositions(expected, observed) {
+export function compareLinePositions(expected, observed) {
   const usedObservedIndices = new Set();
   const exactMatches = [];
   const missingExpected = [];
@@ -424,7 +424,7 @@ function findNearest(position, candidates) {
   };
 }
 
-function compareBounds(expected, observed) {
+export function compareBounds(expected, observed) {
   const components = ["top", "left", "width", "height"].map(name => ({
     name,
     expected: expected[name],
@@ -443,7 +443,7 @@ function compareBounds(expected, observed) {
   };
 }
 
-function compareScalar(expected, observed) {
+export function compareScalar(expected, observed) {
   return {
     status: "compared",
     equality: "exact-numeric-equality",
@@ -454,7 +454,7 @@ function compareScalar(expected, observed) {
   };
 }
 
-function createUnavailableComparison(reason) {
+export function createUnavailableComparison(reason) {
   return {
     status: "unavailable",
     reason
