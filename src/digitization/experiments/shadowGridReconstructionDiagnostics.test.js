@@ -230,10 +230,10 @@ test("keeps reconstruction variants in deterministic strategy order", () => {
   expect(reconstruction.status).toBe("ambiguous");
   expect(reconstruction.axes.horizontal.hypotheses.map(
     hypothesis => hypothesis.intervalCount
-  )).toEqual([1, 2, 4]);
+  )).toEqual([1, 2, 3, 4]);
   expect(reconstruction.axes.vertical.hypotheses.map(
     hypothesis => hypothesis.intervalCount
-  )).toEqual([1, 2, 4]);
+  )).toEqual([1, 2, 3, 4]);
   expect(JSON.stringify(second)).toBe(JSON.stringify(first));
 });
 

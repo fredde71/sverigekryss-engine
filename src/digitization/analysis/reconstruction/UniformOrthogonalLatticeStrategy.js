@@ -206,6 +206,7 @@ function evaluateAxisInterpretation({
   }
 
   const linePositions = linePositionResult.positions;
+  const lineRepresentations = linePositionResult.representations;
 
   const assignmentResult = assignCandidates(
     candidates,
@@ -231,10 +232,14 @@ function evaluateAxisInterpretation({
   );
   const lines = linePositions.map((position, index) => {
     const assignment = assignedByLineIndex.get(index);
+    const representation = lineRepresentations[index];
 
     return {
       index,
       position,
+      modeledPosition: position,
+      quantizedPosition: representation.quantizedPosition,
+      representationResidual: representation.residual,
       evidence: assignment
         ? {
           status: "observed-aligned",
@@ -338,7 +343,8 @@ function createLinePositions(
     incompatibleLineIndex: null,
     unquantizedPosition: null,
     quantizedPosition: null,
-    residual: null
+    residual: null,
+    representations: []
   };
   const boundCompatibility = {
     status: "compatible",
@@ -364,52 +370,40 @@ function createLinePositions(
       Math.abs(quantizedPosition)
     ) * 16;
 
+    const residual = quantizedPosition - unquantized;
+    const exactlyRepresentable = (
+      positionQuantum === null
+      || Math.abs(residual) <= roundingMargin
+    );
+    const representation = {
+      lineIndex: index,
+      modeledPosition: unquantized,
+      quantizedPosition,
+      residual,
+      status: exactlyRepresentable
+        ? "exactly-representable"
+        : "not-exactly-representable"
+    };
+
+    quantumCompatibility.representations.push(representation);
+
     if (
       positionQuantum !== null
-      && Math.abs(quantizedPosition - unquantized) > roundingMargin
+      && !exactlyRepresentable
+      && quantumCompatibility.status === "compatible"
     ) {
       quantumCompatibility.status = "incompatible";
       quantumCompatibility.incompatibleLineIndex = index;
       quantumCompatibility.unquantizedPosition = unquantized;
       quantumCompatibility.quantizedPosition = quantizedPosition;
-      quantumCompatibility.residual = quantizedPosition - unquantized;
-      const rejectionReasons = [{
-        code: "quantum-incompatible",
-        lineIndex: index,
-        unquantizedPosition: unquantized,
-        quantizedPosition,
-        residual: quantizedPosition - unquantized,
-        positionQuantum
-      }];
-
-      if (
-        (index === 0 || index === intervalCount)
-        && Math.abs(quantizedPosition - unquantized) > boundsAlignmentTolerancePx
-      ) {
-        boundCompatibility.status = "failed";
-        rejectionReasons.push({
-          code: "bound-alignment-failed",
-          boundary: index === 0 ? "start" : "end",
-          expectedPosition: unquantized,
-          reconstructedPosition: quantizedPosition,
-          residual: quantizedPosition - unquantized,
-          tolerancePx: boundsAlignmentTolerancePx
-        });
-      }
-
-      return {
-        positions: null,
-        quantumCompatibility,
-        boundCompatibility,
-        rejectionReasons
-      };
+      quantumCompatibility.residual = residual;
     }
 
     const position = index === 0
       ? start
       : index === intervalCount
         ? end
-        : quantizedPosition;
+        : unquantized;
 
     if (position < start || position > end) {
       return incompatibleIntervalCount({
@@ -436,6 +430,7 @@ function createLinePositions(
 
   return {
     positions,
+    representations: quantumCompatibility.representations,
     quantumCompatibility,
     boundCompatibility,
     rejectionReasons: []
@@ -755,7 +750,8 @@ function createInterpretationDiagnostic({
       incompatibleLineIndex: null,
       unquantizedPosition: null,
       quantizedPosition: null,
-      residual: null
+      residual: null,
+      representations: []
     },
     candidateAssignmentAttempts: [],
     skippedIntervalCounts: [],

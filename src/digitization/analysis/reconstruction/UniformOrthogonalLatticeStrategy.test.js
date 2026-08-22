@@ -193,9 +193,10 @@ test("preserves every valid spacing and count variant in canonical order", () =>
   }))).toEqual([
     { intervalCount: 1, spacing: 20 },
     { intervalCount: 2, spacing: 10 },
+    { intervalCount: 3, spacing: 20 / 3 },
     { intervalCount: 4, spacing: 5 }
   ]);
-  expect(result.gridHypotheses).toHaveLength(9);
+  expect(result.gridHypotheses).toHaveLength(16);
   expect(result).not.toHaveProperty("selectedHypothesis");
 });
 
@@ -246,7 +247,7 @@ test("reports hypothesis-limit overflow without returning a truncated subset", (
   expect(result.reasons).toEqual([{
     code: "axis-hypothesis-limit-exceeded",
     axis: "horizontal",
-    compatibleHypothesisCount: 3,
+    compatibleHypothesisCount: 4,
     maximumHypothesisCount: 2
   }]);
 });
@@ -434,17 +435,6 @@ test.each([
     overrides: { permittedCellSpacing: { minimum: 11, maximum: 100 } }
   },
   {
-    code: "quantum-incompatible",
-    positions: [0, 10, 20],
-    bounds: { top: 0, left: 0, width: 20, height: 20 },
-    intervals: { minimum: 3, maximum: 3 }
-  },
-  {
-    code: "bound-alignment-failed",
-    positions: [0.25, 10.25, 20.25],
-    bounds: { top: 0.25, left: 0.25, width: 20, height: 20 }
-  },
-  {
     code: "candidate-alignment-failed",
     positions: [0, 13, 20],
     bounds: { top: 0, left: 0, width: 20, height: 20 },
@@ -531,12 +521,121 @@ test("preserves enumeration order and accounts for every interpretation", () => 
   expect(diagnostic.interpretations.map(value => value.intervalCount))
     .toEqual([1, 2, 3, 4]);
   expect(diagnostic.interpretations.map(value => value.status))
-    .toEqual(["survived", "survived", "rejected", "survived"]);
+    .toEqual(["survived", "survived", "survived", "survived"]);
   expect(diagnostic).toMatchObject({
     totalAttemptedInterpretations: 4,
-    totalRejectedInterpretations: 1,
-    totalSurvivingHypotheses: 3
+    totalRejectedInterpretations: 0,
+    totalSurvivingHypotheses: 4
   });
+});
+
+test("keeps a non-quantum lattice continuous and records its representation", () => {
+  const positions = [0, 20 / 3, 40 / 3, 20];
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: positions,
+    verticalPositions: positions,
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 3, maximum: 3 }
+  }));
+  const hypothesis = result.axes.horizontal.hypotheses[0];
+  const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
+
+  expect(result.status).toBe("available");
+  expect(hypothesis.lines.map(line => line.position)).toEqual(positions);
+  expect(hypothesis.lines.map(line => ({
+    modeledPosition: line.modeledPosition,
+    quantizedPosition: line.quantizedPosition,
+    representationResidual: line.representationResidual
+  }))).toEqual([
+    { modeledPosition: 0, quantizedPosition: 0, representationResidual: 0 },
+    {
+      modeledPosition: 20 / 3,
+      quantizedPosition: 6.5,
+      representationResidual: 6.5 - (20 / 3)
+    },
+    {
+      modeledPosition: 40 / 3,
+      quantizedPosition: 13.5,
+      representationResidual: 13.5 - (40 / 3)
+    },
+    { modeledPosition: 20, quantizedPosition: 20, representationResidual: 0 }
+  ]);
+  expect(hypothesis.candidateAssignments.map(assignment => assignment.delta))
+    .toEqual([0, 0, 0, 0]);
+  expect(diagnostic.quantumCompatibility).toMatchObject({
+    status: "incompatible",
+    incompatibleLineIndex: 1,
+    unquantizedPosition: 20 / 3,
+    quantizedPosition: 6.5,
+    residual: 6.5 - (20 / 3)
+  });
+  expect(diagnostic.rejectionReasons).toEqual([]);
+  expect(diagnostic.candidateAssignmentAttempts).toHaveLength(4);
+});
+
+test("uses continuous modeled positions for candidate-alignment rejection", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [0, 6.5, 40 / 3, 20],
+    verticalPositions: [0, 20 / 3, 40 / 3, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 3, maximum: 3 },
+    parameterOverrides: { candidateAlignmentTolerancePx: 0 }
+  }));
+  const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
+
+  expect(result.status).toBe("partial");
+  expect(diagnostic.quantumCompatibility.status).toBe("incompatible");
+  expect(diagnostic.rejectionReasons.map(reason => reason.code))
+    .toEqual(["candidate-alignment-failed"]);
+  expect(diagnostic.candidateAssignmentAttempts[1]).toMatchObject({
+    candidatePosition: 6.5,
+    linePosition: 20 / 3,
+    residual: 6.5 - (20 / 3),
+    status: "rejected"
+  });
+});
+
+test("keeps unavailable bounds unavailable before lattice enumeration", () => {
+  const input = createInput();
+  input.observedBounds = {
+    ...input.observedBounds,
+    status: "partial",
+    value: {
+      ...input.observedBounds.value,
+      top: null,
+      height: null
+    }
+  };
+  const result = reconstructUniformOrthogonalLattice(input);
+
+  expect(result.status).toBe("partial");
+  expect(result.axes.horizontal).toEqual({
+    status: "unavailable",
+    hypotheses: []
+  });
+  expect(result.reasons).toEqual([{
+    code: "axis-bounds-unavailable",
+    axis: "horizontal",
+    observedCandidateCount: 0
+  }]);
+  expect(getAxisDiagnostic(result, "horizontal")).toMatchObject({
+    observedBounds: null,
+    totalAttemptedInterpretations: 0,
+    totalRejectedInterpretations: 0,
+    totalSurvivingHypotheses: 0
+  });
+});
+
+test("keeps exact-quantum lattice positions mathematically unchanged", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput());
+  const lines = result.axes.horizontal.hypotheses[0].lines;
+  const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
+
+  expect(lines.map(line => line.position)).toEqual([0, 10, 20]);
+  expect(lines.map(line => line.modeledPosition)).toEqual([0, 10, 20]);
+  expect(lines.map(line => line.quantizedPosition)).toEqual([0, 10, 20]);
+  expect(lines.map(line => line.representationResidual)).toEqual([0, 0, 0]);
+  expect(diagnostic.quantumCompatibility.status).toBe("compatible");
 });
 
 test("validates strategy id through the explicit parameters contract", () => {
