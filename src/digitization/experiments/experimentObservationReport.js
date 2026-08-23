@@ -50,6 +50,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "shadow-analysis-region-observations": extractShadowAnalysisRegionObservations,
   "shadow-grid-analysis-diagnostics": extractShadowGridAnalysisObservations,
   "shadow-grid-bounds-observation-diagnostics": extractShadowGridBoundsObservations,
+  "shadow-outer-line-center-observation-diagnostics": extractShadowOuterLineCenterObservations,
   "shadow-grid-reconstruction-diagnostics": extractShadowGridReconstructionObservations,
   "shadow-grid-bounds-lattice-extension-diagnostics": extractShadowGridBoundsLatticeExtensionObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
@@ -1001,6 +1002,131 @@ function addShadowGridBoundsObservation({
       category: "shadow-grid-bounds-observation",
       observationId,
       reason: "value-unavailable"
+    });
+  }
+}
+
+function extractShadowOuterLineCenterObservations(experimentId, diagnostics) {
+  const available = [];
+  const unavailable = [];
+  const providers = Array.isArray(diagnostics.providers)
+    ? diagnostics.providers
+    : [];
+
+  if (diagnostics.status !== "complete") {
+    unavailable.push({
+      experimentId,
+      category: "shadow-outer-line-center-observation",
+      observationId: "source",
+      reason: normalizeObservationReason(diagnostics.reason)
+    });
+  }
+
+  for (const provider of providers) {
+    const providerNamespace = `provider.${provider?.id || "unknown"}`;
+
+    addOuterLineCenterReportObservation({
+      experimentId,
+      observationId: `${providerNamespace}.status`,
+      value: provider?.status,
+      isAvailable: typeof provider?.status === "string",
+      available,
+      unavailable
+    });
+
+    const regions = Array.isArray(provider?.outerLineCenterObservations)
+      ? provider.outerLineCenterObservations
+      : [];
+
+    for (const region of regions) {
+      const regionNamespace = `${providerNamespace}.region.${region?.regionId || "unknown"}`;
+      const observation = region?.observation;
+
+      addOuterLineCenterReportObservation({
+        experimentId,
+        observationId: `${regionNamespace}.execution-status`,
+        value: region?.status,
+        isAvailable: typeof region?.status === "string",
+        available,
+        unavailable
+      });
+      addOuterLineCenterReportObservation({
+        experimentId,
+        observationId: `${regionNamespace}.coordinate-system`,
+        value: observation?.coordinateSystem,
+        isAvailable: isObjectValue(observation?.coordinateSystem),
+        available,
+        unavailable
+      });
+      addOuterLineCenterReportObservation({
+        experimentId,
+        observationId: `${regionNamespace}.provenance`,
+        value: observation?.provenance,
+        isAvailable: isObjectValue(observation?.provenance),
+        available,
+        unavailable
+      });
+
+      for (const edge of ["top", "bottom", "left", "right"]) {
+        const edgeObservation = observation?.edges?.[edge];
+        const edgeNamespace = `${regionNamespace}.edge.${edge}`;
+
+        addOuterLineCenterReportObservation({
+          experimentId,
+          observationId: `${edgeNamespace}.status`,
+          value: edgeObservation?.status,
+          isAvailable: typeof edgeObservation?.status === "string",
+          available,
+          unavailable
+        });
+        addOuterLineCenterReportObservation({
+          experimentId,
+          observationId: `${edgeNamespace}.accepted-candidate-center`,
+          value: edgeObservation?.acceptedCandidateCenter,
+          isAvailable: Number.isFinite(
+            edgeObservation?.acceptedCandidateCenter
+          ),
+          reason: edgeObservation?.reasons?.[0],
+          available,
+          unavailable
+        });
+        addOuterLineCenterReportObservation({
+          experimentId,
+          observationId: `${edgeNamespace}.evidence-availability`,
+          value: edgeObservation?.diagnostics?.[0],
+          isAvailable: isObjectValue(edgeObservation?.diagnostics?.[0]),
+          available,
+          unavailable
+        });
+      }
+    }
+  }
+
+  return { available, unavailable, structuralEvidence: null };
+}
+
+function addOuterLineCenterReportObservation({
+  experimentId,
+  observationId,
+  value,
+  isAvailable,
+  reason,
+  available,
+  unavailable
+}) {
+  if (isAvailable) {
+    available.push({
+      experimentId,
+      category: "shadow-outer-line-center-observation",
+      observationId,
+      value: cloneValue(value)
+    });
+  } else {
+    unavailable.push({
+      experimentId,
+      category: "shadow-outer-line-center-observation",
+      observationId,
+      reason: normalizeObservationReason(reason)
     });
   }
 }

@@ -12,6 +12,7 @@ import { createVerticalLineMaskProjectionComparison } from "./verticalLineMaskDi
 import { createShadowAnalysisRegionDiagnostics } from "./shadowAnalysisRegionDiagnostics";
 import { runShadowGridAnalysisDiagnostics } from "./shadowGridAnalysisDiagnostics";
 import { runShadowGridBoundsObservationDiagnostics } from "./shadowGridBoundsObservationDiagnostics";
+import { runShadowOuterLineCenterObservationDiagnostics } from "./shadowOuterLineCenterObservationDiagnostics";
 import { runShadowGridReconstructionDiagnostics } from "./shadowGridReconstructionDiagnostics";
 import { runShadowGridBoundsLatticeExtensionDiagnostics } from "./shadowGridBoundsLatticeExtensionDiagnostics";
 
@@ -27,6 +28,7 @@ test("lists registered digitization experiments with their public contract", () 
     "shadow-analysis-region-observations",
     "shadow-grid-analysis-diagnostics",
     "shadow-grid-bounds-observation-diagnostics",
+    "shadow-outer-line-center-observation-diagnostics",
     "shadow-grid-reconstruction-diagnostics",
     "shadow-grid-bounds-lattice-extension-diagnostics",
     "grid-confidence-diagnostics"
@@ -42,7 +44,7 @@ test("lists registered digitization experiments with their public contract", () 
   }
 
   experiments.pop();
-  expect(listDigitizationExperiments()).toHaveLength(11);
+  expect(listDigitizationExperiments()).toHaveLength(12);
 });
 
 test("looks up experiment metadata without executing the experiment", () => {
@@ -188,6 +190,37 @@ test("looks up and runs each registered experiment without changing its existing
   expect(runShadowGridBoundsObservationDiagnostics(null)).toEqual(
     expect.objectContaining({
       type: "shadow-grid-bounds-observation-diagnostics",
+      status: "unavailable"
+    })
+  );
+
+  expect(runDigitizationExperiment(
+    "shadow-outer-line-center-observation-diagnostics",
+    new Proxy({}, {
+      get() {
+        throw new Error("BinaryImage must not be read");
+      }
+    }),
+    new Proxy({}, {
+      get() {
+        throw new Error("context must not be read");
+      }
+    })
+  )).toEqual({
+    type: "shadow-outer-line-center-observation-diagnostics",
+    version: 1,
+    status: "unavailable",
+    sourceExperimentIds: [
+      "shadow-grid-analysis-diagnostics",
+      "shadow-grid-bounds-observation-diagnostics"
+    ],
+    reason: "shadow-grid-analysis-diagnostics-unavailable",
+    providers: []
+  });
+
+  expect(runShadowOuterLineCenterObservationDiagnostics()).toEqual(
+    expect.objectContaining({
+      type: "shadow-outer-line-center-observation-diagnostics",
       status: "unavailable"
     })
   );
