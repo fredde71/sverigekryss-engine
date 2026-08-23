@@ -1,6 +1,9 @@
 import {
   createGridBoundsObservation
 } from "../analysis/GridBoundsObservation";
+import {
+  adaptShadowGridLatticeEvidence
+} from "./shadowGridLatticeEvidenceAdapter";
 
 const ALLOWED_ENVIRONMENTS = new Set(["development", "test"]);
 const GRID_ANALYSIS_EXPERIMENT_ID = "shadow-grid-analysis-diagnostics";
@@ -30,9 +33,11 @@ export const shadowGridBoundsLatticeExtensionDiagnosticsExperiment =
 
 export function createShadowGridBoundsLatticeExtensionDiagnosticsRunner({
   createObservation = createGridBoundsObservation,
+  adaptLatticeEvidence = adaptShadowGridLatticeEvidence,
   readEnvironment = () => process.env.NODE_ENV
 } = {}) {
   validateDependency(createObservation, "createObservation");
+  validateDependency(adaptLatticeEvidence, "adaptLatticeEvidence");
   validateDependency(readEnvironment, "readEnvironment");
 
   return function run(input = {}) {
@@ -60,10 +65,12 @@ export function createShadowGridBoundsLatticeExtensionDiagnosticsRunner({
       });
     }
 
+    const latticeEvidence = adaptLatticeEvidence(shadowGridReconstruction);
+
     const providers = gridBoundsObservations.providers.map(provider => (
       extendProvider(provider, {
         shadowGridAnalysis,
-        shadowGridReconstruction,
+        latticeEvidence,
         createObservation
       })
     ));
@@ -88,8 +95,8 @@ function extendProvider(boundsProvider, dependencies) {
     dependencies.shadowGridAnalysis,
     providerId
   );
-  const reconstructionProvider = findProvider(
-    dependencies.shadowGridReconstruction,
+  const latticeProvider = findProvider(
+    dependencies.latticeEvidence,
     providerId
   );
   const result = {
@@ -114,8 +121,8 @@ function extendProvider(boundsProvider, dependencies) {
       providerId,
       boundsRegion: region,
       gridAnalysis: findRegion(gridProvider?.gridAnalyses, region?.regionId),
-      reconstructionRegion: findRegion(
-        reconstructionProvider?.reconstructions,
+      latticeEvidenceRegion: findRegion(
+        latticeProvider?.regions,
         region?.regionId
       ),
       createObservation: dependencies.createObservation
@@ -129,7 +136,7 @@ function extendRegion({
   providerId,
   boundsRegion,
   gridAnalysis,
-  reconstructionRegion,
+  latticeEvidenceRegion,
   createObservation
 }) {
   const source = boundsRegion?.boundsObservation;
@@ -149,7 +156,7 @@ function extendRegion({
       regionId,
       source,
       gridAnalysis,
-      reconstruction: reconstructionRegion?.reconstruction
+      latticeEvidenceRegion
     });
     const state = resolveObservationState(observations);
     const boundsObservation = createObservation({
@@ -167,7 +174,8 @@ function extendRegion({
           type: source.type,
           version: source.version
         },
-        sourceReconstructionExperimentId: RECONSTRUCTION_EXPERIMENT_ID
+        sourceReconstructionExperimentId: RECONSTRUCTION_EXPERIMENT_ID,
+        latticeEvidenceAdapterType: "shadow-grid-lattice-evidence"
       },
       observations,
       reasons: state.reasons,
@@ -202,7 +210,7 @@ function enumerateOuterBoundsObservations({
   regionId,
   source,
   gridAnalysis,
-  reconstruction
+  latticeEvidenceRegion
 }) {
   const envelope = source.sourceAcceptedCandidateEnvelope;
 
@@ -210,63 +218,54 @@ function enumerateOuterBoundsObservations({
     envelope?.status !== "available"
     || !hasFiniteBounds(envelope.bounds)
     || !hasFiniteDimensions(gridAnalysis?.regionDimensions)
-    || !Array.isArray(reconstruction?.gridHypotheses)
-    || reconstruction.gridHypotheses.length === 0
+    || latticeEvidenceRegion?.status !== "available"
   ) {
     return [];
   }
 
-  const parameters = reconstruction.parameters;
+  const parameters = latticeEvidenceRegion.parameters;
   const observations = [];
+  const horizontalEvidence = createAxisEvidenceExtensions({
+    axisEvidence: latticeEvidenceRegion.axes?.horizontal,
+    sourceStart: envelope.bounds.top,
+    sourceEnd: envelope.bounds.top + envelope.bounds.height,
+    domainEnd: gridAnalysis.regionDimensions.height - 1,
+    parameters
+  });
+  const verticalEvidence = createAxisEvidenceExtensions({
+    axisEvidence: latticeEvidenceRegion.axes?.vertical,
+    sourceStart: envelope.bounds.left,
+    sourceEnd: envelope.bounds.left + envelope.bounds.width,
+    domainEnd: gridAnalysis.regionDimensions.width - 1,
+    parameters
+  });
 
-  for (const hypothesis of reconstruction.gridHypotheses) {
-    const horizontal = createAxisExtensions({
-      axis: "horizontal",
-      lines: hypothesis?.lines?.horizontal,
-      assignments: hypothesis?.candidateAssignments?.horizontal,
-      sourceStart: envelope.bounds.top,
-      sourceEnd: envelope.bounds.top + envelope.bounds.height,
-      domainEnd: gridAnalysis.regionDimensions.height - 1,
-      parameters
-    });
-    const vertical = createAxisExtensions({
-      axis: "vertical",
-      lines: hypothesis?.lines?.vertical,
-      assignments: hypothesis?.candidateAssignments?.vertical,
-      sourceStart: envelope.bounds.left,
-      sourceEnd: envelope.bounds.left + envelope.bounds.width,
-      domainEnd: gridAnalysis.regionDimensions.width - 1,
-      parameters
-    });
+  for (const horizontal of horizontalEvidence) {
+    for (const vertical of verticalEvidence) {
+      for (const horizontalExtension of horizontal.extensions) {
+        for (const verticalExtension of vertical.extensions) {
+          const counts = {
+            top: horizontalExtension.before,
+            bottom: horizontalExtension.after,
+            left: verticalExtension.before,
+            right: verticalExtension.after
+          };
 
-    if (!horizontal || !vertical) {
-      continue;
-    }
+          if (Object.values(counts).every(count => count === 0)) {
+            continue;
+          }
 
-    for (const horizontalExtension of horizontal.extensions) {
-      for (const verticalExtension of vertical.extensions) {
-        const counts = {
-          top: horizontalExtension.before,
-          bottom: horizontalExtension.after,
-          left: verticalExtension.before,
-          right: verticalExtension.after
-        };
+          const top = horizontal.start
+            - (counts.top * horizontal.spacing);
+          const bottom = horizontal.end
+            + (counts.bottom * horizontal.spacing);
+          const left = vertical.start
+            - (counts.left * vertical.spacing);
+          const right = vertical.end
+            + (counts.right * vertical.spacing);
+          const observationIndex = observations.length;
 
-        if (Object.values(counts).every(count => count === 0)) {
-          continue;
-        }
-
-        const top = horizontal.start
-          - (counts.top * horizontal.spacing);
-        const bottom = horizontal.end
-          + (counts.bottom * horizontal.spacing);
-        const left = vertical.start
-          - (counts.left * vertical.spacing);
-        const right = vertical.end
-          + (counts.right * vertical.spacing);
-        const observationIndex = observations.length;
-
-        observations.push({
+          observations.push({
           id: `lattice-extension-${observationIndex}`,
           status: "available",
           semantics: "outer-grid-line-center-envelope",
@@ -286,13 +285,18 @@ function enumerateOuterBoundsObservations({
             horizontal: horizontal.residuals,
             vertical: vertical.residuals
           },
+          reconstructionLatticeEvidence: {
+            horizontal: cloneValue(horizontal.interpretation),
+            vertical: cloneValue(vertical.interpretation)
+          },
           provenance: {
-            source: RECONSTRUCTION_EXPERIMENT_ID,
+            source: "shadow-grid-lattice-evidence",
             providerId,
             regionId,
-            gridHypothesisId: hypothesis.id,
-            horizontalHypothesisId: hypothesis.horizontalHypothesisId,
-            verticalHypothesisId: hypothesis.verticalHypothesisId
+            horizontalInterpretationIndex:
+              horizontal.interpretation.interpretationIndex,
+            verticalInterpretationIndex:
+              vertical.interpretation.interpretationIndex
           },
           evidenceReferences: [
             {
@@ -300,8 +304,20 @@ function enumerateOuterBoundsObservations({
               bounds: cloneValue(envelope.bounds)
             },
             {
-              type: "uniform-lattice-grid-hypothesis",
-              id: hypothesis.id
+              type: "uniform-lattice-axis-interpretation",
+              axis: "horizontal",
+              interpretationIndex:
+                horizontal.interpretation.interpretationIndex,
+              interpretationStatus:
+                horizontal.interpretation.interpretationStatus
+            },
+            {
+              type: "uniform-lattice-axis-interpretation",
+              axis: "vertical",
+              interpretationIndex:
+                vertical.interpretation.interpretationIndex,
+              interpretationStatus:
+                vertical.interpretation.interpretationStatus
             }
           ],
           assumptions: [
@@ -314,28 +330,36 @@ function enumerateOuterBoundsObservations({
               status: "applied"
             },
             {
-              id: "existing-reconstruction-inference-limits-apply",
+              id: "pre-admission-reconstruction-evidence-remains-unadmitted",
               status: "applied"
             }
           ],
           reasons: [{
-            code: "lattice-extension-compatible-with-analysis-region-and-existing-inference-limits"
+            code: "lattice-extension-observed-from-pre-admission-axis-evidence"
           }],
           diagnostics: [{
             type: "uniform-lattice-outer-extension",
-            sourceGridHypothesisId: hypothesis.id,
             horizontal: {
               spacing: horizontal.spacing,
+              interpretationIndex:
+                horizontal.interpretation.interpretationIndex,
+              interpretationStatus:
+                horizontal.interpretation.interpretationStatus,
               inferredBefore: counts.top,
               inferredAfter: counts.bottom
             },
             vertical: {
               spacing: vertical.spacing,
+              interpretationIndex:
+                vertical.interpretation.interpretationIndex,
+              interpretationStatus:
+                vertical.interpretation.interpretationStatus,
               inferredBefore: counts.left,
               inferredAfter: counts.right
             }
           }]
-        });
+          });
+        }
       }
     }
   }
@@ -343,19 +367,42 @@ function enumerateOuterBoundsObservations({
   return observations;
 }
 
-function createAxisExtensions({
-  axis,
-  lines,
-  assignments,
+function createAxisEvidenceExtensions({
+  axisEvidence,
   sourceStart,
   sourceEnd,
   domainEnd,
   parameters
 }) {
+  if (!Array.isArray(axisEvidence?.interpretations)) {
+    return [];
+  }
+
+  return axisEvidence.interpretations.map(interpretation => (
+    createAxisExtensions({
+      axis: axisEvidence.axis,
+      interpretation,
+      sourceStart,
+      sourceEnd,
+      domainEnd,
+      parameters
+    })
+  )).filter(Boolean);
+}
+
+function createAxisExtensions({
+  axis,
+  interpretation,
+  sourceStart,
+  sourceEnd,
+  domainEnd,
+  parameters
+}) {
+  const positions = interpretation?.modeledLatticePositions;
+
   if (
-    !Array.isArray(lines)
-    || lines.length < 2
-    || !Array.isArray(assignments)
+    !Array.isArray(positions)
+    || positions.length < 2
     || !Number.isFinite(sourceStart)
     || !Number.isFinite(sourceEnd)
     || !Number.isFinite(domainEnd)
@@ -365,9 +412,9 @@ function createAxisExtensions({
     return null;
   }
 
-  const start = lines[0]?.position;
-  const end = lines[lines.length - 1]?.position;
-  const spacing = (end - start) / (lines.length - 1);
+  const start = positions[0];
+  const end = positions[positions.length - 1];
+  const spacing = interpretation?.derivedSpacing;
 
   if (
     !Number.isFinite(start)
@@ -376,6 +423,10 @@ function createAxisExtensions({
     || spacing <= 0
     || start !== sourceStart
     || end !== sourceEnd
+    || positions.some((position, index) => (
+      !Number.isFinite(position)
+      || (index > 0 && position <= positions[index - 1])
+    ))
   ) {
     return null;
   }
@@ -401,14 +452,16 @@ function createAxisExtensions({
     maximumRun,
     Math.floor((domainEnd - end) / spacing)
   );
-  const existingInferredCount = lines.filter(line => (
-    line?.evidence?.status === "inferred"
-  )).length;
+  const existingInferredCount = Number.isFinite(
+    interpretation?.inferredLineDiagnostics?.inferredLineCount
+  )
+    ? interpretation.inferredLineDiagnostics.inferredLineCount
+    : 0;
   const extensions = [];
 
   for (let before = 0; before <= maximumBefore; before += 1) {
     for (let after = 0; after <= maximumAfter; after += 1) {
-      const extendedLineCount = lines.length + before + after;
+      const extendedLineCount = positions.length + before + after;
       const inferredLineCount = existingInferredCount + before + after;
 
       if ((inferredLineCount / extendedLineCount) <= maximumFraction) {
@@ -422,15 +475,8 @@ function createAxisExtensions({
     start,
     end,
     spacing,
-    residuals: assignments.map((assignment, candidateIndex) => ({
-      candidateIndex: Number.isInteger(assignment?.candidateIndex)
-        ? assignment.candidateIndex
-        : candidateIndex,
-      observedPosition: assignment?.observedPosition,
-      modeledPosition: assignment?.linePosition,
-      residual: assignment?.delta,
-      absoluteResidual: Math.abs(assignment?.delta)
-    })),
+    residuals: cloneValue(interpretation.candidateResiduals ?? []),
+    interpretation,
     extensions
   };
 }

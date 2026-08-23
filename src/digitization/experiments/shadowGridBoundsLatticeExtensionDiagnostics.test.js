@@ -78,12 +78,11 @@ test("preserves provenance and existing alignment residuals", () => {
   const observation = readArtifact(result).observations[0];
 
   expect(observation.provenance).toEqual({
-    source: "shadow-grid-reconstruction-diagnostics",
+    source: "shadow-grid-lattice-evidence",
     providerId: "provider-a",
     regionId: "region-a",
-    gridHypothesisId: "grid-h-v",
-    horizontalHypothesisId: "h",
-    verticalHypothesisId: "v"
+    horizontalInterpretationIndex: 0,
+    verticalInterpretationIndex: 0
   });
   expect(observation.candidateAlignmentResiduals.horizontal).toEqual([
     {
@@ -91,14 +90,16 @@ test("preserves provenance and existing alignment residuals", () => {
       observedPosition: 0.5,
       modeledPosition: 0,
       residual: 0.5,
-      absoluteResidual: 0.5
+      absoluteResidual: 0.5,
+      assignmentStatus: "assigned"
     },
     {
       candidateIndex: 1,
       observedPosition: 19.5,
       modeledPosition: 20,
       residual: -0.5,
-      absoluteResidual: 0.5
+      absoluteResidual: 0.5,
+      assignmentStatus: "assigned"
     }
   ]);
   expect(observation.evidenceReferences).toEqual([
@@ -106,7 +107,63 @@ test("preserves provenance and existing alignment residuals", () => {
       type: "accepted-candidate-envelope",
       bounds: { top: 0, left: 0, width: 20, height: 20 }
     },
-    { type: "uniform-lattice-grid-hypothesis", id: "grid-h-v" }
+    {
+      type: "uniform-lattice-axis-interpretation",
+      axis: "horizontal",
+      interpretationIndex: 0,
+      interpretationStatus: "rejected"
+    },
+    {
+      type: "uniform-lattice-axis-interpretation",
+      axis: "vertical",
+      interpretationIndex: 0,
+      interpretationStatus: "rejected"
+    }
+  ]);
+});
+
+test("evaluates rejected pre-admission evidence without admitting it", () => {
+  const sources = createSources({ dimensions: { width: 21, height: 31 } });
+  const reconstruction = sources.shadowGridReconstruction.providers[0]
+    .reconstructions[0].reconstruction;
+  const before = clone(reconstruction);
+  const observation = readArtifact(createRunner()(sources)).observations[0];
+
+  expect(reconstruction.gridHypotheses).toEqual([]);
+  expect(observation.reconstructionLatticeEvidence).toMatchObject({
+    horizontal: {
+      interpretationStatus: "rejected",
+      rejectionReasons: [{ code: "candidate-alignment-failed" }]
+    },
+    vertical: {
+      interpretationStatus: "rejected",
+      rejectionReasons: [{ code: "candidate-alignment-failed" }]
+    }
+  });
+  expect(reconstruction).toEqual(before);
+});
+
+test("preserves pre-admission interpretation order in extension observations", () => {
+  const sources = createSources({ dimensions: { width: 21, height: 31 } });
+  const horizontal = sources.shadowGridReconstruction.providers[0]
+    .reconstructions[0].reconstruction.diagnostics[0].axes.horizontal;
+  horizontal.interpretations.push(createAxisInterpretation(
+    horizontal.observedBounds.start,
+    horizontal.observedBounds.end,
+    4,
+    [0, 0]
+  ));
+
+  const observations = readArtifact(createRunner()(sources)).observations;
+
+  expect(observations.map(observation => ({
+    interpretationIndex:
+      observation.provenance.horizontalInterpretationIndex,
+    intervalCount:
+      observation.reconstructionLatticeEvidence.horizontal.intervalCount
+  }))).toEqual([
+    { interpretationIndex: 0, intervalCount: 2 },
+    { interpretationIndex: 1, intervalCount: 4 }
   ]);
 });
 
@@ -463,57 +520,107 @@ function createReconstructionProvider(
           maximumConsecutiveInferredLines: 1,
           maximumInferredLineFraction: 1
         },
-        gridHypotheses: [createGridHypothesis(
-          bounds,
-          horizontalResiduals
-        )]
+        gridHypotheses: [],
+        diagnostics: [{
+          type: "uniform-orthogonal-lattice-strategy",
+          status: "unavailable",
+          axes: {
+            horizontal: createAxisDiagnostic(
+              "horizontal",
+              bounds.top,
+              bounds.top + bounds.height,
+              horizontalResiduals
+            ),
+            vertical: createAxisDiagnostic(
+              "vertical",
+              bounds.left,
+              bounds.left + bounds.width,
+              [0, 0]
+            )
+          }
+        }]
       }
     }]
   };
 }
 
-function createGridHypothesis(bounds, horizontalResiduals) {
-  const horizontalPositions = [bounds.top, bounds.top + 10, bounds.top + 20];
-  const verticalPositions = [bounds.left, bounds.left + 10, bounds.left + 20];
-
+function createAxisDiagnostic(axis, start, end, residuals) {
   return {
-    id: "grid-h-v",
-    horizontalHypothesisId: "h",
-    verticalHypothesisId: "v",
-    lines: {
-      horizontal: createLines(horizontalPositions),
-      vertical: createLines(verticalPositions)
-    },
-    candidateAssignments: {
-      horizontal: [
-        createAssignment(0, horizontalPositions[0], horizontalResiduals[0]),
-        createAssignment(1, horizontalPositions[2], horizontalResiduals[1])
-      ],
-      vertical: [
-        createAssignment(0, verticalPositions[0], 0),
-        createAssignment(1, verticalPositions[2], 0)
-      ]
-    }
+    status: "unavailable",
+    candidatePositions: [start + residuals[0], end + residuals[1]],
+    candidateGaps: [end - start + residuals[1] - residuals[0]],
+    observedBounds: { start, end },
+    interpretations: [createAxisInterpretation(start, end, 2, residuals)],
+    axis
   };
 }
 
-function createLines(positions) {
-  return positions.map((position, index) => ({
-    index,
-    position,
-    evidence: {
-      status: index === 1 ? "inferred" : "observed-aligned"
-    }
-  }));
+function createAxisInterpretation(start, end, intervalCount, residuals) {
+  const spacing = (end - start) / intervalCount;
+  const positions = Array.from(
+    { length: intervalCount + 1 },
+    (_value, index) => start + (index * spacing)
+  );
+  return {
+      intervalCount,
+      derivedSpacing: spacing,
+      status: "rejected",
+      quantumCompatibility: {
+        representations: positions.map((modeledPosition, lineIndex) => ({
+          lineIndex,
+          modeledPosition,
+          quantizedPosition: modeledPosition,
+          residual: 0,
+          status: "compatible"
+        }))
+      },
+      candidateResiduals: [
+        createCandidateResidual(0, start, residuals[0]),
+        createCandidateResidual(1, end, residuals[1])
+      ],
+      candidateAssignmentAttempts: [
+        createAssignmentAttempt(0, start, residuals[0]),
+        createAssignmentAttempt(
+          1,
+          end,
+          residuals[1],
+          intervalCount
+        )
+      ],
+      rejectionReasons: [{ code: "candidate-alignment-failed" }],
+      inferredLineCount: 1,
+      longestInferredRun: 1,
+      inferredLineFraction: 1 / 3,
+      skippedIntervalCounts: []
+  };
 }
 
-function createAssignment(candidateIndex, linePosition, delta) {
+function createCandidateResidual(candidateIndex, modeledPosition, residual) {
   return {
     candidateIndex,
-    lineIndex: candidateIndex === 0 ? 0 : 2,
-    observedPosition: linePosition + delta,
+    observedPosition: modeledPosition + residual,
+    modeledPosition,
+    residual,
+    absoluteResidual: Math.abs(residual),
+    assignmentStatus: "assigned"
+  };
+}
+
+function createAssignmentAttempt(
+  candidateIndex,
+  linePosition,
+  residual,
+  endLineIndex = 2
+) {
+  return {
+    candidateIndex,
+    candidatePosition: linePosition + residual,
+    lineIndex: candidateIndex === 0 ? 0 : endLineIndex,
     linePosition,
-    delta
+    residual,
+    absoluteResidual: Math.abs(residual),
+    tolerancePx: 1,
+    status: "assigned"
   };
 }
 
