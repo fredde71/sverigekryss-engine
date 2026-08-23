@@ -51,6 +51,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "shadow-grid-analysis-diagnostics": extractShadowGridAnalysisObservations,
   "shadow-grid-bounds-observation-diagnostics": extractShadowGridBoundsObservations,
   "shadow-grid-reconstruction-diagnostics": extractShadowGridReconstructionObservations,
+  "shadow-grid-bounds-lattice-extension-diagnostics": extractShadowGridBoundsLatticeExtensionObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
 });
 
@@ -998,6 +999,139 @@ function addShadowGridBoundsObservation({
     unavailable.push({
       experimentId,
       category: "shadow-grid-bounds-observation",
+      observationId,
+      reason: "value-unavailable"
+    });
+  }
+}
+
+function extractShadowGridBoundsLatticeExtensionObservations(
+  experimentId,
+  diagnostics
+) {
+  const available = [];
+  const unavailable = [];
+  const providers = Array.isArray(diagnostics.providers)
+    ? diagnostics.providers
+    : [];
+
+  if (diagnostics.status !== "complete") {
+    unavailable.push({
+      experimentId,
+      category: "shadow-grid-bounds-lattice-extension",
+      observationId: "source",
+      reason: normalizeObservationReason(diagnostics.reason)
+    });
+  }
+
+  for (const provider of providers) {
+    const providerNamespace = `provider.${provider?.id || "unknown"}`;
+
+    addLatticeExtensionReportObservation({
+      experimentId,
+      observationId: `${providerNamespace}.status`,
+      value: provider?.status,
+      isAvailable: typeof provider?.status === "string",
+      available,
+      unavailable
+    });
+
+    const regions = Array.isArray(provider?.boundsObservations)
+      ? provider.boundsObservations
+      : [];
+
+    for (const region of regions) {
+      const regionNamespace = `${providerNamespace}.region.${region?.regionId || "unknown"}`;
+      const artifact = region?.boundsObservation;
+      const observations = Array.isArray(artifact?.observations)
+        ? artifact.observations
+        : [];
+
+      addLatticeExtensionReportObservation({
+        experimentId,
+        observationId: `${regionNamespace}.status`,
+        value: artifact?.status,
+        isAvailable: typeof artifact?.status === "string",
+        available,
+        unavailable
+      });
+      addLatticeExtensionReportObservation({
+        experimentId,
+        observationId: `${regionNamespace}.source-candidate-envelope`,
+        value: artifact?.sourceAcceptedCandidateEnvelope,
+        isAvailable: isObjectValue(
+          artifact?.sourceAcceptedCandidateEnvelope
+        ),
+        available,
+        unavailable
+      });
+      addLatticeExtensionReportObservation({
+        experimentId,
+        observationId: `${regionNamespace}.compatible-observation-count`,
+        value: observations.length,
+        isAvailable: Array.isArray(artifact?.observations),
+        available,
+        unavailable
+      });
+
+      observations.forEach((observation, index) => {
+        const observationNamespace = `${regionNamespace}.observation.${index}`;
+
+        for (const [suffix, value, isAvailable] of [
+          ["id", observation?.id, typeof observation?.id === "string"],
+          ["bounds", observation?.bounds, isObjectValue(observation?.bounds)],
+          ["inferred-outer-intervals", observation?.inferredOuterIntervals, isObjectValue(observation?.inferredOuterIntervals)],
+          ["spacing-used", observation?.spacingUsed, isObjectValue(observation?.spacingUsed)],
+          ["provenance", observation?.provenance, isObjectValue(observation?.provenance)],
+          ["reasons", observation?.reasons, Array.isArray(observation?.reasons)]
+        ]) {
+          addLatticeExtensionReportObservation({
+            experimentId,
+            observationId: `${observationNamespace}.${suffix}`,
+            value,
+            isAvailable,
+            available,
+            unavailable
+          });
+        }
+      });
+
+      if (artifact?.status === "unavailable" || region?.status === "failed") {
+        unavailable.push({
+          experimentId,
+          category: "shadow-grid-bounds-lattice-extension",
+          observationId: `${regionNamespace}.outer-grid-envelope`,
+          reason: normalizeObservationReason(
+            artifact?.reasons?.[0]?.code
+              ?? region?.error
+          )
+        });
+      }
+    }
+  }
+
+  return { available, unavailable, structuralEvidence: null };
+}
+
+function addLatticeExtensionReportObservation({
+  experimentId,
+  observationId,
+  value,
+  isAvailable,
+  available,
+  unavailable
+}) {
+  if (isAvailable) {
+    available.push({
+      experimentId,
+      category: "shadow-grid-bounds-lattice-extension",
+      observationId,
+      value: cloneValue(value)
+    });
+  } else {
+    unavailable.push({
+      experimentId,
+      category: "shadow-grid-bounds-lattice-extension",
       observationId,
       reason: "value-unavailable"
     });
