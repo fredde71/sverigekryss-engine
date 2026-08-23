@@ -43,10 +43,7 @@ export function reconstructUniformOrthogonalLattice({
         id: "uniform-orthogonal-lattice",
         status: "applied"
       },
-      {
-        id: "observed-bounds-are-outer-line-centers",
-        status: "applied"
-      },
+      createBoundsAssumption(observedBounds),
       {
         id: "axes-reconstructed-independently",
         status: "applied"
@@ -62,6 +59,15 @@ export function reconstructUniformOrthogonalLattice({
     ],
     reasons: assembled.reasons
   });
+}
+
+function createBoundsAssumption(observedBounds) {
+  return {
+    id: observedBounds?.semantics === "accepted-candidate-envelope"
+      ? "observed-bounds-are-accepted-candidate-envelope"
+      : "observed-bounds-are-outer-line-centers",
+    status: "applied"
+  };
 }
 
 function reconstructAxis({ axis, candidates, bounds, parameters }) {

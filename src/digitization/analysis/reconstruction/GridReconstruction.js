@@ -7,6 +7,10 @@ const RESULT_STATUSES = new Set([
 ]);
 const AXIS_STATUSES = new Set(["available", "ambiguous", "unavailable"]);
 const BOUNDS_STATUSES = new Set(["available", "partial", "unavailable"]);
+const BOUNDS_SEMANTICS = new Set([
+  "outer-line-center-envelope",
+  "accepted-candidate-envelope"
+]);
 const LINE_EVIDENCE_STATUSES = new Set(["observed-aligned", "inferred"]);
 const FORBIDDEN_FIELD_NAMES = new Set([
   "score",
@@ -200,9 +204,9 @@ function validateObservedBounds(observedBounds, coordinateSpace) {
     );
   }
 
-  if (observedBounds.semantics !== "outer-line-center-envelope") {
+  if (!BOUNDS_SEMANTICS.has(observedBounds.semantics)) {
     throw new Error(
-      "observedBounds.semantics must equal outer-line-center-envelope"
+      "observedBounds.semantics must be a supported bounds semantic"
     );
   }
 

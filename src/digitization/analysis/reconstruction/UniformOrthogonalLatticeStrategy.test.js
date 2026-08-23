@@ -839,6 +839,37 @@ test("keeps exact-quantum lattice positions mathematically unchanged", () => {
   expect(diagnostic.quantumCompatibility.status).toBe("compatible");
 });
 
+test("changes candidate-envelope semantics without changing reconstruction decisions", () => {
+  const outerLineInput = createInput();
+  const candidateEnvelopeInput = createInput();
+  candidateEnvelopeInput.observedBounds = {
+    ...candidateEnvelopeInput.observedBounds,
+    semantics: "accepted-candidate-envelope",
+    provenance: {
+      source: "phase-4-shadow-grid-geometry",
+      derivation: "outermost-accepted-horizontal-and-vertical-candidate-positions"
+    }
+  };
+
+  const outerLineResult = reconstructUniformOrthogonalLattice(outerLineInput);
+  const candidateEnvelopeResult = reconstructUniformOrthogonalLattice(
+    candidateEnvelopeInput
+  );
+
+  expect(projectReconstructionBehavior(candidateEnvelopeResult))
+    .toEqual(projectReconstructionBehavior(outerLineResult));
+  expect(candidateEnvelopeResult.observations.observedBounds.value)
+    .toEqual(outerLineResult.observations.observedBounds.value);
+  expect(candidateEnvelopeResult.assumptions).toContainEqual({
+    id: "observed-bounds-are-accepted-candidate-envelope",
+    status: "applied"
+  });
+  expect(candidateEnvelopeResult.assumptions).not.toContainEqual({
+    id: "observed-bounds-are-outer-line-centers",
+    status: "applied"
+  });
+});
+
 test("validates strategy id through the explicit parameters contract", () => {
   const input = createInput();
   input.parameters.strategyId = "another-strategy";

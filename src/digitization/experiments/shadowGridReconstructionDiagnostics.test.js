@@ -75,13 +75,29 @@ test("adapts Phase 4 candidates, bounds, spacing and coordinates exactly", () =>
   expect(adapted.input.observedBounds).toEqual({
     status: "available",
     coordinateSpace: "analysis-region-local",
-    semantics: "outer-line-center-envelope",
+    semantics: "accepted-candidate-envelope",
     value: { top: 0.5, left: 5, width: 20, height: 20 },
+    provenance: {
+      source: "phase-4-shadow-grid-geometry",
+      derivation: "outermost-accepted-horizontal-and-vertical-candidate-positions"
+    },
     components: {
-      top: { status: "observed", provenance: "phase-4-shadow-grid-geometry" },
-      left: { status: "observed", provenance: "phase-4-shadow-grid-geometry" },
-      width: { status: "observed", provenance: "phase-4-shadow-grid-geometry" },
-      height: { status: "observed", provenance: "phase-4-shadow-grid-geometry" }
+      top: {
+        status: "observed",
+        provenance: "accepted-horizontal-candidate-envelope"
+      },
+      left: {
+        status: "observed",
+        provenance: "accepted-vertical-candidate-envelope"
+      },
+      width: {
+        status: "observed",
+        provenance: "accepted-vertical-candidate-envelope"
+      },
+      height: {
+        status: "observed",
+        provenance: "accepted-horizontal-candidate-envelope"
+      }
     }
   });
   expect(adapted.input.spacingEvidence).toEqual({
@@ -234,6 +250,22 @@ test("keeps reconstruction variants in deterministic strategy order", () => {
   expect(reconstruction.axes.vertical.hypotheses.map(
     hypothesis => hypothesis.intervalCount
   )).toEqual([1, 2, 3, 4]);
+  expect(reconstruction.observations.observedBounds).toMatchObject({
+    semantics: "accepted-candidate-envelope",
+    value: { top: 0, left: 0, width: 20, height: 20 },
+    provenance: {
+      source: "phase-4-shadow-grid-geometry",
+      derivation: "outermost-accepted-horizontal-and-vertical-candidate-positions"
+    }
+  });
+  expect(reconstruction.assumptions).toContainEqual({
+    id: "observed-bounds-are-accepted-candidate-envelope",
+    status: "applied"
+  });
+  expect(reconstruction.assumptions).not.toContainEqual({
+    id: "observed-bounds-are-outer-line-centers",
+    status: "applied"
+  });
   expect(JSON.stringify(second)).toBe(JSON.stringify(first));
 });
 

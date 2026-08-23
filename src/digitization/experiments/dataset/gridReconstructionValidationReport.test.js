@@ -37,6 +37,39 @@ test("compares an exact reconstructed grid without changing its local observatio
   expect(variant.cols.exact).toBe(true);
 });
 
+test("compares accepted-candidate envelope bounds with ground truth", () => {
+  const reconstruction = createReconstruction();
+  reconstruction.observations.observedBounds = {
+    status: "available",
+    coordinateSpace: "analysis-region-local",
+    semantics: "accepted-candidate-envelope",
+    value: { top: 0, left: 0, width: 20, height: 20 },
+    provenance: {
+      source: "phase-4-shadow-grid-geometry",
+      derivation: "outermost-accepted-horizontal-and-vertical-candidate-positions"
+    }
+  };
+  const report = createReport({ reconstruction });
+  const region = report.items[0].providers[0].regions[0];
+  const variant = region.variants[0];
+
+  expect(region.rawLocalReconstruction.observations.observedBounds)
+    .toEqual({
+      ...reconstruction.observations.observedBounds,
+      provenance: {
+        derivation:
+          "outermost-accepted-horizontal-and-vertical-candidate-positions"
+      }
+    });
+  expect(variant.normalizedComparisonInput.bounds).toEqual({
+    top: 100,
+    left: 50,
+    width: 20,
+    height: 20
+  });
+  expect(variant.bounds.exact).toBe(true);
+});
+
 test("reports missing and extra reconstructed lines in source order", () => {
   const reconstruction = createReconstruction({
     horizontal: [0, 11, 20, 30],

@@ -143,6 +143,28 @@ test("accepts explicitly partial observed bounds", () => {
   expect(result.observations.observedBounds).toEqual(input.observedBounds);
 });
 
+test("accepts an explicit accepted-candidate bounds envelope", () => {
+  const input = createAvailableInput();
+  input.observedBounds = {
+    ...input.observedBounds,
+    semantics: "accepted-candidate-envelope",
+    provenance: {
+      source: "phase-4-shadow-grid-geometry",
+      derivation: "outermost-accepted-horizontal-and-vertical-candidate-positions"
+    }
+  };
+
+  const result = createGridReconstruction(input);
+
+  expect(result.observations.observedBounds).toEqual(input.observedBounds);
+  expect(result.gridHypotheses[0].bounds).toEqual({
+    top: 10,
+    left: 5,
+    width: 10,
+    height: 10
+  });
+});
+
 test.each([
   ["origin", input => { input.coordinateSystem.origin = "bottom-left"; }],
   ["x direction", input => { input.coordinateSystem.xDirection = "left"; }],

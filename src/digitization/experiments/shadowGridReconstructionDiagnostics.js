@@ -4,6 +4,10 @@ import {
 
 const ALLOWED_ENVIRONMENTS = new Set(["development", "test"]);
 const SOURCE_EXPERIMENT_ID = "shadow-grid-analysis-diagnostics";
+const CANDIDATE_ENVELOPE_PROVENANCE = Object.freeze({
+  source: "phase-4-shadow-grid-geometry",
+  derivation: "outermost-accepted-horizontal-and-vertical-candidate-positions"
+});
 
 export const SHADOW_GRID_RECONSTRUCTION_PARAMETERS = Object.freeze({
   strategyId: "uniform-orthogonal-lattice",
@@ -231,22 +235,24 @@ function adaptObservedBounds(gridAnalysis) {
     return {
       status: "unavailable",
       coordinateSpace: "analysis-region-local",
-      semantics: "outer-line-center-envelope",
+      semantics: "accepted-candidate-envelope",
       value: null,
-      reason: "phase-4-grid-bounds-unavailable"
+      reason: "phase-4-grid-bounds-unavailable",
+      provenance: cloneValue(CANDIDATE_ENVELOPE_PROVENANCE)
     };
   }
 
   return {
     status: "available",
     coordinateSpace: "analysis-region-local",
-    semantics: "outer-line-center-envelope",
+    semantics: "accepted-candidate-envelope",
     value: cloneValue(bounds),
+    provenance: cloneValue(CANDIDATE_ENVELOPE_PROVENANCE),
     components: {
-      top: { status: "observed", provenance: "phase-4-shadow-grid-geometry" },
-      left: { status: "observed", provenance: "phase-4-shadow-grid-geometry" },
-      width: { status: "observed", provenance: "phase-4-shadow-grid-geometry" },
-      height: { status: "observed", provenance: "phase-4-shadow-grid-geometry" }
+      top: { status: "observed", provenance: "accepted-horizontal-candidate-envelope" },
+      left: { status: "observed", provenance: "accepted-vertical-candidate-envelope" },
+      width: { status: "observed", provenance: "accepted-vertical-candidate-envelope" },
+      height: { status: "observed", provenance: "accepted-horizontal-candidate-envelope" }
     }
   };
 }
