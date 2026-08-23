@@ -1046,6 +1046,12 @@ function extractShadowGridBoundsLatticeExtensionObservations(
       const observations = Array.isArray(artifact?.observations)
         ? artifact.observations
         : [];
+      const envelopeProduct = Array.isArray(artifact?.diagnostics)
+        ? artifact.diagnostics.find(diagnostic => (
+          diagnostic?.type
+            === "uniform-lattice-outer-grid-envelope-product"
+        )) ?? null
+        : null;
 
       addLatticeExtensionReportObservation({
         experimentId,
@@ -1073,6 +1079,71 @@ function extractShadowGridBoundsLatticeExtensionObservations(
         available,
         unavailable
       });
+
+      if (envelopeProduct) {
+        for (const [suffix, value] of [
+          ["product.status", envelopeProduct.status],
+          ["product.representation", envelopeProduct.representation],
+          ["product.cartesian-counts", envelopeProduct.cartesianProduct]
+        ]) {
+          addLatticeExtensionReportObservation({
+            experimentId,
+            observationId: `${regionNamespace}.${suffix}`,
+            value,
+            isAvailable: value !== null && value !== undefined,
+            available,
+            unavailable
+          });
+        }
+
+        for (const axis of ["horizontal", "vertical"]) {
+          const axisEvidence = envelopeProduct.axes?.[axis];
+          const interpretations = Array.isArray(axisEvidence?.interpretations)
+            ? axisEvidence.interpretations
+            : [];
+
+          addLatticeExtensionReportObservation({
+            experimentId,
+            observationId:
+              `${regionNamespace}.product.${axis}.interpretation-count`,
+            value: axisEvidence?.interpretationCount,
+            isAvailable: Number.isInteger(axisEvidence?.interpretationCount),
+            available,
+            unavailable
+          });
+          addLatticeExtensionReportObservation({
+            experimentId,
+            observationId:
+              `${regionNamespace}.product.${axis}.extension-state-count`,
+            value: axisEvidence?.extensionStateCount,
+            isAvailable: Number.isInteger(axisEvidence?.extensionStateCount),
+            available,
+            unavailable
+          });
+
+          interpretations.forEach((interpretation, index) => {
+            addLatticeExtensionReportObservation({
+              experimentId,
+              observationId:
+                `${regionNamespace}.product.${axis}.interpretation.${index}`,
+              value: {
+                interpretationReference:
+                  interpretation.interpretationReference,
+                interpretationStatus: interpretation.interpretationStatus,
+                extensionStatus: interpretation.extensionStatus,
+                extensionStateCount: Array.isArray(
+                  interpretation.extensionStates
+                )
+                  ? interpretation.extensionStates.length
+                  : 0
+              },
+              isAvailable: true,
+              available,
+              unavailable
+            });
+          });
+        }
+      }
 
       observations.forEach((observation, index) => {
         const observationNamespace = `${regionNamespace}.observation.${index}`;

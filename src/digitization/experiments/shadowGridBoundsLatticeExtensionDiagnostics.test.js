@@ -25,101 +25,73 @@ test.each(["production", undefined, "preview"])(
   }
 );
 
-test("preserves the accepted-candidate envelope and records one compatible extension", () => {
+test("preserves the accepted-candidate envelope and factors extensions", () => {
   const sources = createSources({
     dimensions: { width: 21, height: 31 }
   });
   const result = createRunner()(sources);
   const artifact = readArtifact(result);
 
-  expect(artifact.status).toBe("available");
+  const product = readProduct(result);
+
+  expect(artifact.status).toBe("unavailable");
   expect(artifact.sourceAcceptedCandidateEnvelope).toEqual(
     sources.gridBoundsObservations.providers[0]
       .boundsObservations[0].boundsObservation
       .sourceAcceptedCandidateEnvelope
   );
-  expect(artifact.observations).toHaveLength(1);
-  expect(artifact.observations[0]).toMatchObject({
-    bounds: { top: 0, left: 0, width: 20, height: 30 },
-    inferredOuterIntervals: {
-      top: 0,
-      bottom: 1,
-      left: 0,
-      right: 0
-    },
-    spacingUsed: { horizontal: 10, vertical: 10 },
-    candidateAlignmentResiduals: {
-      horizontal: [
-        {
-          candidateIndex: 0,
-          observedPosition: 0,
-          modeledPosition: 0,
-          residual: 0,
-          absoluteResidual: 0
-        },
-        {
-          candidateIndex: 1,
-          observedPosition: 20,
-          modeledPosition: 20,
-          residual: 0,
-          absoluteResidual: 0
-        }
-      ],
-      vertical: expect.any(Array)
+  expect(artifact.observations).toEqual([]);
+  expect(product).toMatchObject({
+    status: "available",
+    representation: "factored-axis-extension-product",
+    cartesianProduct: {
+      horizontalExtensionStateCount: 2,
+      verticalExtensionStateCount: 1,
+      totalCombinationCount: 2,
+      unextendedCombinationCount: 1,
+      possibleEnvelopeCount: 1,
+      materializedEnvelopeCount: 0
     }
   });
+  expect(product.axes.horizontal.interpretations[0].extensionStates).toEqual([
+    {
+      extensionIndex: 0,
+      inferredBefore: 0,
+      inferredAfter: 0,
+      proposedStart: 0,
+      proposedEnd: 20
+    },
+    {
+      extensionIndex: 1,
+      inferredBefore: 0,
+      inferredAfter: 1,
+      proposedStart: 0,
+      proposedEnd: 30
+    }
+  ]);
 });
 
-test("preserves provenance and existing alignment residuals", () => {
-  const result = createRunner()(createSources({
+test("references source interpretation evidence without cloning it per product", () => {
+  const sources = createSources({
     dimensions: { width: 21, height: 31 },
     horizontalResiduals: [0.5, -0.5]
-  }));
-  const observation = readArtifact(result).observations[0];
+  });
+  const product = readProduct(createRunner()(sources));
+  const horizontal = product.axes.horizontal.interpretations[0];
 
-  expect(observation.provenance).toEqual({
-    source: "shadow-grid-lattice-evidence",
+  expect(horizontal.interpretationReference).toEqual({
+    source: "shadow-grid-reconstruction-diagnostics",
+    diagnosticType: "uniform-orthogonal-lattice-strategy",
     providerId: "provider-a",
     regionId: "region-a",
-    horizontalInterpretationIndex: 0,
-    verticalInterpretationIndex: 0
+    axis: "horizontal",
+    interpretationIndex: 0,
+    intervalCount: 2
   });
-  expect(observation.candidateAlignmentResiduals.horizontal).toEqual([
-    {
-      candidateIndex: 0,
-      observedPosition: 0.5,
-      modeledPosition: 0,
-      residual: 0.5,
-      absoluteResidual: 0.5,
-      assignmentStatus: "assigned"
-    },
-    {
-      candidateIndex: 1,
-      observedPosition: 19.5,
-      modeledPosition: 20,
-      residual: -0.5,
-      absoluteResidual: 0.5,
-      assignmentStatus: "assigned"
-    }
-  ]);
-  expect(observation.evidenceReferences).toEqual([
-    {
-      type: "accepted-candidate-envelope",
-      bounds: { top: 0, left: 0, width: 20, height: 20 }
-    },
-    {
-      type: "uniform-lattice-axis-interpretation",
-      axis: "horizontal",
-      interpretationIndex: 0,
-      interpretationStatus: "rejected"
-    },
-    {
-      type: "uniform-lattice-axis-interpretation",
-      axis: "vertical",
-      interpretationIndex: 0,
-      interpretationStatus: "rejected"
-    }
-  ]);
+  expect(horizontal).not.toHaveProperty("candidateResiduals");
+  expect(sources.shadowGridReconstruction.providers[0].reconstructions[0]
+    .reconstruction.diagnostics[0].axes.horizontal.interpretations[0]
+    .candidateResiduals[0].residual).toBe(0.5);
 });
 
 test("evaluates rejected pre-admission evidence without admitting it", () => {
@@ -127,19 +99,13 @@ test("evaluates rejected pre-admission evidence without admitting it", () => {
   const reconstruction = sources.shadowGridReconstruction.providers[0]
     .reconstructions[0].reconstruction;
   const before = clone(reconstruction);
-  const observation = readArtifact(createRunner()(sources)).observations[0];
+  const product = readProduct(createRunner()(sources));
 
   expect(reconstruction.gridHypotheses).toEqual([]);
-  expect(observation.reconstructionLatticeEvidence).toMatchObject({
-    horizontal: {
-      interpretationStatus: "rejected",
-      rejectionReasons: [{ code: "candidate-alignment-failed" }]
-    },
-    vertical: {
-      interpretationStatus: "rejected",
-      rejectionReasons: [{ code: "candidate-alignment-failed" }]
-    }
-  });
+  expect(product.axes.horizontal.interpretations[0].interpretationStatus)
+    .toBe("rejected");
+  expect(product.axes.vertical.interpretations[0].interpretationStatus)
+    .toBe("rejected");
   expect(reconstruction).toEqual(before);
 });
 
@@ -154,20 +120,55 @@ test("preserves pre-admission interpretation order in extension observations", (
     [0, 0]
   ));
 
-  const observations = readArtifact(createRunner()(sources)).observations;
+  const interpretations = readProduct(createRunner()(sources))
+    .axes.horizontal.interpretations;
 
-  expect(observations.map(observation => ({
+  expect(interpretations.map(interpretation => ({
     interpretationIndex:
-      observation.provenance.horizontalInterpretationIndex,
-    intervalCount:
-      observation.reconstructionLatticeEvidence.horizontal.intervalCount
+      interpretation.interpretationReference.interpretationIndex,
+    intervalCount: interpretation.interpretationReference.intervalCount
   }))).toEqual([
     { interpretationIndex: 0, intervalCount: 2 },
     { interpretationIndex: 1, intervalCount: 4 }
   ]);
 });
 
-test("preserves every compatible observation in deterministic order", () => {
+test("preserves interpretations with unavailable extension evidence", () => {
+  const sources = createSources({ dimensions: { width: 21, height: 31 } });
+  const horizontal = sources.shadowGridReconstruction.providers[0]
+    .reconstructions[0].reconstruction.diagnostics[0].axes.horizontal;
+  const unavailable = createAxisInterpretation(0, 20, 1, [0, 0]);
+
+  unavailable.quantumCompatibility.representations = [];
+  unavailable.rejectionReasons = [{ code: "spacing-out-of-range" }];
+  horizontal.interpretations.unshift(unavailable);
+
+  const interpretations = readProduct(createRunner()(sources))
+    .axes.horizontal.interpretations;
+
+  expect(interpretations).toHaveLength(2);
+  expect(interpretations.map(item => ({
+    index: item.interpretationReference.interpretationIndex,
+    intervalCount: item.interpretationReference.intervalCount,
+    extensionStatus: item.extensionStatus,
+    extensionStateCount: item.extensionStates.length
+  }))).toEqual([
+    {
+      index: 0,
+      intervalCount: 1,
+      extensionStatus: "unavailable",
+      extensionStateCount: 0
+    },
+    {
+      index: 1,
+      intervalCount: 2,
+      extensionStatus: "available",
+      extensionStateCount: 2
+    }
+  ]);
+});
+
+test("preserves the exact Cartesian count without materializing combinations", () => {
   const sources = createSources({
     bounds: { top: 10, left: 20, width: 20, height: 20 },
     dimensions: { width: 61, height: 41 }
@@ -176,28 +177,17 @@ test("preserves every compatible observation in deterministic order", () => {
   const first = run(sources);
   const second = run(sources);
   const artifact = readArtifact(first);
+  const product = readProduct(first);
 
-  expect(artifact.status).toBe("ambiguous");
-  expect(artifact.observations).toHaveLength(15);
-  expect(artifact.observations.map(observation => (
-    observation.inferredOuterIntervals
-  ))).toEqual([
-    { top: 0, bottom: 0, left: 0, right: 1 },
-    { top: 0, bottom: 0, left: 1, right: 0 },
-    { top: 0, bottom: 0, left: 1, right: 1 },
-    { top: 0, bottom: 1, left: 0, right: 0 },
-    { top: 0, bottom: 1, left: 0, right: 1 },
-    { top: 0, bottom: 1, left: 1, right: 0 },
-    { top: 0, bottom: 1, left: 1, right: 1 },
-    { top: 1, bottom: 0, left: 0, right: 0 },
-    { top: 1, bottom: 0, left: 0, right: 1 },
-    { top: 1, bottom: 0, left: 1, right: 0 },
-    { top: 1, bottom: 0, left: 1, right: 1 },
-    { top: 1, bottom: 1, left: 0, right: 0 },
-    { top: 1, bottom: 1, left: 0, right: 1 },
-    { top: 1, bottom: 1, left: 1, right: 0 },
-    { top: 1, bottom: 1, left: 1, right: 1 }
-  ]);
+  expect(artifact.observations).toEqual([]);
+  expect(product.cartesianProduct).toEqual({
+    horizontalExtensionStateCount: 4,
+    verticalExtensionStateCount: 4,
+    totalCombinationCount: 16,
+    unextendedCombinationCount: 1,
+    possibleEnvelopeCount: 15,
+    materializedEnvelopeCount: 0
+  });
   expect(JSON.stringify(second)).toBe(JSON.stringify(first));
 });
 
@@ -280,15 +270,22 @@ test("flows through benchmark and compact Observation Report extraction", async 
       experimentId: "shadow-grid-bounds-lattice-extension-diagnostics",
       category: "shadow-grid-bounds-lattice-extension",
       observationId:
-        "provider.provider-a.region.region-a.compatible-observation-count",
-      value: 1
+        "provider.provider-a.region.region-a.product.cartesian-counts",
+      value: {
+        horizontalExtensionStateCount: 2,
+        verticalExtensionStateCount: 1,
+        totalCombinationCount: 2,
+        unextendedCombinationCount: 1,
+        possibleEnvelopeCount: 1,
+        materializedEnvelopeCount: 0
+      }
     },
     {
       experimentId: "shadow-grid-bounds-lattice-extension-diagnostics",
       category: "shadow-grid-bounds-lattice-extension",
       observationId:
-        "provider.provider-a.region.region-a.observation.0.bounds",
-      value: { top: 0, left: 0, width: 20, height: 30 }
+        "provider.provider-a.region.region-a.product.horizontal.interpretation-count",
+      value: 1
     }
   ]));
 });
@@ -335,13 +332,26 @@ test("flows through the dataset pipeline without interpreting production", async
       success: true,
       diagnostics: { status: "complete" }
     });
+  const product = result.items[0].comparison.result.benchmark.experiments[3]
+    .diagnostics.providers[0].boundsObservations[0].boundsObservation
+    .diagnostics[0];
+
+  expect(result.items[0].status).toBe("completed");
+  expect(product.cartesianProduct).toMatchObject({
+    totalCombinationCount: 2,
+    possibleEnvelopeCount: 1,
+    materializedEnvelopeCount: 0
+  });
   expect(result.items[0].observationReport.result.observations.available)
     .toEqual(expect.arrayContaining([
       expect.objectContaining({
         experimentId: "shadow-grid-bounds-lattice-extension-diagnostics",
         observationId:
-          "provider.provider-a.region.region-a.compatible-observation-count",
-        value: 1
+          "provider.provider-a.region.region-a.product.cartesian-counts",
+        value: expect.objectContaining({
+          possibleEnvelopeCount: 1,
+          materializedEnvelopeCount: 0
+        })
       })
     ]));
 });
@@ -626,6 +636,12 @@ function createAssignmentAttempt(
 
 function readArtifact(result) {
   return result.providers[0].boundsObservations[0].boundsObservation;
+}
+
+function readProduct(result) {
+  return readArtifact(result).diagnostics.find(diagnostic => (
+    diagnostic.type === "uniform-lattice-outer-grid-envelope-product"
+  ));
 }
 
 function fixtureExperiment(id, diagnostics) {

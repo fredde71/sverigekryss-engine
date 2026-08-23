@@ -89,6 +89,56 @@ test("normalizes axis-specific offset and scale before comparison", () => {
   expect(comparison.exactBoundMatch.exact).toBe(true);
 });
 
+test("validates a factored envelope product without materializing combinations", () => {
+  const item = createDatasetItem({
+    providers: [createProvider("provider", [createFactoredRegion()])]
+  });
+  const report = createGridBoundsLatticeExtensionValidationReport({
+    datasetReport: createDatasetReport([item]),
+    groundTruth: createGroundTruth([
+      createAnnotation(
+        "item-a",
+        "a.pdf",
+        { top: 100, left: 50, width: 20, height: 30 }
+      )
+    ])
+  });
+  const product = report.items[0].providers[0].regions[0].envelopeProduct;
+
+  expect(product).toMatchObject({
+    status: "compared",
+    representation: "factored-axis-extension-product",
+    cartesianProduct: {
+      totalCombinationCount: 2,
+      possibleEnvelopeCount: 1,
+      materializedEnvelopeCount: 0
+    },
+    comparedCombinationCount: 1,
+    exactBoundsMatchCombinationCount: 1
+  });
+  expect(product.axes.horizontal.interpretations[0].extensionStates)
+    .toEqual([
+      expect.objectContaining({
+        extensionIndex: 0,
+        normalizedStart: 100,
+        normalizedEnd: 120,
+        exact: false
+      }),
+      expect.objectContaining({
+        extensionIndex: 1,
+        normalizedStart: 100,
+        normalizedEnd: 130,
+        exact: true
+      })
+    ]);
+  expect(report.inventory).toMatchObject({
+    totalObservationCount: 0,
+    totalFactoredCombinationCount: 1,
+    comparedFactoredCombinationCount: 1,
+    exactBoundsMatchCount: 1
+  });
+});
+
 test("preserves dataset, provider, region and ambiguous observation order", () => {
   const firstItem = createDatasetItem({
     id: "item-b",
@@ -390,6 +440,79 @@ function createRegion(
           : [{ code: "single-compatible-lattice-extension-observation" }]
     },
     error: null
+  };
+}
+
+function createFactoredRegion() {
+  const region = createRegion("region", [], "unavailable");
+
+  region.boundsObservation.reasons = [{
+    code: "outer-grid-envelope-product-preserved-without-materialization"
+  }];
+  region.boundsObservation.diagnostics = [{
+    type: "uniform-lattice-outer-grid-envelope-product",
+    version: 1,
+    status: "available",
+    representation: "factored-axis-extension-product",
+    coordinateSpace: "analysis-region-local",
+    sourceAcceptedCandidateEnvelope: {
+      top: 0,
+      left: 0,
+      width: 20,
+      height: 20
+    },
+    axes: {
+      horizontal: createFactoredAxis("horizontal", [
+        { before: 0, after: 0, start: 0, end: 20 },
+        { before: 0, after: 1, start: 0, end: 30 }
+      ]),
+      vertical: createFactoredAxis("vertical", [
+        { before: 0, after: 0, start: 0, end: 20 }
+      ])
+    },
+    cartesianProduct: {
+      horizontalExtensionStateCount: 2,
+      verticalExtensionStateCount: 1,
+      totalCombinationCount: 2,
+      unextendedCombinationCount: 1,
+      possibleEnvelopeCount: 1,
+      materializedEnvelopeCount: 0
+    },
+    provenance: { source: "shadow-grid-lattice-evidence" },
+    assumptions: [],
+    reasons: [{
+      code: "lattice-extension-product-preserved-without-materialization"
+    }]
+  }];
+  return region;
+}
+
+function createFactoredAxis(axis, states) {
+  return {
+    axis,
+    interpretationCount: 1,
+    extensionStateCount: states.length,
+    interpretations: [{
+      interpretationReference: {
+        source: "shadow-grid-reconstruction-diagnostics",
+        axis,
+        interpretationIndex: 0,
+        intervalCount: 2
+      },
+      interpretationStatus: "rejected",
+      extensionStatus: "available",
+      reason: null,
+      spacing: 10,
+      sourceStart: 0,
+      sourceEnd: 20,
+      extensionStates: states.map((state, extensionIndex) => ({
+        extensionIndex,
+        inferredBefore: state.before,
+        inferredAfter: state.after,
+        proposedStart: state.start,
+        proposedEnd: state.end
+      }))
+    }]
   };
 }
 

@@ -151,17 +151,17 @@ function extendRegion({
   }
 
   try {
-    const observations = enumerateOuterBoundsObservations({
+    const envelopeProduct = createOuterBoundsEnvelopeProduct({
       providerId,
       regionId,
       source,
       gridAnalysis,
       latticeEvidenceRegion
     });
-    const state = resolveObservationState(observations);
+    const productAvailable = envelopeProduct.status === "available";
     const boundsObservation = createObservation({
       analysisRegionId: source.analysisRegionId,
-      status: state.status,
+      status: "unavailable",
       sourceAcceptedCandidateEnvelope:
         source.sourceAcceptedCandidateEnvelope,
       coordinateSystem: source.coordinateSystem,
@@ -177,14 +177,13 @@ function extendRegion({
         sourceReconstructionExperimentId: RECONSTRUCTION_EXPERIMENT_ID,
         latticeEvidenceAdapterType: "shadow-grid-lattice-evidence"
       },
-      observations,
-      reasons: state.reasons,
-      diagnostics: [{
-        type: "uniform-lattice-outer-grid-envelope-observation",
-        status: state.status,
-        compatibleObservationCount: observations.length,
-        sourceCandidateEnvelopePreserved: true
-      }]
+      observations: [],
+      reasons: [{
+        code: productAvailable
+          ? "outer-grid-envelope-product-preserved-without-materialization"
+          : "no-compatible-lattice-extension-observation"
+      }],
+      diagnostics: [envelopeProduct]
     });
 
     return {
@@ -205,7 +204,7 @@ function extendRegion({
   }
 }
 
-function enumerateOuterBoundsObservations({
+function createOuterBoundsEnvelopeProduct({
   providerId,
   regionId,
   source,
@@ -220,11 +219,13 @@ function enumerateOuterBoundsObservations({
     || !hasFiniteDimensions(gridAnalysis?.regionDimensions)
     || latticeEvidenceRegion?.status !== "available"
   ) {
-    return [];
+    return unavailableEnvelopeProduct(
+      source.coordinateSystem?.space ?? null,
+      "lattice-extension-source-evidence-unavailable"
+    );
   }
 
   const parameters = latticeEvidenceRegion.parameters;
-  const observations = [];
   const horizontalEvidence = createAxisEvidenceExtensions({
     axisEvidence: latticeEvidenceRegion.axes?.horizontal,
     sourceStart: envelope.bounds.top,
@@ -240,131 +241,66 @@ function enumerateOuterBoundsObservations({
     parameters
   });
 
-  for (const horizontal of horizontalEvidence) {
-    for (const vertical of verticalEvidence) {
-      for (const horizontalExtension of horizontal.extensions) {
-        for (const verticalExtension of vertical.extensions) {
-          const counts = {
-            top: horizontalExtension.before,
-            bottom: horizontalExtension.after,
-            left: verticalExtension.before,
-            right: verticalExtension.after
-          };
+  const horizontalExtensionStateCount = countExtensionStates(
+    horizontalEvidence
+  );
+  const verticalExtensionStateCount = countExtensionStates(verticalEvidence);
+  const horizontalUnextendedStateCount = countUnextendedStates(
+    horizontalEvidence
+  );
+  const verticalUnextendedStateCount = countUnextendedStates(verticalEvidence);
+  const totalCombinationCount = horizontalExtensionStateCount
+    * verticalExtensionStateCount;
+  const unextendedCombinationCount = horizontalUnextendedStateCount
+    * verticalUnextendedStateCount;
+  const possibleEnvelopeCount = totalCombinationCount
+    - unextendedCombinationCount;
 
-          if (Object.values(counts).every(count => count === 0)) {
-            continue;
-          }
-
-          const top = horizontal.start
-            - (counts.top * horizontal.spacing);
-          const bottom = horizontal.end
-            + (counts.bottom * horizontal.spacing);
-          const left = vertical.start
-            - (counts.left * vertical.spacing);
-          const right = vertical.end
-            + (counts.right * vertical.spacing);
-          const observationIndex = observations.length;
-
-          observations.push({
-          id: `lattice-extension-${observationIndex}`,
-          status: "available",
-          semantics: "outer-grid-line-center-envelope",
-          coordinateSpace: source.coordinateSystem.space,
-          bounds: {
-            top,
-            left,
-            width: right - left,
-            height: bottom - top
-          },
-          inferredOuterIntervals: counts,
-          spacingUsed: {
-            horizontal: horizontal.spacing,
-            vertical: vertical.spacing
-          },
-          candidateAlignmentResiduals: {
-            horizontal: horizontal.residuals,
-            vertical: vertical.residuals
-          },
-          reconstructionLatticeEvidence: {
-            horizontal: cloneValue(horizontal.interpretation),
-            vertical: cloneValue(vertical.interpretation)
-          },
-          provenance: {
-            source: "shadow-grid-lattice-evidence",
-            providerId,
-            regionId,
-            horizontalInterpretationIndex:
-              horizontal.interpretation.interpretationIndex,
-            verticalInterpretationIndex:
-              vertical.interpretation.interpretationIndex
-          },
-          evidenceReferences: [
-            {
-              type: "accepted-candidate-envelope",
-              bounds: cloneValue(envelope.bounds)
-            },
-            {
-              type: "uniform-lattice-axis-interpretation",
-              axis: "horizontal",
-              interpretationIndex:
-                horizontal.interpretation.interpretationIndex,
-              interpretationStatus:
-                horizontal.interpretation.interpretationStatus
-            },
-            {
-              type: "uniform-lattice-axis-interpretation",
-              axis: "vertical",
-              interpretationIndex:
-                vertical.interpretation.interpretationIndex,
-              interpretationStatus:
-                vertical.interpretation.interpretationStatus
-            }
-          ],
-          assumptions: [
-            {
-              id: "uniform-lattice-continues-beyond-accepted-candidate-envelope",
-              status: "applied"
-            },
-            {
-              id: "analysis-region-limits-outer-extension",
-              status: "applied"
-            },
-            {
-              id: "pre-admission-reconstruction-evidence-remains-unadmitted",
-              status: "applied"
-            }
-          ],
-          reasons: [{
-            code: "lattice-extension-observed-from-pre-admission-axis-evidence"
-          }],
-          diagnostics: [{
-            type: "uniform-lattice-outer-extension",
-            horizontal: {
-              spacing: horizontal.spacing,
-              interpretationIndex:
-                horizontal.interpretation.interpretationIndex,
-              interpretationStatus:
-                horizontal.interpretation.interpretationStatus,
-              inferredBefore: counts.top,
-              inferredAfter: counts.bottom
-            },
-            vertical: {
-              spacing: vertical.spacing,
-              interpretationIndex:
-                vertical.interpretation.interpretationIndex,
-              interpretationStatus:
-                vertical.interpretation.interpretationStatus,
-              inferredBefore: counts.left,
-              inferredAfter: counts.right
-            }
-          }]
-          });
-        }
+  return {
+    type: "uniform-lattice-outer-grid-envelope-product",
+    version: 1,
+    status: possibleEnvelopeCount > 0 ? "available" : "unavailable",
+    representation: "factored-axis-extension-product",
+    coordinateSpace: source.coordinateSystem.space,
+    sourceAcceptedCandidateEnvelope: cloneValue(envelope.bounds),
+    axes: {
+      horizontal: createFactoredAxis("horizontal", horizontalEvidence),
+      vertical: createFactoredAxis("vertical", verticalEvidence)
+    },
+    cartesianProduct: {
+      horizontalExtensionStateCount,
+      verticalExtensionStateCount,
+      totalCombinationCount,
+      unextendedCombinationCount,
+      possibleEnvelopeCount,
+      materializedEnvelopeCount: 0
+    },
+    provenance: {
+      source: "shadow-grid-lattice-evidence",
+      providerId,
+      regionId,
+      sourceExperimentId: RECONSTRUCTION_EXPERIMENT_ID
+    },
+    assumptions: [
+      {
+        id: "uniform-lattice-continues-beyond-accepted-candidate-envelope",
+        status: "applied"
+      },
+      {
+        id: "analysis-region-limits-outer-extension",
+        status: "applied"
+      },
+      {
+        id: "pre-admission-reconstruction-evidence-remains-unadmitted",
+        status: "applied"
       }
-    }
-  }
-
-  return observations;
+    ],
+    reasons: [{
+      code: possibleEnvelopeCount > 0
+        ? "lattice-extension-product-preserved-without-materialization"
+        : "no-compatible-lattice-extension-observation"
+    }]
+  };
 }
 
 function createAxisEvidenceExtensions({
@@ -378,16 +314,21 @@ function createAxisEvidenceExtensions({
     return [];
   }
 
-  return axisEvidence.interpretations.map(interpretation => (
-    createAxisExtensions({
+  return axisEvidence.interpretations.map(interpretation => {
+    const extension = createAxisExtensions({
       axis: axisEvidence.axis,
       interpretation,
       sourceStart,
       sourceEnd,
       domainEnd,
       parameters
-    })
-  )).filter(Boolean);
+    });
+
+    return extension ?? createUnavailableAxisExtension(
+      axisEvidence.axis,
+      interpretation
+    );
+  });
 }
 
 function createAxisExtensions({
@@ -475,37 +416,94 @@ function createAxisExtensions({
     start,
     end,
     spacing,
-    residuals: cloneValue(interpretation.candidateResiduals ?? []),
-    interpretation,
+    interpretationReference: createInterpretationReference(interpretation),
+    interpretationStatus: interpretation.interpretationStatus,
+    extensionStatus: "available",
+    reason: null,
     extensions
   };
 }
 
-function resolveObservationState(observations) {
-  if (observations.length === 0) {
-    return {
-      status: "unavailable",
-      reasons: [{
-        code: "no-compatible-lattice-extension-observation"
-      }]
-    };
-  }
-
-  if (observations.length === 1) {
-    return {
-      status: "available",
-      reasons: [{
-        code: "single-compatible-lattice-extension-observation"
-      }]
-    };
-  }
-
+function createFactoredAxis(axis, evidence) {
   return {
-    status: "ambiguous",
-    reasons: [{
-      code: "multiple-compatible-lattice-extension-observations",
-      compatibleObservationCount: observations.length
-    }]
+    axis,
+    interpretationCount: evidence.length,
+    extensionStateCount: countExtensionStates(evidence),
+    interpretations: evidence.map(item => ({
+      interpretationReference: item.interpretationReference,
+      interpretationStatus: item.interpretationStatus,
+      extensionStatus: item.extensionStatus,
+      reason: item.reason,
+      spacing: item.spacing ?? null,
+      sourceStart: item.start ?? null,
+      sourceEnd: item.end ?? null,
+      extensionStates: item.extensions.map((extension, extensionIndex) => ({
+        extensionIndex,
+        inferredBefore: extension.before,
+        inferredAfter: extension.after,
+        proposedStart: item.start - (extension.before * item.spacing),
+        proposedEnd: item.end + (extension.after * item.spacing)
+      }))
+    }))
+  };
+}
+
+function createUnavailableAxisExtension(axis, interpretation) {
+  return {
+    axis,
+    interpretationReference: createInterpretationReference(interpretation),
+    interpretationStatus: interpretation?.interpretationStatus ?? null,
+    extensionStatus: "unavailable",
+    reason: "modeled-lattice-extension-evidence-unavailable",
+    extensions: []
+  };
+}
+
+function createInterpretationReference(interpretation) {
+  return {
+    source: RECONSTRUCTION_EXPERIMENT_ID,
+    diagnosticType: "uniform-orthogonal-lattice-strategy",
+    providerId: interpretation?.provenance?.providerId ?? null,
+    regionId: interpretation?.provenance?.regionId ?? null,
+    axis: interpretation?.provenance?.axis ?? null,
+    interpretationIndex: interpretation?.interpretationIndex ?? null,
+    intervalCount: interpretation?.intervalCount ?? null
+  };
+}
+
+function countExtensionStates(evidence) {
+  return evidence.reduce((count, item) => count + item.extensions.length, 0);
+}
+
+function countUnextendedStates(evidence) {
+  return evidence.reduce((count, item) => count + item.extensions.filter(
+    extension => extension.before === 0 && extension.after === 0
+  ).length, 0);
+}
+
+function unavailableEnvelopeProduct(coordinateSpace, reason) {
+  return {
+    type: "uniform-lattice-outer-grid-envelope-product",
+    version: 1,
+    status: "unavailable",
+    representation: "factored-axis-extension-product",
+    coordinateSpace,
+    sourceAcceptedCandidateEnvelope: null,
+    axes: {
+      horizontal: createFactoredAxis("horizontal", []),
+      vertical: createFactoredAxis("vertical", [])
+    },
+    cartesianProduct: {
+      horizontalExtensionStateCount: 0,
+      verticalExtensionStateCount: 0,
+      totalCombinationCount: 0,
+      unextendedCombinationCount: 0,
+      possibleEnvelopeCount: 0,
+      materializedEnvelopeCount: 0
+    },
+    provenance: null,
+    assumptions: [],
+    reasons: [{ code: reason }]
   };
 }
 

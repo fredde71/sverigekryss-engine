@@ -34,6 +34,9 @@ export function createGridBoundsLatticeExtensionValidationReport({
   const comparisons = items.flatMap(item => item.providers.flatMap(provider => (
     provider.regions.flatMap(region => region.observations)
   )));
+  const products = items.flatMap(item => item.providers.flatMap(provider => (
+    provider.regions.map(region => region.envelopeProduct).filter(Boolean)
+  )));
 
   return deepFreeze({
     type: "grid-bounds-lattice-extension-validation-report",
@@ -60,7 +63,15 @@ export function createGridBoundsLatticeExtensionValidationReport({
       )).length,
       exactBoundsMatchCount: comparisons.filter(comparison => (
         comparison.exactBoundMatch?.exact === true
-      )).length,
+      )).length + products.reduce((count, product) => (
+        count + (product.exactBoundsMatchCombinationCount ?? 0)
+      ), 0),
+      totalFactoredCombinationCount: products.reduce((count, product) => (
+        count + (product.cartesianProduct?.possibleEnvelopeCount ?? 0)
+      ), 0),
+      comparedFactoredCombinationCount: products.reduce((count, product) => (
+        count + (product.comparedCombinationCount ?? 0)
+      ), 0),
       unavailableItemCount: items.filter(item => (
         item.status === "unavailable"
       )).length,
@@ -133,17 +144,20 @@ function createItemValidation({ item, annotation }) {
 
   const regions = result.providers.flatMap(provider => provider.regions);
   const observations = regions.flatMap(region => region.observations);
+  const products = regions.map(region => region.envelopeProduct).filter(Boolean);
 
-  if (observations.length === 0) {
+  if (observations.length === 0 && products.length === 0) {
     result.reasons.push("lattice-extension-bounds-observations-unavailable");
   }
 
   const hasUnavailable = result.providers.some(provider => (
     provider.status !== "available"
   )) || regions.some(region => region.status !== "compared")
-    || observations.some(observation => observation.status !== "compared");
+    || observations.some(observation => observation.status !== "compared")
+    || products.some(product => product.status !== "compared");
 
-  result.status = observations.length === 0 || comparisonUnavailableReason
+  result.status = (observations.length === 0 && products.length === 0)
+    || comparisonUnavailableReason
     ? "unavailable"
     : hasUnavailable
       ? "partial"
@@ -202,7 +216,8 @@ function createRegionValidation({
       artifact?.sourceAcceptedCandidateEnvelope ?? null
     ),
     experimentProvenance: cloneCompact(artifact?.provenance ?? null),
-    observations: []
+    observations: [],
+    envelopeProduct: null
   };
 
   if (region?.status !== "completed") {
@@ -232,8 +247,18 @@ function createRegionValidation({
       comparisonUnavailableReason
     })
   ));
+  const envelopeProduct = findEnvelopeProduct(artifact.diagnostics);
 
-  if (result.observations.length === 0) {
+  if (envelopeProduct) {
+    result.envelopeProduct = createEnvelopeProductValidation({
+      envelopeProduct,
+      coordinateSystem: artifact.coordinateSystem,
+      annotation,
+      comparisonUnavailableReason
+    });
+  }
+
+  if (result.observations.length === 0 && !result.envelopeProduct) {
     result.reason = normalizeReason(
       artifact.reasons?.[0]?.code ?? artifact.reasons?.[0],
       `lattice-extension-result-${artifact.status || "unavailable"}`
@@ -241,9 +266,193 @@ function createRegionValidation({
     return result;
   }
 
-  result.status = comparisonUnavailableReason ? "unavailable" : "compared";
-  result.reason = comparisonUnavailableReason;
+  const productUnavailableReason = result.envelopeProduct
+    && result.envelopeProduct.status !== "compared"
+    ? result.envelopeProduct.reason
+    : null;
+
+  result.status = comparisonUnavailableReason || productUnavailableReason
+    ? "unavailable"
+    : "compared";
+  result.reason = comparisonUnavailableReason || productUnavailableReason;
   return result;
+}
+
+function createEnvelopeProductValidation({
+  envelopeProduct,
+  coordinateSystem,
+  annotation,
+  comparisonUnavailableReason
+}) {
+  const productUnavailableReason = envelopeProduct.status === "available"
+    ? null
+    : normalizeReason(
+      envelopeProduct.reasons?.[0]?.code
+        ?? envelopeProduct.reasons?.[0],
+      "factored-envelope-product-unavailable"
+    );
+  const unavailableReason = comparisonUnavailableReason
+    || productUnavailableReason;
+  const horizontal = createAxisProductValidation({
+    axis: "horizontal",
+    axisProduct: envelopeProduct.axes?.horizontal,
+    transform: coordinateSystem.localToBinaryImage,
+    annotation,
+    comparisonUnavailableReason: unavailableReason
+  });
+  const vertical = createAxisProductValidation({
+    axis: "vertical",
+    axisProduct: envelopeProduct.axes?.vertical,
+    transform: coordinateSystem.localToBinaryImage,
+    annotation,
+    comparisonUnavailableReason: unavailableReason
+  });
+  const exactHorizontal = countExactStates(horizontal);
+  const exactVertical = countExactStates(vertical);
+  const exactUnextendedHorizontal = countExactUnextendedStates(horizontal);
+  const exactUnextendedVertical = countExactUnextendedStates(vertical);
+  const exactBoundsMatchCombinationCount = unavailableReason
+    ? 0
+    : (exactHorizontal * exactVertical)
+      - (exactUnextendedHorizontal * exactUnextendedVertical);
+  const possibleEnvelopeCount = Number.isSafeInteger(
+    envelopeProduct.cartesianProduct?.possibleEnvelopeCount
+  )
+    ? envelopeProduct.cartesianProduct.possibleEnvelopeCount
+    : 0;
+
+  return {
+    status: unavailableReason ? "unavailable" : "compared",
+    reason: unavailableReason,
+    representation: envelopeProduct.representation ?? null,
+    coordinateSpace: envelopeProduct.coordinateSpace ?? null,
+    sourceAcceptedCandidateEnvelope: cloneCompact(
+      envelopeProduct.sourceAcceptedCandidateEnvelope ?? null
+    ),
+    cartesianProduct: cloneCompact(
+      envelopeProduct.cartesianProduct ?? null
+    ),
+    comparedCombinationCount: unavailableReason
+      ? 0
+      : possibleEnvelopeCount,
+    exactBoundsMatchCombinationCount,
+    axes: { horizontal, vertical },
+    provenance: cloneCompact(envelopeProduct.provenance ?? null),
+    assumptions: cloneCompact(envelopeProduct.assumptions ?? []),
+    reasons: cloneCompact(envelopeProduct.reasons ?? [])
+  };
+}
+
+function createAxisProductValidation({
+  axis,
+  axisProduct,
+  transform,
+  annotation,
+  comparisonUnavailableReason
+}) {
+  const interpretations = Array.isArray(axisProduct?.interpretations)
+    ? axisProduct.interpretations
+    : [];
+
+  return {
+    axis,
+    interpretationCount: axisProduct?.interpretationCount ?? 0,
+    extensionStateCount: axisProduct?.extensionStateCount ?? 0,
+    interpretations: interpretations.map(interpretation => ({
+      interpretationReference: cloneCompact(
+        interpretation?.interpretationReference ?? null
+      ),
+      interpretationStatus: interpretation?.interpretationStatus ?? null,
+      extensionStatus: interpretation?.extensionStatus ?? null,
+      reason: cloneCompact(interpretation?.reason ?? null),
+      spacing: interpretation?.spacing ?? null,
+      sourceStart: interpretation?.sourceStart ?? null,
+      sourceEnd: interpretation?.sourceEnd ?? null,
+      extensionStates: Array.isArray(interpretation?.extensionStates)
+        ? interpretation.extensionStates.map(state => compareAxisState({
+          axis,
+          state,
+          transform,
+          annotation,
+          comparisonUnavailableReason
+        }))
+        : []
+    }))
+  };
+}
+
+function compareAxisState({
+  axis,
+  state,
+  transform,
+  annotation,
+  comparisonUnavailableReason
+}) {
+  const isHorizontal = axis === "horizontal";
+  const scale = isHorizontal ? transform.scaleY : transform.scaleX;
+  const offset = isHorizontal ? transform.offsetY : transform.offsetX;
+  const expectedStart = annotation
+    ? (isHorizontal
+      ? annotation.gridBounds.top
+      : annotation.gridBounds.left)
+    : null;
+  const expectedEnd = annotation
+    ? (isHorizontal
+      ? annotation.gridBounds.top + annotation.gridBounds.height
+      : annotation.gridBounds.left + annotation.gridBounds.width)
+    : null;
+  const proposedStart = Number.isFinite(state?.proposedStart)
+    ? offset + (state.proposedStart * scale)
+    : null;
+  const proposedEnd = Number.isFinite(state?.proposedEnd)
+    ? offset + (state.proposedEnd * scale)
+    : null;
+  const comparable = !comparisonUnavailableReason
+    && Number.isFinite(proposedStart)
+    && Number.isFinite(proposedEnd);
+
+  return {
+    extensionIndex: state?.extensionIndex ?? null,
+    inferredBefore: state?.inferredBefore ?? null,
+    inferredAfter: state?.inferredAfter ?? null,
+    rawLocalStart: state?.proposedStart ?? null,
+    rawLocalEnd: state?.proposedEnd ?? null,
+    normalizedStart: proposedStart,
+    normalizedEnd: proposedEnd,
+    status: comparable ? "compared" : "unavailable",
+    reason: comparable
+      ? null
+      : comparisonUnavailableReason || "axis-extension-state-unavailable",
+    startDelta: comparable ? proposedStart - expectedStart : null,
+    endDelta: comparable ? proposedEnd - expectedEnd : null,
+    exact: comparable
+      ? proposedStart === expectedStart && proposedEnd === expectedEnd
+      : null
+  };
+}
+
+function countExactStates(axis) {
+  return axis.interpretations.reduce((count, interpretation) => (
+    count + interpretation.extensionStates.filter(state => state.exact).length
+  ), 0);
+}
+
+function countExactUnextendedStates(axis) {
+  return axis.interpretations.reduce((count, interpretation) => (
+    count + interpretation.extensionStates.filter(state => (
+      state.exact
+      && state.inferredBefore === 0
+      && state.inferredAfter === 0
+    )).length
+  ), 0);
+}
+
+function findEnvelopeProduct(diagnostics) {
+  return Array.isArray(diagnostics)
+    ? diagnostics.find(diagnostic => (
+      diagnostic?.type === "uniform-lattice-outer-grid-envelope-product"
+    )) ?? null
+    : null;
 }
 
 function createObservationValidation({
