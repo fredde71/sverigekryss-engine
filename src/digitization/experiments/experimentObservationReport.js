@@ -49,6 +49,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "vertical-span-relative-coverage-observation": extractVerticalSpanRelativeCoverageObservations,
   "shadow-analysis-region-observations": extractShadowAnalysisRegionObservations,
   "shadow-grid-analysis-diagnostics": extractShadowGridAnalysisObservations,
+  "shadow-grid-bounds-observation-diagnostics": extractShadowGridBoundsObservations,
   "shadow-grid-reconstruction-diagnostics": extractShadowGridReconstructionObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
 });
@@ -843,6 +844,164 @@ function extractShadowGridReconstructionObservations(experimentId, diagnostics) 
   }
 
   return { available, unavailable, structuralEvidence: null };
+}
+
+function extractShadowGridBoundsObservations(experimentId, diagnostics) {
+  const available = [];
+  const unavailable = [];
+  const providers = Array.isArray(diagnostics.providers)
+    ? diagnostics.providers
+    : [];
+
+  if (diagnostics.status !== "complete") {
+    unavailable.push({
+      experimentId,
+      category: "shadow-grid-bounds-observation",
+      observationId: "source",
+      reason: normalizeObservationReason(diagnostics.reason)
+    });
+  }
+
+  for (const provider of providers) {
+    const providerNamespace = `provider.${provider?.id || "unknown"}`;
+
+    addShadowGridBoundsObservation({
+      experimentId,
+      observationId: `${providerNamespace}.status`,
+      value: provider?.status,
+      isAvailable: typeof provider?.status === "string",
+      available,
+      unavailable
+    });
+    addShadowGridBoundsObservation({
+      experimentId,
+      observationId: `${providerNamespace}.region-count`,
+      value: provider?.regionCount,
+      isAvailable: Number.isInteger(provider?.regionCount)
+        && provider.regionCount >= 0,
+      available,
+      unavailable
+    });
+
+    const regions = Array.isArray(provider?.boundsObservations)
+      ? provider.boundsObservations
+      : [];
+
+    for (const region of regions) {
+      const regionNamespace = `${providerNamespace}.region.${region?.regionId || "unknown"}`;
+      const observation = region?.boundsObservation;
+
+      addShadowGridBoundsObservation({
+        experimentId,
+        observationId: `${regionNamespace}.execution-status`,
+        value: region?.status,
+        isAvailable: typeof region?.status === "string",
+        available,
+        unavailable
+      });
+      addShadowGridBoundsObservation({
+        experimentId,
+        observationId: `${regionNamespace}.bounds-observation-status`,
+        value: observation?.status,
+        isAvailable: typeof observation?.status === "string",
+        available,
+        unavailable
+      });
+      addShadowGridBoundsObservation({
+        experimentId,
+        observationId: `${regionNamespace}.bounds-observation-provenance`,
+        value: observation?.provenance,
+        isAvailable: isObjectValue(observation?.provenance),
+        available,
+        unavailable
+      });
+      addShadowGridBoundsObservation({
+        experimentId,
+        observationId: `${regionNamespace}.source-envelope-status`,
+        value: observation?.sourceAcceptedCandidateEnvelope?.status,
+        isAvailable: typeof observation?.sourceAcceptedCandidateEnvelope?.status
+          === "string",
+        available,
+        unavailable
+      });
+      addShadowGridBoundsObservation({
+        experimentId,
+        observationId: `${regionNamespace}.source-envelope-bounds`,
+        value: observation?.sourceAcceptedCandidateEnvelope?.bounds,
+        isAvailable: isObjectValue(
+          observation?.sourceAcceptedCandidateEnvelope?.bounds
+        ),
+        available,
+        unavailable
+      });
+      addShadowGridBoundsObservation({
+        experimentId,
+        observationId: `${regionNamespace}.source-envelope-provenance`,
+        value: observation?.sourceAcceptedCandidateEnvelope?.provenance,
+        isAvailable: isObjectValue(
+          observation?.sourceAcceptedCandidateEnvelope?.provenance
+        ),
+        available,
+        unavailable
+      });
+      addShadowGridBoundsObservation({
+        experimentId,
+        observationId: `${regionNamespace}.coordinate-system`,
+        value: observation?.coordinateSystem,
+        isAvailable: isObjectValue(observation?.coordinateSystem),
+        available,
+        unavailable
+      });
+      addShadowGridBoundsObservation({
+        experimentId,
+        observationId: `${regionNamespace}.outer-grid-observation-count`,
+        value: Array.isArray(observation?.observations)
+          ? observation.observations.length
+          : null,
+        isAvailable: Array.isArray(observation?.observations),
+        available,
+        unavailable
+      });
+
+      if (observation?.status === "unavailable") {
+        unavailable.push({
+          experimentId,
+          category: "shadow-grid-bounds-observation",
+          observationId: `${regionNamespace}.outer-grid-envelope`,
+          reason: normalizeObservationReason(
+            observation?.reasons?.[0]?.code ?? observation?.reasons?.[0]
+          )
+        });
+      }
+    }
+  }
+
+  return { available, unavailable, structuralEvidence: null };
+}
+
+function addShadowGridBoundsObservation({
+  experimentId,
+  observationId,
+  value,
+  isAvailable,
+  available,
+  unavailable
+}) {
+  if (isAvailable) {
+    available.push({
+      experimentId,
+      category: "shadow-grid-bounds-observation",
+      observationId,
+      value: cloneValue(value)
+    });
+  } else {
+    unavailable.push({
+      experimentId,
+      category: "shadow-grid-bounds-observation",
+      observationId,
+      reason: "value-unavailable"
+    });
+  }
 }
 
 function isObjectValue(value) {
