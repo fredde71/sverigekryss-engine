@@ -22,6 +22,12 @@ import {
 import {
   createGridBoundsLatticeExtensionValidationReportExport
 } from "./gridBoundsLatticeExtensionValidationReportExport";
+import {
+  createOuterLineCenterValidationReport
+} from "./outerLineCenterValidationReport";
+import {
+  createOuterLineCenterValidationReportExport
+} from "./outerLineCenterValidationReportExport";
 
 const LOCAL_DATASET_ID = "localhost-pdf-dataset";
 
@@ -39,6 +45,22 @@ export default function DigitizationDatasetHarness({
     createGridBoundsLatticeExtensionValidationReport,
   downloadBoundsLatticeExtensionValidationReport = report => {
     const artifact = createGridBoundsLatticeExtensionValidationReportExport(report);
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
+  createOuterLineCenterValidationReport: createOuterLineCenterReport =
+    createOuterLineCenterValidationReport,
+  downloadOuterLineCenterValidationReport = report => {
+    const artifact = createOuterLineCenterValidationReportExport(report);
     const blob = new Blob([artifact.contents], { type: artifact.mimeType });
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -76,6 +98,10 @@ export default function DigitizationDatasetHarness({
     setBoundsLatticeExtensionValidationReport] = useState(null);
   const [boundsLatticeExtensionValidationErrorMessage,
     setBoundsLatticeExtensionValidationErrorMessage] = useState("");
+  const [outerLineCenterValidationReport,
+    setOuterLineCenterValidationReport] = useState(null);
+  const [outerLineCenterValidationErrorMessage,
+    setOuterLineCenterValidationErrorMessage] = useState("");
   const datasetItems = createDatasetItems(selectedFiles);
 
   if (
@@ -103,6 +129,8 @@ export default function DigitizationDatasetHarness({
     setReconstructionValidationErrorMessage("");
     setBoundsLatticeExtensionValidationReport(null);
     setBoundsLatticeExtensionValidationErrorMessage("");
+    setOuterLineCenterValidationReport(null);
+    setOuterLineCenterValidationErrorMessage("");
   };
 
   const handleRun = async () => {
@@ -119,6 +147,8 @@ export default function DigitizationDatasetHarness({
     setReconstructionValidationErrorMessage("");
     setBoundsLatticeExtensionValidationReport(null);
     setBoundsLatticeExtensionValidationErrorMessage("");
+    setOuterLineCenterValidationReport(null);
+    setOuterLineCenterValidationErrorMessage("");
 
     try {
       const result = await runDataset({
@@ -167,6 +197,8 @@ export default function DigitizationDatasetHarness({
     setReconstructionValidationErrorMessage("");
     setBoundsLatticeExtensionValidationReport(null);
     setBoundsLatticeExtensionValidationErrorMessage("");
+    setOuterLineCenterValidationReport(null);
+    setOuterLineCenterValidationErrorMessage("");
   };
 
   const handleCreateValidationReport = () => {
@@ -224,6 +256,24 @@ export default function DigitizationDatasetHarness({
     }
   };
 
+  const handleCreateOuterLineCenterValidationReport = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setOuterLineCenterValidationReport(createOuterLineCenterReport({
+        datasetReport,
+        groundTruth
+      }));
+      setOuterLineCenterValidationErrorMessage("");
+    } catch (error) {
+      setOuterLineCenterValidationErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
   const confirmedItemCount = groundTruth?.annotations?.length ?? 0;
   const datasetStatus = describeDatasetStatus(status, selectedFiles.length);
   const annotationStatus = datasetReport
@@ -265,6 +315,16 @@ export default function DigitizationDatasetHarness({
     boundsLatticeExtensionValidationReport
       ? "Ready"
       : "Waiting for a completed grid bounds lattice extension validation report";
+  const outerLineCenterValidationStatus = outerLineCenterValidationReport
+    ? "Completed"
+    : outerLineCenterValidationErrorMessage
+      ? "Failed"
+      : groundTruth && datasetReport
+        ? "Ready to create"
+        : "Waiting for confirmed ground truth";
+  const outerLineCenterValidationDownloadStatus = outerLineCenterValidationReport
+    ? "Ready"
+    : "Waiting for a completed outer line center validation report";
 
   return (
     <section
@@ -306,6 +366,14 @@ export default function DigitizationDatasetHarness({
         <WorkflowStep
           title="Download Grid Bounds Lattice Extension Validation Report JSON"
           status={boundsLatticeExtensionValidationDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create Outer Line Center Validation Report"
+          status={outerLineCenterValidationStatus}
+        />
+        <WorkflowStep
+          title="Download Outer Line Center Validation Report JSON"
+          status={outerLineCenterValidationDownloadStatus}
         />
       </ol>
       <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -361,6 +429,12 @@ export default function DigitizationDatasetHarness({
         <span role="alert">
           Grid bounds lattice extension validation unavailable:{" "}
           {boundsLatticeExtensionValidationErrorMessage}
+        </span>
+      )}
+      {outerLineCenterValidationErrorMessage && (
+        <span role="alert">
+          Outer line center validation unavailable:{" "}
+          {outerLineCenterValidationErrorMessage}
         </span>
       )}
       {analysisReports && (
@@ -450,6 +524,33 @@ export default function DigitizationDatasetHarness({
             )}
           >
             Download Grid Bounds Lattice Extension Validation Report JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateOuterLineCenterValidationReport}
+        >
+          Create Outer Line Center Validation Report
+        </button>
+      )}
+      {outerLineCenterValidationReport && (
+        <>
+          <span
+            role="status"
+            aria-label="Outer line center validation status"
+          >
+            Outer Line Center Validation Report completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadOuterLineCenterValidationReport(
+              outerLineCenterValidationReport
+            )}
+          >
+            Download Outer Line Center Validation Report JSON
           </button>
         </>
       )}
