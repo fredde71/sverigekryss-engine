@@ -177,11 +177,7 @@ export default function GridGroundTruthAnnotationHarness({
     }
 
     try {
-      if (typeof file.text !== "function") {
-        throw new Error("Ground truth file text reader is required");
-      }
-
-      const parsed = JSON.parse(await file.text());
+      const parsed = JSON.parse(await readGroundTruthFileText(file));
       const artifact = createGroundTruth(parsed);
 
       if (artifact.datasetId !== datasetId) {
@@ -1144,6 +1140,35 @@ function hasCompleteBoundaries(boundaries) {
   return ["top", "bottom", "left", "right"].every(key => (
     Number.isFinite(boundaries[key])
   ));
+}
+
+function readGroundTruthFileText(file) {
+  if (typeof file?.text === "function") {
+    return file.text();
+  }
+
+  if (typeof FileReader !== "function") {
+    return Promise.reject(
+      new Error("Ground truth file text reader is required")
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("Ground truth file text result must be text"));
+    };
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("Ground truth file could not be read"));
+    };
+    reader.readAsText(file);
+  });
 }
 
 function createEmptyBoundaries() {

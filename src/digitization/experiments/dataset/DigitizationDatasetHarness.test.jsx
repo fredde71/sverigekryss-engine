@@ -6,7 +6,11 @@ import {
   waitFor
 } from "@testing-library/react";
 import DigitizationDatasetHarness from "./DigitizationDatasetHarness";
-import { GRID_GROUND_TRUTH_COORDINATE_POLICY } from "./gridGroundTruth";
+import {
+  createGridGroundTruth,
+  createGridGroundTruthExport,
+  GRID_GROUND_TRUTH_COORDINATE_POLICY
+} from "./gridGroundTruth";
 
 jest.mock("pdfjs-dist", () => ({
   getDocument: jest.fn()
@@ -685,6 +689,69 @@ test("new PDF selection and dataset rerun invalidate bounds lattice extension va
   expect(screen.queryByRole("button", {
     name: "Create Grid Bounds Lattice Extension Validation Report"
   })).not.toBeInTheDocument();
+});
+
+test("loads an actually exported Ground Truth file into the bounds validation workflow", async () => {
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const boundsValidationReport = {
+    type: "grid-bounds-lattice-extension-validation-report",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const createBoundsValidation = jest.fn(() => boundsValidationReport);
+  const downloadBoundsValidation = jest.fn();
+  const groundTruth = createGridGroundTruth(createGroundTruthFixture());
+  const exported = createGridGroundTruthExport(groundTruth);
+  const exportedFile = new File(
+    [exported.contents],
+    exported.fileName,
+    { type: exported.mimeType }
+  );
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => createCompletedResult())}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createBoundsLatticeExtensionValidationReport={createBoundsValidation}
+      downloadBoundsLatticeExtensionValidationReport={downloadBoundsValidation}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  fireEvent.change(screen.getByLabelText("Load ground truth JSON"), {
+    target: { files: [exportedFile] }
+  });
+
+  await waitFor(() => expect(screen.getByLabelText("Confirm ground truth status"))
+    .toHaveTextContent("Confirmed for all 1 item(s)"));
+  const createButton = screen.getByRole("button", {
+    name: "Create Grid Bounds Lattice Extension Validation Report"
+  });
+  expect(createButton).toBeEnabled();
+
+  fireEvent.click(createButton);
+
+  expect(createBoundsValidation).toHaveBeenCalledWith({
+    datasetReport,
+    groundTruth
+  });
+  const downloadButton = screen.getByRole("button", {
+    name: "Download Grid Bounds Lattice Extension Validation Report JSON"
+  });
+  expect(downloadButton).toBeInTheDocument();
+
+  fireEvent.click(downloadButton);
+  expect(downloadBoundsValidation).toHaveBeenCalledWith(boundsValidationReport);
 });
 
 function selectFiles(files) {
