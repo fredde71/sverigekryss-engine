@@ -427,6 +427,207 @@ test("records candidate gaps, interpretations, assignments and exact residuals",
   ]);
 });
 
+test("reports deterministic candidate residual statistics and histogram", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [0, 10.25, 19.5, 30],
+    verticalPositions: [0, 10, 20, 30],
+    bounds: { top: 0, left: 0, width: 30, height: 30 },
+    intervals: { minimum: 3, maximum: 3 },
+    parameterOverrides: { candidateAlignmentTolerancePx: 0.5 }
+  }));
+  const axis = getAxisDiagnostic(result, "horizontal");
+  const diagnostic = axis.interpretations[0];
+
+  expect(diagnostic).toMatchObject({
+    assignedCandidateCount: 4,
+    rejectedCandidateCount: 0,
+    maximumAbsoluteResidual: 0.5,
+    averageAbsoluteResidual: 0.1875,
+    medianAbsoluteResidual: 0.125,
+    RMSResidual: Math.sqrt(0.078125),
+    firstFailingCandidate: null
+  });
+  expect(diagnostic.candidateResiduals).toEqual([
+    {
+      candidateIndex: 0,
+      observedPosition: 0,
+      modeledPosition: 0,
+      residual: 0,
+      absoluteResidual: 0,
+      assignmentStatus: "assigned"
+    },
+    {
+      candidateIndex: 1,
+      observedPosition: 10.25,
+      modeledPosition: 10,
+      residual: 0.25,
+      absoluteResidual: 0.25,
+      assignmentStatus: "assigned"
+    },
+    {
+      candidateIndex: 2,
+      observedPosition: 19.5,
+      modeledPosition: 20,
+      residual: -0.5,
+      absoluteResidual: 0.5,
+      assignmentStatus: "assigned"
+    },
+    {
+      candidateIndex: 3,
+      observedPosition: 30,
+      modeledPosition: 30,
+      residual: 0,
+      absoluteResidual: 0,
+      assignmentStatus: "assigned"
+    }
+  ]);
+  expect(diagnostic.residualHistogram).toEqual([
+    { label: "<=0.25", minimumExclusive: null, maximumInclusive: 0.25, count: 3 },
+    { label: "<=0.50", minimumExclusive: 0.25, maximumInclusive: 0.5, count: 1 },
+    { label: "<=0.75", minimumExclusive: 0.5, maximumInclusive: 0.75, count: 0 },
+    { label: "<=1.00", minimumExclusive: 0.75, maximumInclusive: 1, count: 0 },
+    { label: "<=1.25", minimumExclusive: 1, maximumInclusive: 1.25, count: 0 },
+    { label: "<=1.50", minimumExclusive: 1.25, maximumInclusive: 1.5, count: 0 },
+    { label: "<=2.00", minimumExclusive: 1.5, maximumInclusive: 2, count: 0 }
+  ]);
+  expect(axis).toMatchObject({
+    lowestMaximumResidual: 0.5,
+    lowestRMSResidual: Math.sqrt(0.078125),
+    lowestAverageResidual: 0.1875,
+    highestAssignedCandidateCount: 4
+  });
+});
+
+test("reports the first alignment failure and every candidate residual", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [0, 11.25, 20],
+    verticalPositions: [0, 10, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 2, maximum: 2 },
+    parameterOverrides: { candidateAlignmentTolerancePx: 1 }
+  }));
+  const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
+
+  expect(diagnostic).toMatchObject({
+    assignedCandidateCount: 1,
+    rejectedCandidateCount: 1,
+    maximumAbsoluteResidual: 1.25,
+    averageAbsoluteResidual: 1.25 / 3,
+    medianAbsoluteResidual: 0,
+    RMSResidual: Math.sqrt((1.25 * 1.25) / 3),
+    firstFailingCandidate: {
+      candidateIndex: 1,
+      observedPosition: 11.25,
+      modeledPosition: 10,
+      residual: 1.25,
+      absoluteResidual: 1.25,
+      tolerance: 1,
+      marginOverTolerance: 0.25
+    }
+  });
+  expect(diagnostic.candidateResiduals.map(candidate => ({
+    observedPosition: candidate.observedPosition,
+    modeledPosition: candidate.modeledPosition,
+    residual: candidate.residual,
+    absoluteResidual: candidate.absoluteResidual,
+    assignmentStatus: candidate.assignmentStatus
+  }))).toEqual([
+    {
+      observedPosition: 0,
+      modeledPosition: 0,
+      residual: 0,
+      absoluteResidual: 0,
+      assignmentStatus: "assigned"
+    },
+    {
+      observedPosition: 11.25,
+      modeledPosition: 10,
+      residual: 1.25,
+      absoluteResidual: 1.25,
+      assignmentStatus: "rejected"
+    },
+    {
+      observedPosition: 20,
+      modeledPosition: 20,
+      residual: 0,
+      absoluteResidual: 0,
+      assignmentStatus: "not-assessed"
+    }
+  ]);
+});
+
+test("keeps residual observations unavailable before candidate assignment", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    parameterOverrides: {
+      permittedCellSpacing: { minimum: 11, maximum: 100 }
+    }
+  }));
+  const axis = getAxisDiagnostic(result, "horizontal");
+  const diagnostic = axis.interpretations[0];
+
+  expect(diagnostic).toMatchObject({
+    assignedCandidateCount: 0,
+    rejectedCandidateCount: 0,
+    maximumAbsoluteResidual: null,
+    averageAbsoluteResidual: null,
+    medianAbsoluteResidual: null,
+    RMSResidual: null,
+    firstFailingCandidate: null
+  });
+  expect(diagnostic.candidateResiduals).toEqual([
+    expect.objectContaining({ observedPosition: 0, assignmentStatus: "not-assessed" }),
+    expect.objectContaining({ observedPosition: 10, assignmentStatus: "not-assessed" }),
+    expect.objectContaining({ observedPosition: 20, assignmentStatus: "not-assessed" })
+  ]);
+  expect(diagnostic.candidateResiduals.every(candidate => (
+    candidate.modeledPosition === null
+    && candidate.residual === null
+    && candidate.absoluteResidual === null
+  ))).toBe(true);
+  expect(diagnostic.residualHistogram.every(bucket => bucket.count === 0)).toBe(true);
+  expect(axis).toMatchObject({
+    lowestMaximumResidual: null,
+    lowestRMSResidual: null,
+    lowestAverageResidual: null,
+    highestAssignedCandidateCount: null
+  });
+});
+
+test("summarizes residual extrema without identifying an interpretation", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [0, 9.6, 20],
+    verticalPositions: [0, 9.6, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 1, maximum: 4 },
+    parameterOverrides: {
+      candidateAlignmentTolerancePx: 5,
+      maximumSkippedIntervalsBetweenCandidates: 3,
+      maximumConsecutiveInferredLines: 3,
+      maximumInferredLineFraction: 0.6,
+      maximumHypothesisCount: 20
+    }
+  }));
+  const axis = getAxisDiagnostic(result, "horizontal");
+  const assessed = axis.interpretations.filter(
+    interpretation => interpretation.maximumAbsoluteResidual !== null
+  );
+
+  expect(axis.lowestMaximumResidual).toBe(Math.min(...assessed.map(
+    interpretation => interpretation.maximumAbsoluteResidual
+  )));
+  expect(axis.lowestRMSResidual).toBe(Math.min(...assessed.map(
+    interpretation => interpretation.RMSResidual
+  )));
+  expect(axis.lowestAverageResidual).toBe(Math.min(...assessed.map(
+    interpretation => interpretation.averageAbsoluteResidual
+  )));
+  expect(axis.highestAssignedCandidateCount).toBe(Math.max(...assessed.map(
+    interpretation => interpretation.assignedCandidateCount
+  )));
+  expect(axis).not.toHaveProperty("selectedInterpretation");
+  expect(axis).not.toHaveProperty("preferredInterpretation");
+});
+
 test.each([
   {
     code: "spacing-out-of-range",

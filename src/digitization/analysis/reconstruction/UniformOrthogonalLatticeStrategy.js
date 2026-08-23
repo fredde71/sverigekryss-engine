@@ -116,6 +116,7 @@ function reconstructAxis({ axis, candidates, bounds, parameters }) {
     interpretation => interpretation.status === "rejected"
   ).length;
   diagnostic.totalSurvivingHypotheses = compatible.length;
+  applyAxisResidualSummary(diagnostic);
 
   if (compatible.length === 0) {
     return unavailableAxis(
@@ -174,7 +175,8 @@ function evaluateAxisInterpretation({
     intervalCount,
     spacing,
     bounds,
-    parameters
+    parameters,
+    candidates
   });
 
   if (
@@ -214,6 +216,14 @@ function evaluateAxisInterpretation({
     parameters.candidateAlignmentTolerancePx
   );
   diagnostic.candidateAssignmentAttempts = assignmentResult.attempts;
+  applyCandidateResidualDiagnostics({
+    diagnostic,
+    candidates,
+    linePositions,
+    tolerance: parameters.candidateAlignmentTolerancePx,
+    attempts: assignmentResult.attempts,
+    rejectionReasons: assignmentResult.rejectionReasons
+  });
 
   if (!assignmentResult.assignments) {
     diagnostic.rejectionReasons.push(...assignmentResult.rejectionReasons);
@@ -518,6 +528,129 @@ function assignCandidates(candidates, linePositions, tolerance) {
   return { assignments, attempts, rejectionReasons: [] };
 }
 
+const RESIDUAL_HISTOGRAM_BOUNDS = Object.freeze([
+  0.25,
+  0.5,
+  0.75,
+  1,
+  1.25,
+  1.5,
+  2
+]);
+
+function applyCandidateResidualDiagnostics({
+  diagnostic,
+  candidates,
+  linePositions,
+  tolerance,
+  attempts,
+  rejectionReasons
+}) {
+  const attemptsByCandidateIndex = new Map(
+    attempts.map(attempt => [attempt.candidateIndex, attempt])
+  );
+  const candidateResiduals = candidates.map((candidate, candidateIndex) => {
+    const nearest = findNearestModeledPosition(candidate.position, linePositions);
+    const attempt = attemptsByCandidateIndex.get(candidateIndex);
+
+    return {
+      candidateIndex,
+      observedPosition: candidate.position,
+      modeledPosition: nearest.modeledPosition,
+      residual: nearest.residual,
+      absoluteResidual: nearest.absoluteResidual,
+      assignmentStatus: attempt?.status ?? "not-assessed"
+    };
+  });
+  const absoluteResiduals = candidateResiduals.map(
+    candidate => candidate.absoluteResidual
+  );
+  const assignedCandidateCount = candidateResiduals.filter(
+    candidate => candidate.assignmentStatus === "assigned"
+  ).length;
+  const rejectedCandidateCount = candidateResiduals.filter(
+    candidate => candidate.assignmentStatus === "rejected"
+  ).length;
+  const alignmentFailure = rejectionReasons.find(
+    reason => reason.code === "candidate-alignment-failed"
+  );
+
+  diagnostic.assignedCandidateCount = assignedCandidateCount;
+  diagnostic.rejectedCandidateCount = rejectedCandidateCount;
+  diagnostic.maximumAbsoluteResidual = Math.max(...absoluteResiduals);
+  diagnostic.averageAbsoluteResidual = average(absoluteResiduals);
+  diagnostic.medianAbsoluteResidual = median(absoluteResiduals);
+  diagnostic.RMSResidual = rootMeanSquare(absoluteResiduals);
+  diagnostic.candidateResiduals = candidateResiduals;
+  diagnostic.residualHistogram = createResidualHistogram(absoluteResiduals);
+  diagnostic.firstFailingCandidate = alignmentFailure
+    ? {
+      candidateIndex: alignmentFailure.candidateIndex,
+      observedPosition: alignmentFailure.candidatePosition,
+      modeledPosition: alignmentFailure.linePosition,
+      residual: alignmentFailure.residual,
+      absoluteResidual: alignmentFailure.absoluteResidual,
+      tolerance,
+      marginOverTolerance: alignmentFailure.absoluteResidual - tolerance
+    }
+    : null;
+}
+
+function findNearestModeledPosition(observedPosition, linePositions) {
+  let lineIndex = 0;
+  let absoluteResidual = Math.abs(observedPosition - linePositions[0]);
+
+  for (let index = 1; index < linePositions.length; index += 1) {
+    const distance = Math.abs(observedPosition - linePositions[index]);
+
+    if (distance < absoluteResidual) {
+      lineIndex = index;
+      absoluteResidual = distance;
+    }
+  }
+
+  const modeledPosition = linePositions[lineIndex];
+
+  return {
+    modeledPosition,
+    residual: observedPosition - modeledPosition,
+    absoluteResidual
+  };
+}
+
+function createResidualHistogram(absoluteResiduals) {
+  return RESIDUAL_HISTOGRAM_BOUNDS.map((maximumInclusive, index) => ({
+    label: `<=${maximumInclusive.toFixed(2)}`,
+    minimumExclusive: index === 0
+      ? null
+      : RESIDUAL_HISTOGRAM_BOUNDS[index - 1],
+    maximumInclusive,
+    count: absoluteResiduals.filter(value => (
+      value <= maximumInclusive
+      && (index === 0 || value > RESIDUAL_HISTOGRAM_BOUNDS[index - 1])
+    )).length
+  }));
+}
+
+function average(values) {
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function median(values) {
+  const ordered = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(ordered.length / 2);
+
+  return ordered.length % 2 === 0
+    ? (ordered[middle - 1] + ordered[middle]) / 2
+    : ordered[middle];
+}
+
+function rootMeanSquare(values) {
+  return Math.sqrt(
+    values.reduce((total, value) => total + (value * value), 0) / values.length
+  );
+}
+
 function inspectSkippedIntervals(assignments, maximumSkippedIntervals) {
   const ordered = [...assignments].sort((left, right) => (
     left.lineIndex - right.lineIndex || left.candidateIndex - right.candidateIndex
@@ -720,15 +853,43 @@ function createAxisDiagnostic(axis, candidates, bounds) {
     totalAttemptedInterpretations: 0,
     totalRejectedInterpretations: 0,
     totalSurvivingHypotheses: 0,
+    lowestMaximumResidual: null,
+    lowestRMSResidual: null,
+    lowestAverageResidual: null,
+    highestAssignedCandidateCount: null,
     interpretations: []
   };
+}
+
+function applyAxisResidualSummary(diagnostic) {
+  const assessed = diagnostic.interpretations.filter(
+    interpretation => interpretation.maximumAbsoluteResidual !== null
+  );
+
+  if (assessed.length === 0) {
+    return;
+  }
+
+  diagnostic.lowestMaximumResidual = Math.min(...assessed.map(
+    interpretation => interpretation.maximumAbsoluteResidual
+  ));
+  diagnostic.lowestRMSResidual = Math.min(...assessed.map(
+    interpretation => interpretation.RMSResidual
+  ));
+  diagnostic.lowestAverageResidual = Math.min(...assessed.map(
+    interpretation => interpretation.averageAbsoluteResidual
+  ));
+  diagnostic.highestAssignedCandidateCount = Math.max(...assessed.map(
+    interpretation => interpretation.assignedCandidateCount
+  ));
 }
 
 function createInterpretationDiagnostic({
   intervalCount,
   spacing,
   bounds,
-  parameters
+  parameters,
+  candidates
 }) {
   return {
     intervalCount,
@@ -754,6 +915,22 @@ function createInterpretationDiagnostic({
       representations: []
     },
     candidateAssignmentAttempts: [],
+    assignedCandidateCount: 0,
+    rejectedCandidateCount: 0,
+    maximumAbsoluteResidual: null,
+    averageAbsoluteResidual: null,
+    medianAbsoluteResidual: null,
+    RMSResidual: null,
+    candidateResiduals: candidates.map((candidate, candidateIndex) => ({
+      candidateIndex,
+      observedPosition: candidate.position,
+      modeledPosition: null,
+      residual: null,
+      absoluteResidual: null,
+      assignmentStatus: "not-assessed"
+    })),
+    residualHistogram: createResidualHistogram([]),
+    firstFailingCandidate: null,
     skippedIntervalCounts: [],
     inferredLineCount: null,
     longestInferredRun: null,
@@ -815,6 +992,14 @@ function createStrategyDiagnostic(horizontal, vertical, assembled) {
           horizontal.diagnostic.totalRejectedInterpretations,
         totalSurvivingHypotheses:
           horizontal.diagnostic.totalSurvivingHypotheses,
+        lowestMaximumResidual:
+          horizontal.diagnostic.lowestMaximumResidual,
+        lowestRMSResidual:
+          horizontal.diagnostic.lowestRMSResidual,
+        lowestAverageResidual:
+          horizontal.diagnostic.lowestAverageResidual,
+        highestAssignedCandidateCount:
+          horizontal.diagnostic.highestAssignedCandidateCount,
         interpretations: horizontal.diagnostic.interpretations
       },
       vertical: {
@@ -830,6 +1015,14 @@ function createStrategyDiagnostic(horizontal, vertical, assembled) {
           vertical.diagnostic.totalRejectedInterpretations,
         totalSurvivingHypotheses:
           vertical.diagnostic.totalSurvivingHypotheses,
+        lowestMaximumResidual:
+          vertical.diagnostic.lowestMaximumResidual,
+        lowestRMSResidual:
+          vertical.diagnostic.lowestRMSResidual,
+        lowestAverageResidual:
+          vertical.diagnostic.lowestAverageResidual,
+        highestAssignedCandidateCount:
+          vertical.diagnostic.highestAssignedCandidateCount,
         interpretations: vertical.diagnostic.interpretations
       }
     }
