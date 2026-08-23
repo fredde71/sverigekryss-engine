@@ -13,6 +13,7 @@ import { createShadowAnalysisRegionDiagnostics } from "./shadowAnalysisRegionDia
 import { runShadowGridAnalysisDiagnostics } from "./shadowGridAnalysisDiagnostics";
 import { runShadowGridBoundsObservationDiagnostics } from "./shadowGridBoundsObservationDiagnostics";
 import { runShadowOuterLineCenterObservationDiagnostics } from "./shadowOuterLineCenterObservationDiagnostics";
+import { runShadowOuterLineCenterNeighborhoodDiagnostics } from "./shadowOuterLineCenterNeighborhoodDiagnostics";
 import { runShadowGridReconstructionDiagnostics } from "./shadowGridReconstructionDiagnostics";
 import { runShadowGridBoundsLatticeExtensionDiagnostics } from "./shadowGridBoundsLatticeExtensionDiagnostics";
 
@@ -29,6 +30,7 @@ test("lists registered digitization experiments with their public contract", () 
     "shadow-grid-analysis-diagnostics",
     "shadow-grid-bounds-observation-diagnostics",
     "shadow-outer-line-center-observation-diagnostics",
+    "shadow-outer-line-center-neighborhood-diagnostics",
     "shadow-grid-reconstruction-diagnostics",
     "shadow-grid-bounds-lattice-extension-diagnostics",
     "grid-confidence-diagnostics"
@@ -44,7 +46,7 @@ test("lists registered digitization experiments with their public contract", () 
   }
 
   experiments.pop();
-  expect(listDigitizationExperiments()).toHaveLength(12);
+  expect(listDigitizationExperiments()).toHaveLength(13);
 });
 
 test("looks up experiment metadata without executing the experiment", () => {
@@ -221,6 +223,35 @@ test("looks up and runs each registered experiment without changing its existing
   expect(runShadowOuterLineCenterObservationDiagnostics()).toEqual(
     expect.objectContaining({
       type: "shadow-outer-line-center-observation-diagnostics",
+      status: "unavailable"
+    })
+  );
+
+  expect(runDigitizationExperiment(
+    "shadow-outer-line-center-neighborhood-diagnostics",
+    new Proxy({}, {
+      get() {
+        throw new Error("BinaryImage must not be read without source evidence");
+      }
+    }),
+    new Proxy({}, {
+      get() {
+        throw new Error("context must not be read");
+      }
+    })
+  )).toEqual({
+    type: "shadow-outer-line-center-neighborhood-diagnostics",
+    version: 1,
+    status: "unavailable",
+    sourceExperimentId: "shadow-outer-line-center-observation-diagnostics",
+    reason: "outer-line-center-observations-unavailable",
+    neighborhoodRadius: 4,
+    providers: []
+  });
+
+  expect(runShadowOuterLineCenterNeighborhoodDiagnostics()).toEqual(
+    expect.objectContaining({
+      type: "shadow-outer-line-center-neighborhood-diagnostics",
       status: "unavailable"
     })
   );

@@ -51,6 +51,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "shadow-grid-analysis-diagnostics": extractShadowGridAnalysisObservations,
   "shadow-grid-bounds-observation-diagnostics": extractShadowGridBoundsObservations,
   "shadow-outer-line-center-observation-diagnostics": extractShadowOuterLineCenterObservations,
+  "shadow-outer-line-center-neighborhood-diagnostics": extractShadowOuterLineCenterNeighborhoodObservations,
   "shadow-grid-reconstruction-diagnostics": extractShadowGridReconstructionObservations,
   "shadow-grid-bounds-lattice-extension-diagnostics": extractShadowGridBoundsLatticeExtensionObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
@@ -1125,6 +1126,117 @@ function addOuterLineCenterReportObservation({
     unavailable.push({
       experimentId,
       category: "shadow-outer-line-center-observation",
+      observationId,
+      reason: normalizeObservationReason(reason)
+    });
+  }
+}
+
+function extractShadowOuterLineCenterNeighborhoodObservations(
+  experimentId,
+  diagnostics
+) {
+  const available = [];
+  const unavailable = [];
+  const providers = Array.isArray(diagnostics.providers)
+    ? diagnostics.providers
+    : [];
+
+  if (diagnostics.status !== "complete") {
+    unavailable.push({
+      experimentId,
+      category: "shadow-outer-line-center-neighborhood",
+      observationId: "source",
+      reason: normalizeObservationReason(diagnostics.reason)
+    });
+  }
+
+  for (const provider of providers) {
+    const providerNamespace = `provider.${provider?.id || "unknown"}`;
+    addOuterLineCenterNeighborhoodReportObservation({
+      experimentId,
+      observationId: `${providerNamespace}.status`,
+      value: provider?.status,
+      isAvailable: typeof provider?.status === "string",
+      available,
+      unavailable
+    });
+
+    const regions = Array.isArray(provider?.neighborhoodObservations)
+      ? provider.neighborhoodObservations
+      : [];
+
+    for (const region of regions) {
+      const regionNamespace = `${providerNamespace}.region.${region?.regionId || "unknown"}`;
+      const observation = region?.observation;
+
+      addOuterLineCenterNeighborhoodReportObservation({
+        experimentId,
+        observationId: `${regionNamespace}.execution-status`,
+        value: region?.status,
+        isAvailable: typeof region?.status === "string",
+        available,
+        unavailable
+      });
+
+      for (const edge of ["top", "bottom", "left", "right"]) {
+        const edgeObservation = observation?.edges?.[edge];
+        const projection = edgeObservation?.projectionEvidence;
+        const edgeNamespace = `${regionNamespace}.edge.${edge}`;
+        const compactEvidence = projection
+          ? {
+            status: edgeObservation.status,
+            acceptedCandidateCenter:
+              edgeObservation.acceptedCandidateCenter,
+            neighborhoodBounds:
+              edgeObservation.neighborhoodObservationExtent?.bounds ?? null,
+            projectionPositions: projection.positions,
+            projectionValues: projection.values,
+            nearbyLineCenterCandidates:
+              projection.nearbyLineCenterCandidates,
+            continuityObservations:
+              edgeObservation.continuityObservations,
+            candidateRunGeometry: edgeObservation.candidateRunGeometry,
+            provenance: edgeObservation.provenance
+          }
+          : null;
+
+        addOuterLineCenterNeighborhoodReportObservation({
+          experimentId,
+          observationId: `${edgeNamespace}.neighborhood-evidence`,
+          value: compactEvidence,
+          isAvailable: compactEvidence !== null,
+          reason: edgeObservation?.reasons?.[0],
+          available,
+          unavailable
+        });
+      }
+    }
+  }
+
+  return { available, unavailable, structuralEvidence: null };
+}
+
+function addOuterLineCenterNeighborhoodReportObservation({
+  experimentId,
+  observationId,
+  value,
+  isAvailable,
+  reason,
+  available,
+  unavailable
+}) {
+  if (isAvailable) {
+    available.push({
+      experimentId,
+      category: "shadow-outer-line-center-neighborhood",
+      observationId,
+      value: cloneValue(value)
+    });
+  } else {
+    unavailable.push({
+      experimentId,
+      category: "shadow-outer-line-center-neighborhood",
       observationId,
       reason: normalizeObservationReason(reason)
     });

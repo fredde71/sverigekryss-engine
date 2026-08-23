@@ -8,6 +8,7 @@ import { shadowAnalysisRegionDiagnosticsExperiment } from "./shadowAnalysisRegio
 import { shadowGridAnalysisDiagnosticsExperiment } from "./shadowGridAnalysisDiagnostics";
 import { shadowGridBoundsObservationDiagnosticsExperiment } from "./shadowGridBoundsObservationDiagnostics";
 import { shadowOuterLineCenterObservationDiagnosticsExperiment } from "./shadowOuterLineCenterObservationDiagnostics";
+import { shadowOuterLineCenterNeighborhoodDiagnosticsExperiment } from "./shadowOuterLineCenterNeighborhoodDiagnostics";
 import { shadowGridReconstructionDiagnosticsExperiment } from "./shadowGridReconstructionDiagnostics";
 import { shadowGridBoundsLatticeExtensionDiagnosticsExperiment } from "./shadowGridBoundsLatticeExtensionDiagnostics";
 
@@ -21,6 +22,7 @@ const DIGITIZATION_EXPERIMENTS = Object.freeze([
   shadowGridAnalysisDiagnosticsExperiment,
   shadowGridBoundsObservationDiagnosticsExperiment,
   shadowOuterLineCenterObservationDiagnosticsExperiment,
+  shadowOuterLineCenterNeighborhoodDiagnosticsExperiment,
   shadowGridReconstructionDiagnosticsExperiment,
   shadowGridBoundsLatticeExtensionDiagnosticsExperiment,
   gridConfidenceDiagnosticsExperiment
