@@ -37,7 +37,9 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     "Create shadow grid validation report",
     "Download validation report",
     "Create grid reconstruction validation report",
-    "Download grid reconstruction validation report"
+    "Download grid reconstruction validation report",
+    "Create Grid Bounds Lattice Extension Validation Report",
+    "Download Grid Bounds Lattice Extension Validation Report JSON"
   ]);
   expect(screen.getByLabelText("Run dataset status")).toHaveTextContent("Not started");
   expect(screen.getByLabelText("Annotate ground truth status"))
@@ -52,6 +54,14 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     .toHaveTextContent("Waiting for confirmed ground truth");
   expect(screen.getByLabelText("Download grid reconstruction validation report status"))
     .toHaveTextContent("Waiting for a completed reconstruction validation report");
+  expect(screen.getByLabelText(
+    "Create Grid Bounds Lattice Extension Validation Report status"
+  )).toHaveTextContent("Waiting for confirmed ground truth");
+  expect(screen.getByLabelText(
+    "Download Grid Bounds Lattice Extension Validation Report JSON status"
+  )).toHaveTextContent(
+    "Waiting for a completed grid bounds lattice extension validation report"
+  );
 });
 
 test("preserves selected file order with stable IDs and filename metadata", async () => {
@@ -524,6 +534,157 @@ test("replacing ground truth invalidates an existing validation report", async (
   expect(createValidationReport).toHaveBeenCalledTimes(1);
   expect(screen.getByLabelText("Create shadow grid validation report status"))
     .toHaveTextContent("Ready to create");
+});
+
+test("creates and downloads bounds lattice extension validation only after explicit action", async () => {
+  const runnerResult = createCompletedResult();
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const boundsValidationReport = {
+    type: "grid-bounds-lattice-extension-validation-report",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const runDataset = jest.fn(async () => runnerResult);
+  const createBoundsValidation = jest.fn(() => boundsValidationReport);
+  const downloadBoundsValidation = jest.fn();
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createBoundsLatticeExtensionValidationReport={createBoundsValidation}
+      downloadBoundsLatticeExtensionValidationReport={downloadBoundsValidation}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+
+  const createButton = screen.getByRole("button", {
+    name: "Create Grid Bounds Lattice Extension Validation Report"
+  });
+  expect(createButton).toBeDisabled();
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Bounds Lattice Extension Validation Report JSON"
+  })).not.toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(createButton).toBeEnabled());
+  expect(createBoundsValidation).not.toHaveBeenCalled();
+
+  fireEvent.click(createButton);
+
+  expect(createBoundsValidation).toHaveBeenCalledTimes(1);
+  expect(createBoundsValidation).toHaveBeenCalledWith({
+    datasetReport,
+    groundTruth: expect.objectContaining({
+      type: "digitization-grid-ground-truth",
+      datasetId: "localhost-pdf-dataset"
+    })
+  });
+  expect(runDataset).toHaveBeenCalledTimes(1);
+  expect(datasetReport).not.toHaveProperty("validation");
+  expect(screen.getByLabelText(
+    "Create Grid Bounds Lattice Extension Validation Report status"
+  )).toHaveTextContent("Completed");
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download Grid Bounds Lattice Extension Validation Report JSON"
+  }));
+  expect(downloadBoundsValidation).toHaveBeenCalledTimes(1);
+  expect(downloadBoundsValidation).toHaveBeenCalledWith(boundsValidationReport);
+});
+
+test("replacing ground truth invalidates bounds lattice extension validation", async () => {
+  const createBoundsValidation = jest.fn(() => ({
+    type: "grid-bounds-lattice-extension-validation-report",
+    version: 1,
+    status: "complete"
+  }));
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={jest.fn(async () => createCompletedResult())}
+      createBoundsLatticeExtensionValidationReport={createBoundsValidation}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create Grid Bounds Lattice Extension Validation Report"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create Grid Bounds Lattice Extension Validation Report"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download Grid Bounds Lattice Extension Validation Report JSON"
+  })).toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+
+  await waitFor(() => expect(screen.queryByRole("button", {
+    name: "Download Grid Bounds Lattice Extension Validation Report JSON"
+  })).not.toBeInTheDocument());
+  expect(createBoundsValidation).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText(
+    "Create Grid Bounds Lattice Extension Validation Report status"
+  )).toHaveTextContent("Ready to create");
+});
+
+test("new PDF selection and dataset rerun invalidate bounds lattice extension validation", async () => {
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createBoundsValidation = jest.fn(() => ({
+    type: "grid-bounds-lattice-extension-validation-report",
+    version: 1,
+    status: "complete"
+  }));
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createBoundsLatticeExtensionValidationReport={createBoundsValidation}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create Grid Bounds Lattice Extension Validation Report"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create Grid Bounds Lattice Extension Validation Report"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download Grid Bounds Lattice Extension Validation Report JSON"
+  })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Bounds Lattice Extension Validation Report JSON"
+  })).not.toBeInTheDocument();
+  await waitFor(() => expect(runDataset).toHaveBeenCalledTimes(2));
+
+  selectFiles([createPdfFile("two.pdf")]);
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Bounds Lattice Extension Validation Report JSON"
+  })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Create Grid Bounds Lattice Extension Validation Report"
+  })).not.toBeInTheDocument();
 });
 
 function selectFiles(files) {

@@ -16,6 +16,12 @@ import {
 import {
   downloadGridReconstructionValidationReport
 } from "./gridReconstructionValidationReportExport";
+import {
+  createGridBoundsLatticeExtensionValidationReport
+} from "./gridBoundsLatticeExtensionValidationReport";
+import {
+  createGridBoundsLatticeExtensionValidationReportExport
+} from "./gridBoundsLatticeExtensionValidationReportExport";
 
 const LOCAL_DATASET_ID = "localhost-pdf-dataset";
 
@@ -29,6 +35,22 @@ export default function DigitizationDatasetHarness({
   downloadValidationReport = downloadShadowGridValidationReport,
   createReconstructionValidationReport = createGridReconstructionValidationReport,
   downloadReconstructionValidationReport = downloadGridReconstructionValidationReport,
+  createBoundsLatticeExtensionValidationReport =
+    createGridBoundsLatticeExtensionValidationReport,
+  downloadBoundsLatticeExtensionValidationReport = report => {
+    const artifact = createGridBoundsLatticeExtensionValidationReportExport(report);
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
   readEnvironment = () => process.env.NODE_ENV,
   readHostname = () => (
     typeof window === "undefined" ? "" : window.location.hostname
@@ -50,6 +72,10 @@ export default function DigitizationDatasetHarness({
     useState(null);
   const [reconstructionValidationErrorMessage, setReconstructionValidationErrorMessage] =
     useState("");
+  const [boundsLatticeExtensionValidationReport,
+    setBoundsLatticeExtensionValidationReport] = useState(null);
+  const [boundsLatticeExtensionValidationErrorMessage,
+    setBoundsLatticeExtensionValidationErrorMessage] = useState("");
   const datasetItems = createDatasetItems(selectedFiles);
 
   if (
@@ -75,6 +101,8 @@ export default function DigitizationDatasetHarness({
     setValidationErrorMessage("");
     setReconstructionValidationReport(null);
     setReconstructionValidationErrorMessage("");
+    setBoundsLatticeExtensionValidationReport(null);
+    setBoundsLatticeExtensionValidationErrorMessage("");
   };
 
   const handleRun = async () => {
@@ -89,6 +117,8 @@ export default function DigitizationDatasetHarness({
     setValidationErrorMessage("");
     setReconstructionValidationReport(null);
     setReconstructionValidationErrorMessage("");
+    setBoundsLatticeExtensionValidationReport(null);
+    setBoundsLatticeExtensionValidationErrorMessage("");
 
     try {
       const result = await runDataset({
@@ -135,6 +165,8 @@ export default function DigitizationDatasetHarness({
     setValidationErrorMessage("");
     setReconstructionValidationReport(null);
     setReconstructionValidationErrorMessage("");
+    setBoundsLatticeExtensionValidationReport(null);
+    setBoundsLatticeExtensionValidationErrorMessage("");
   };
 
   const handleCreateValidationReport = () => {
@@ -172,6 +204,26 @@ export default function DigitizationDatasetHarness({
     }
   };
 
+  const handleCreateBoundsLatticeExtensionValidationReport = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setBoundsLatticeExtensionValidationReport(
+        createBoundsLatticeExtensionValidationReport({
+          datasetReport,
+          groundTruth
+        })
+      );
+      setBoundsLatticeExtensionValidationErrorMessage("");
+    } catch (error) {
+      setBoundsLatticeExtensionValidationErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
   const confirmedItemCount = groundTruth?.annotations?.length ?? 0;
   const datasetStatus = describeDatasetStatus(status, selectedFiles.length);
   const annotationStatus = datasetReport
@@ -201,6 +253,18 @@ export default function DigitizationDatasetHarness({
   const reconstructionValidationDownloadStatus = reconstructionValidationReport
     ? "Ready"
     : "Waiting for a completed reconstruction validation report";
+  const boundsLatticeExtensionValidationStatus =
+    boundsLatticeExtensionValidationReport
+      ? "Completed"
+      : boundsLatticeExtensionValidationErrorMessage
+        ? "Failed"
+        : groundTruth && datasetReport
+          ? "Ready to create"
+          : "Waiting for confirmed ground truth";
+  const boundsLatticeExtensionValidationDownloadStatus =
+    boundsLatticeExtensionValidationReport
+      ? "Ready"
+      : "Waiting for a completed grid bounds lattice extension validation report";
 
   return (
     <section
@@ -234,6 +298,14 @@ export default function DigitizationDatasetHarness({
         <WorkflowStep
           title="Download grid reconstruction validation report"
           status={reconstructionValidationDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create Grid Bounds Lattice Extension Validation Report"
+          status={boundsLatticeExtensionValidationStatus}
+        />
+        <WorkflowStep
+          title="Download Grid Bounds Lattice Extension Validation Report JSON"
+          status={boundsLatticeExtensionValidationDownloadStatus}
         />
       </ol>
       <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -283,6 +355,12 @@ export default function DigitizationDatasetHarness({
         <span role="alert">
           Grid reconstruction validation unavailable:{" "}
           {reconstructionValidationErrorMessage}
+        </span>
+      )}
+      {boundsLatticeExtensionValidationErrorMessage && (
+        <span role="alert">
+          Grid bounds lattice extension validation unavailable:{" "}
+          {boundsLatticeExtensionValidationErrorMessage}
         </span>
       )}
       {analysisReports && (
@@ -345,6 +423,33 @@ export default function DigitizationDatasetHarness({
             )}
           >
             Download grid reconstruction validation report JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateBoundsLatticeExtensionValidationReport}
+        >
+          Create Grid Bounds Lattice Extension Validation Report
+        </button>
+      )}
+      {boundsLatticeExtensionValidationReport && (
+        <>
+          <span
+            role="status"
+            aria-label="Grid bounds lattice extension validation status"
+          >
+            Grid Bounds Lattice Extension Validation Report completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadBoundsLatticeExtensionValidationReport(
+              boundsLatticeExtensionValidationReport
+            )}
+          >
+            Download Grid Bounds Lattice Extension Validation Report JSON
           </button>
         </>
       )}
