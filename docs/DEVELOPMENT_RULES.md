@@ -8,6 +8,10 @@ Alla förändringar i systemet ska följa dessa regler oavsett om arbetet utför
 
 Reglerna är överordnade enskilda implementationer, optimeringar och buggrättningar.
 
+För allt arbete i Digitization Lab är `DIGITIZATION_LAB_RULES.md` den
+kanoniska, subsystemspecifika vägledningen. Den kompletterar reglerna i detta
+dokument och ska läsas före framtida Digitization Lab-arbete.
+
 ---
 
 # Working Principles

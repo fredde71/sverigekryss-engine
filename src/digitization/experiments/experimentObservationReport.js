@@ -52,6 +52,7 @@ const OBSERVATION_EXTRACTORS = Object.freeze({
   "shadow-grid-bounds-observation-diagnostics": extractShadowGridBoundsObservations,
   "shadow-outer-line-center-observation-diagnostics": extractShadowOuterLineCenterObservations,
   "shadow-outer-line-center-neighborhood-diagnostics": extractShadowOuterLineCenterNeighborhoodObservations,
+  "shadow-outer-line-center-geometry-diagnostics": extractShadowOuterLineCenterGeometryObservations,
   "shadow-grid-reconstruction-diagnostics": extractShadowGridReconstructionObservations,
   "shadow-grid-bounds-lattice-extension-diagnostics": extractShadowGridBoundsLatticeExtensionObservations,
   "grid-confidence-diagnostics": extractGridConfidenceObservations
@@ -1237,6 +1238,113 @@ function addOuterLineCenterNeighborhoodReportObservation({
     unavailable.push({
       experimentId,
       category: "shadow-outer-line-center-neighborhood",
+      observationId,
+      reason: normalizeObservationReason(reason)
+    });
+  }
+}
+
+function extractShadowOuterLineCenterGeometryObservations(
+  experimentId,
+  diagnostics
+) {
+  const available = [];
+  const unavailable = [];
+  const providers = Array.isArray(diagnostics.providers)
+    ? diagnostics.providers
+    : [];
+
+  if (diagnostics.status !== "complete") {
+    unavailable.push({
+      experimentId,
+      category: "shadow-outer-line-center-geometry",
+      observationId: "source",
+      reason: normalizeObservationReason(diagnostics.reason)
+    });
+  }
+
+  for (const provider of providers) {
+    const providerNamespace = `provider.${provider?.id || "unknown"}`;
+    addOuterLineCenterGeometryReportObservation({
+      experimentId,
+      observationId: `${providerNamespace}.status`,
+      value: provider?.status,
+      isAvailable: typeof provider?.status === "string",
+      available,
+      unavailable
+    });
+
+    const regions = Array.isArray(provider?.geometryObservations)
+      ? provider.geometryObservations
+      : [];
+
+    for (const region of regions) {
+      const regionNamespace = `${providerNamespace}.region.${region?.regionId || "unknown"}`;
+      const observation = region?.observation;
+
+      addOuterLineCenterGeometryReportObservation({
+        experimentId,
+        observationId: `${regionNamespace}.execution-status`,
+        value: region?.status,
+        isAvailable: typeof region?.status === "string",
+        available,
+        unavailable
+      });
+
+      for (const edge of ["top", "bottom", "left", "right"]) {
+        const edgeObservation = observation?.edges?.[edge];
+        const edgeNamespace = `${regionNamespace}.edge.${edge}`;
+        const compactGeometry = edgeObservation
+          ? {
+            status: edgeObservation.status,
+            geometryStatus: edgeObservation.geometryStatus,
+            acceptedCandidateCenter:
+              edgeObservation.acceptedCandidateCenter,
+            acceptedCenterInParentBinaryImage:
+              edgeObservation.acceptedCenterInParentBinaryImage,
+            geometry: edgeObservation.geometry,
+            candidateRunGeometry: edgeObservation.candidateRunGeometry,
+            provenance: edgeObservation.provenance,
+            reasons: edgeObservation.reasons
+          }
+          : null;
+
+        addOuterLineCenterGeometryReportObservation({
+          experimentId,
+          observationId: `${edgeNamespace}.geometry`,
+          value: compactGeometry,
+          isAvailable: compactGeometry !== null,
+          reason: region?.reason,
+          available,
+          unavailable
+        });
+      }
+    }
+  }
+
+  return { available, unavailable, structuralEvidence: null };
+}
+
+function addOuterLineCenterGeometryReportObservation({
+  experimentId,
+  observationId,
+  value,
+  isAvailable,
+  reason,
+  available,
+  unavailable
+}) {
+  if (isAvailable) {
+    available.push({
+      experimentId,
+      category: "shadow-outer-line-center-geometry",
+      observationId,
+      value: cloneValue(value)
+    });
+  } else {
+    unavailable.push({
+      experimentId,
+      category: "shadow-outer-line-center-geometry",
       observationId,
       reason: normalizeObservationReason(reason)
     });

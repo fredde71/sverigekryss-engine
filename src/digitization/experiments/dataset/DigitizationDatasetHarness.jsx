@@ -28,6 +28,12 @@ import {
 import {
   createOuterLineCenterValidationReportExport
 } from "./outerLineCenterValidationReportExport";
+import {
+  createOuterLineCenterGeometryValidationReport
+} from "./outerLineCenterGeometryValidationReport";
+import {
+  createOuterLineCenterGeometryValidationReportExport
+} from "./outerLineCenterGeometryValidationReportExport";
 
 const LOCAL_DATASET_ID = "localhost-pdf-dataset";
 
@@ -73,6 +79,23 @@ export default function DigitizationDatasetHarness({
       URL.revokeObjectURL(objectUrl);
     }
   },
+  createOuterLineCenterGeometryValidationReport:
+    createOuterLineCenterGeometryReport =
+      createOuterLineCenterGeometryValidationReport,
+  downloadOuterLineCenterGeometryValidationReport = report => {
+    const artifact = createOuterLineCenterGeometryValidationReportExport(report);
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
   readEnvironment = () => process.env.NODE_ENV,
   readHostname = () => (
     typeof window === "undefined" ? "" : window.location.hostname
@@ -102,6 +125,10 @@ export default function DigitizationDatasetHarness({
     setOuterLineCenterValidationReport] = useState(null);
   const [outerLineCenterValidationErrorMessage,
     setOuterLineCenterValidationErrorMessage] = useState("");
+  const [outerLineCenterGeometryValidationReport,
+    setOuterLineCenterGeometryValidationReport] = useState(null);
+  const [outerLineCenterGeometryValidationErrorMessage,
+    setOuterLineCenterGeometryValidationErrorMessage] = useState("");
   const datasetItems = createDatasetItems(selectedFiles);
 
   if (
@@ -131,6 +158,8 @@ export default function DigitizationDatasetHarness({
     setBoundsLatticeExtensionValidationErrorMessage("");
     setOuterLineCenterValidationReport(null);
     setOuterLineCenterValidationErrorMessage("");
+    setOuterLineCenterGeometryValidationReport(null);
+    setOuterLineCenterGeometryValidationErrorMessage("");
   };
 
   const handleRun = async () => {
@@ -149,6 +178,8 @@ export default function DigitizationDatasetHarness({
     setBoundsLatticeExtensionValidationErrorMessage("");
     setOuterLineCenterValidationReport(null);
     setOuterLineCenterValidationErrorMessage("");
+    setOuterLineCenterGeometryValidationReport(null);
+    setOuterLineCenterGeometryValidationErrorMessage("");
 
     try {
       const result = await runDataset({
@@ -199,6 +230,8 @@ export default function DigitizationDatasetHarness({
     setBoundsLatticeExtensionValidationErrorMessage("");
     setOuterLineCenterValidationReport(null);
     setOuterLineCenterValidationErrorMessage("");
+    setOuterLineCenterGeometryValidationReport(null);
+    setOuterLineCenterGeometryValidationErrorMessage("");
   };
 
   const handleCreateValidationReport = () => {
@@ -274,6 +307,26 @@ export default function DigitizationDatasetHarness({
     }
   };
 
+  const handleCreateOuterLineCenterGeometryValidationReport = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setOuterLineCenterGeometryValidationReport(
+        createOuterLineCenterGeometryReport({
+          datasetReport,
+          groundTruth
+        })
+      );
+      setOuterLineCenterGeometryValidationErrorMessage("");
+    } catch (error) {
+      setOuterLineCenterGeometryValidationErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
   const confirmedItemCount = groundTruth?.annotations?.length ?? 0;
   const datasetStatus = describeDatasetStatus(status, selectedFiles.length);
   const annotationStatus = datasetReport
@@ -325,6 +378,18 @@ export default function DigitizationDatasetHarness({
   const outerLineCenterValidationDownloadStatus = outerLineCenterValidationReport
     ? "Ready"
     : "Waiting for a completed outer line center validation report";
+  const outerLineCenterGeometryValidationStatus =
+    outerLineCenterGeometryValidationReport
+      ? "Completed"
+      : outerLineCenterGeometryValidationErrorMessage
+        ? "Failed"
+        : groundTruth && datasetReport
+          ? "Ready to create"
+          : "Waiting for confirmed ground truth";
+  const outerLineCenterGeometryValidationDownloadStatus =
+    outerLineCenterGeometryValidationReport
+      ? "Ready"
+      : "Waiting for a completed outer line center geometry validation report";
 
   return (
     <section
@@ -374,6 +439,14 @@ export default function DigitizationDatasetHarness({
         <WorkflowStep
           title="Download Outer Line Center Validation Report JSON"
           status={outerLineCenterValidationDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create Outer Line Center Geometry Validation Report"
+          status={outerLineCenterGeometryValidationStatus}
+        />
+        <WorkflowStep
+          title="Download Outer Line Center Geometry Validation Report JSON"
+          status={outerLineCenterGeometryValidationDownloadStatus}
         />
       </ol>
       <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -435,6 +508,12 @@ export default function DigitizationDatasetHarness({
         <span role="alert">
           Outer line center validation unavailable:{" "}
           {outerLineCenterValidationErrorMessage}
+        </span>
+      )}
+      {outerLineCenterGeometryValidationErrorMessage && (
+        <span role="alert">
+          Outer line center geometry validation unavailable:{" "}
+          {outerLineCenterGeometryValidationErrorMessage}
         </span>
       )}
       {analysisReports && (
@@ -551,6 +630,33 @@ export default function DigitizationDatasetHarness({
             )}
           >
             Download Outer Line Center Validation Report JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateOuterLineCenterGeometryValidationReport}
+        >
+          Create Outer Line Center Geometry Validation Report
+        </button>
+      )}
+      {outerLineCenterGeometryValidationReport && (
+        <>
+          <span
+            role="status"
+            aria-label="Outer line center geometry validation status"
+          >
+            Outer Line Center Geometry Validation Report completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadOuterLineCenterGeometryValidationReport(
+              outerLineCenterGeometryValidationReport
+            )}
+          >
+            Download Outer Line Center Geometry Validation Report JSON
           </button>
         </>
       )}

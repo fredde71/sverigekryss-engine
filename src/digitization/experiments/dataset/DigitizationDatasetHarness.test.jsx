@@ -46,7 +46,9 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     "Create Grid Bounds Lattice Extension Validation Report",
     "Download Grid Bounds Lattice Extension Validation Report JSON",
     "Create Outer Line Center Validation Report",
-    "Download Outer Line Center Validation Report JSON"
+    "Download Outer Line Center Validation Report JSON",
+    "Create Outer Line Center Geometry Validation Report",
+    "Download Outer Line Center Geometry Validation Report JSON"
   ]);
   expect(screen.getByLabelText("Run dataset status")).toHaveTextContent("Not started");
   expect(screen.getByLabelText("Annotate ground truth status"))
@@ -76,6 +78,14 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     "Download Outer Line Center Validation Report JSON status"
   )).toHaveTextContent(
     "Waiting for a completed outer line center validation report"
+  );
+  expect(screen.getByLabelText(
+    "Create Outer Line Center Geometry Validation Report status"
+  )).toHaveTextContent("Waiting for confirmed ground truth");
+  expect(screen.getByLabelText(
+    "Download Outer Line Center Geometry Validation Report JSON status"
+  )).toHaveTextContent(
+    "Waiting for a completed outer line center geometry validation report"
   );
 });
 
@@ -1007,6 +1017,147 @@ test("Ground Truth, dataset rerun and PDF changes invalidate outer line center v
     name: "Create Outer Line Center Validation Report"
   })).not.toBeInTheDocument();
   expect(createOuterLineCenterValidationReport).toHaveBeenCalledTimes(3);
+});
+
+test("creates and downloads geometry validation from loaded Ground Truth without rerunning the dataset", async () => {
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const geometryValidationReport = {
+    type: "outer-line-center-geometry-ground-truth-validation-report",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createGeometryValidation = jest.fn(() => geometryValidationReport);
+  const downloadGeometryValidation = jest.fn();
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createOuterLineCenterGeometryValidationReport={
+        createGeometryValidation
+      }
+      downloadOuterLineCenterGeometryValidationReport={
+        downloadGeometryValidation
+      }
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  const createButton = screen.getByRole("button", {
+    name: "Create Outer Line Center Geometry Validation Report"
+  });
+
+  expect(createButton).toBeDisabled();
+  expect(screen.queryByRole("button", {
+    name: "Download Outer Line Center Geometry Validation Report JSON"
+  })).not.toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(createButton).toBeEnabled());
+  expect(createGeometryValidation).not.toHaveBeenCalled();
+
+  fireEvent.click(createButton);
+
+  expect(createGeometryValidation).toHaveBeenCalledTimes(1);
+  expect(createGeometryValidation).toHaveBeenCalledWith({
+    datasetReport,
+    groundTruth: expect.objectContaining({
+      type: "digitization-grid-ground-truth",
+      datasetId: "localhost-pdf-dataset"
+    })
+  });
+  expect(runDataset).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText(
+    "Create Outer Line Center Geometry Validation Report status"
+  )).toHaveTextContent("Completed");
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download Outer Line Center Geometry Validation Report JSON"
+  }));
+  expect(downloadGeometryValidation).toHaveBeenCalledTimes(1);
+  expect(downloadGeometryValidation).toHaveBeenCalledWith(
+    geometryValidationReport
+  );
+});
+
+test("Ground Truth, dataset rerun and PDF changes invalidate geometry validation", async () => {
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createGeometryValidation = jest.fn(() => ({
+    type: "outer-line-center-geometry-ground-truth-validation-report",
+    version: 1,
+    status: "complete"
+  }));
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createOuterLineCenterGeometryValidationReport={
+        createGeometryValidation
+      }
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  loadGroundTruth(createGroundTruthFixture());
+  const createButton = screen.getByRole("button", {
+    name: "Create Outer Line Center Geometry Validation Report"
+  });
+  await waitFor(() => expect(createButton).toBeEnabled());
+  fireEvent.click(createButton);
+  expect(screen.getByRole("button", {
+    name: "Download Outer Line Center Geometry Validation Report JSON"
+  })).toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.queryByRole("button", {
+    name: "Download Outer Line Center Geometry Validation Report JSON"
+  })).not.toBeInTheDocument());
+  expect(screen.getByLabelText(
+    "Create Outer Line Center Geometry Validation Report status"
+  )).toHaveTextContent("Ready to create");
+
+  fireEvent.click(createButton);
+  expect(screen.getByRole("button", {
+    name: "Download Outer Line Center Geometry Validation Report JSON"
+  })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  expect(screen.queryByRole("button", {
+    name: "Download Outer Line Center Geometry Validation Report JSON"
+  })).not.toBeInTheDocument();
+  await waitFor(() => expect(runDataset).toHaveBeenCalledTimes(2));
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create Outer Line Center Geometry Validation Report"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create Outer Line Center Geometry Validation Report"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download Outer Line Center Geometry Validation Report JSON"
+  })).toBeInTheDocument();
+
+  selectFiles([createPdfFile("two.pdf")]);
+  expect(screen.queryByRole("button", {
+    name: "Download Outer Line Center Geometry Validation Report JSON"
+  })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Create Outer Line Center Geometry Validation Report"
+  })).not.toBeInTheDocument();
+  expect(createGeometryValidation).toHaveBeenCalledTimes(3);
 });
 
 function selectFiles(files) {
