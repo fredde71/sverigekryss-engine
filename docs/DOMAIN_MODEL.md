@@ -304,6 +304,24 @@ URL data load is still unchanged.
 
 ---
 
+## Digitization Dataset Item
+
+A Digitization Dataset is an ordered collection of independently identified dataset items.
+
+Each dataset item owns the association between its item ID and any available:
+
+- source document
+- human-confirmed Ground Truth
+- production, experiment, observation, and validation diagnostics
+
+These artifacts may be created independently, but they must retain the exact dataset item identity and source filename. Human-confirmed Ground Truth belongs to one specific dataset item; it is not shared Ground Truth for the dataset as a whole.
+
+A dataset-level Ground Truth artifact is the deterministic, ordered collection and export boundary for per-item annotations. It does not change their per-item ownership.
+
+Multi-document annotation is the canonical workflow. A developer selects one dataset item as the active annotation target, loads its source document, and confirms its Ground Truth independently before moving to another item. Draft geometry, including geometry copied from another item, remains unconfirmed and is not Ground Truth until explicitly confirmed for the active item.
+
+---
+
 ## 2. RuntimeSession
 
 Represents one user solving one crossword.

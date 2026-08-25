@@ -45,6 +45,8 @@ A domain operation that derives explicit compatible structures from supplied evi
 
 A deterministic, human-confirmed reference artifact associated with exact dataset items and coordinates. Ground Truth is validation-only.
 
+Ground Truth ownership is per dataset item. A dataset-level artifact only collects confirmed per-item annotations in deterministic dataset order. Multi-document annotation is the canonical workflow: each source document is selected, annotated, and confirmed independently.
+
 Ground Truth must never:
 
 - be runtime input to detection, observation, reconstruction, or production
@@ -111,27 +113,38 @@ Do not tune tolerances, thresholds, or limits before diagnostics explain which r
 - Do not add UI or persistence unless that integration is the explicit task.
 - Verify focused tests, the full suite, the production build, and `git diff --check` in proportion to the change.
 
-## Default Development Flow
+## Validated Research Flow
 
 ```text
-Contract
+Evidence
   ↓
-Shadow plumbing
+Observation
   ↓
-Observation / experiment
+Validation
   ↓
-Ground Truth validation
+Architecture Review
   ↓
-Architectural review
+Algorithm
   ↓
-Algorithm / behavioral change
-  ↓
-Production adoption
+Production
 ```
 
-Each stage should remain useful without assuming the next stage will happen. Skipping a stage is acceptable only when the reason and supporting evidence are explicit.
+Contracts, shadow plumbing, and focused experiments are implementation steps within this research flow. Each stage should remain useful without assuming the next stage will happen. Skipping a stage is acceptable only when the reason and supporting evidence are explicit.
 
 Production adoption is a separate decision and implementation step. Experimental success alone does not authorize it.
+
+## Promotion Gate
+
+Reports must be generated and analyzed before commit. Test success alone does not establish that experimental evidence supports an architectural or production change.
+
+Commit and push occur only after a successful Promotion Gate. The gate confirms:
+
+- the intended implementation is complete and verified
+- deterministic evidence and reports have been reviewed
+- an architecture review confirms ownership, dependencies, and scope
+- production readiness is explicit, including either safe lab isolation or justified production adoption
+
+A failed or incomplete gate returns the work to the appropriate research-flow stage. It does not authorize partial promotion into production.
 
 ## Pre-Flight Questions
 

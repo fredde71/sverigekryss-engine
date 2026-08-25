@@ -50,7 +50,15 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     "Create Outer Line Center Geometry Validation Report",
     "Download Outer Line Center Geometry Validation Report JSON",
     "Create Human Annotation Bias Diagnostics",
-    "Download Human Annotation Bias Diagnostics JSON"
+    "Download Human Annotation Bias Diagnostics JSON",
+    "Create Grid Lattice Geometry Diagnostics",
+    "Download Grid Lattice Geometry Diagnostics JSON",
+    "Create Grid Lattice Periodicity Diagnostics",
+    "Download Grid Lattice Periodicity Diagnostics JSON",
+    "Create Grid Lattice Period Identifiability Diagnostics",
+    "Download Grid Lattice Period Identifiability Diagnostics JSON",
+    "Create Grid Lattice Period Robustness Diagnostics",
+    "Download Grid Lattice Period Robustness Diagnostics JSON"
   ]);
   expect(screen.getByLabelText("Run dataset status")).toHaveTextContent("Not started");
   expect(screen.getByLabelText("Annotate ground truth status"))
@@ -96,6 +104,38 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     "Download Human Annotation Bias Diagnostics JSON status"
   )).toHaveTextContent(
     "Waiting for completed human annotation bias diagnostics"
+  );
+  expect(screen.getByLabelText(
+    "Create Grid Lattice Geometry Diagnostics status"
+  )).toHaveTextContent("Waiting for confirmed ground truth");
+  expect(screen.getByLabelText(
+    "Download Grid Lattice Geometry Diagnostics JSON status"
+  )).toHaveTextContent(
+    "Waiting for completed grid lattice geometry diagnostics"
+  );
+  expect(screen.getByLabelText(
+    "Create Grid Lattice Periodicity Diagnostics status"
+  )).toHaveTextContent("Waiting for confirmed ground truth");
+  expect(screen.getByLabelText(
+    "Download Grid Lattice Periodicity Diagnostics JSON status"
+  )).toHaveTextContent(
+    "Waiting for completed grid lattice periodicity diagnostics"
+  );
+  expect(screen.getByLabelText(
+    "Create Grid Lattice Period Identifiability Diagnostics status"
+  )).toHaveTextContent("Waiting for confirmed ground truth");
+  expect(screen.getByLabelText(
+    "Download Grid Lattice Period Identifiability Diagnostics JSON status"
+  )).toHaveTextContent(
+    "Waiting for completed grid lattice period identifiability diagnostics"
+  );
+  expect(screen.getByLabelText(
+    "Create Grid Lattice Period Robustness Diagnostics status"
+  )).toHaveTextContent("Waiting for confirmed ground truth");
+  expect(screen.getByLabelText(
+    "Download Grid Lattice Period Robustness Diagnostics JSON status"
+  )).toHaveTextContent(
+    "Waiting for completed grid lattice period robustness diagnostics"
   );
 });
 
@@ -1299,6 +1339,434 @@ test("Ground Truth, dataset rerun and PDF changes invalidate Human Annotation Bi
     name: "Create Human Annotation Bias Diagnostics"
   })).not.toBeInTheDocument();
   expect(createBiasDiagnostics).toHaveBeenCalledTimes(3);
+});
+
+test("creates and downloads Grid Lattice Geometry Diagnostics from loaded Ground Truth without rerunning the dataset", async () => {
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const latticeDiagnostics = {
+    type: "grid-lattice-geometry-diagnostics",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createLatticeDiagnostics = jest.fn(() => latticeDiagnostics);
+  const downloadLatticeDiagnostics = jest.fn();
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createGridLatticeGeometryDiagnostics={createLatticeDiagnostics}
+      downloadGridLatticeGeometryDiagnostics={downloadLatticeDiagnostics}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  const createButton = screen.getByRole("button", {
+    name: "Create Grid Lattice Geometry Diagnostics"
+  });
+
+  expect(createButton).toBeDisabled();
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Geometry Diagnostics JSON"
+  })).not.toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(createButton).toBeEnabled());
+  fireEvent.click(createButton);
+
+  expect(createLatticeDiagnostics).toHaveBeenCalledTimes(1);
+  expect(createLatticeDiagnostics).toHaveBeenCalledWith({
+    datasetReport,
+    groundTruth: expect.objectContaining({
+      type: "digitization-grid-ground-truth",
+      datasetId: "localhost-pdf-dataset"
+    })
+  });
+  expect(runDataset).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText(
+    "Create Grid Lattice Geometry Diagnostics status"
+  )).toHaveTextContent("Completed");
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download Grid Lattice Geometry Diagnostics JSON"
+  }));
+  expect(downloadLatticeDiagnostics).toHaveBeenCalledTimes(1);
+  expect(downloadLatticeDiagnostics).toHaveBeenCalledWith(latticeDiagnostics);
+});
+
+test("Ground Truth, dataset rerun and PDF changes invalidate Grid Lattice Geometry Diagnostics", async () => {
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createLatticeDiagnostics = jest.fn(() => ({
+    type: "grid-lattice-geometry-diagnostics",
+    version: 1,
+    status: "complete"
+  }));
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createGridLatticeGeometryDiagnostics={createLatticeDiagnostics}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  loadGroundTruth(createGroundTruthFixture());
+  const createButton = screen.getByRole("button", {
+    name: "Create Grid Lattice Geometry Diagnostics"
+  });
+  await waitFor(() => expect(createButton).toBeEnabled());
+  fireEvent.click(createButton);
+  expect(screen.getByRole("button", {
+    name: "Download Grid Lattice Geometry Diagnostics JSON"
+  })).toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Geometry Diagnostics JSON"
+  })).not.toBeInTheDocument());
+  expect(screen.getByLabelText(
+    "Create Grid Lattice Geometry Diagnostics status"
+  )).toHaveTextContent("Ready to create");
+
+  fireEvent.click(createButton);
+  expect(screen.getByRole("button", {
+    name: "Download Grid Lattice Geometry Diagnostics JSON"
+  })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Geometry Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  await waitFor(() => expect(runDataset).toHaveBeenCalledTimes(2));
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create Grid Lattice Geometry Diagnostics"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create Grid Lattice Geometry Diagnostics"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download Grid Lattice Geometry Diagnostics JSON"
+  })).toBeInTheDocument();
+
+  selectFiles([createPdfFile("two.pdf")]);
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Geometry Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Create Grid Lattice Geometry Diagnostics"
+  })).not.toBeInTheDocument();
+  expect(createLatticeDiagnostics).toHaveBeenCalledTimes(3);
+});
+
+test("creates and downloads Grid Lattice Periodicity Diagnostics from loaded Ground Truth without rerunning the dataset", async () => {
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const periodicityDiagnostics = {
+    type: "grid-lattice-periodicity-diagnostics",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createPeriodicityDiagnostics = jest.fn(() => periodicityDiagnostics);
+  const downloadPeriodicityDiagnostics = jest.fn();
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createGridLatticePeriodicityDiagnostics={createPeriodicityDiagnostics}
+      downloadGridLatticePeriodicityDiagnostics={downloadPeriodicityDiagnostics}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  const createButton = screen.getByRole("button", {
+    name: "Create Grid Lattice Periodicity Diagnostics"
+  });
+
+  expect(createButton).toBeDisabled();
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(createButton).toBeEnabled());
+  fireEvent.click(createButton);
+
+  expect(createPeriodicityDiagnostics).toHaveBeenCalledTimes(1);
+  expect(createPeriodicityDiagnostics).toHaveBeenCalledWith({
+    datasetReport,
+    groundTruth: expect.objectContaining({
+      type: "digitization-grid-ground-truth",
+      datasetId: "localhost-pdf-dataset"
+    })
+  });
+  expect(runDataset).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText(
+    "Create Grid Lattice Periodicity Diagnostics status"
+  )).toHaveTextContent("Completed");
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download Grid Lattice Periodicity Diagnostics JSON"
+  }));
+  expect(downloadPeriodicityDiagnostics).toHaveBeenCalledWith(
+    periodicityDiagnostics
+  );
+});
+
+test("Ground Truth, dataset rerun and PDF changes invalidate Grid Lattice Periodicity Diagnostics", async () => {
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createPeriodicityDiagnostics = jest.fn(() => ({
+    type: "grid-lattice-periodicity-diagnostics",
+    version: 1,
+    status: "complete"
+  }));
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createGridLatticePeriodicityDiagnostics={createPeriodicityDiagnostics}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  loadGroundTruth(createGroundTruthFixture());
+  const createButton = screen.getByRole("button", {
+    name: "Create Grid Lattice Periodicity Diagnostics"
+  });
+  await waitFor(() => expect(createButton).toBeEnabled());
+  fireEvent.click(createButton);
+  expect(screen.getByRole("button", {
+    name: "Download Grid Lattice Periodicity Diagnostics JSON"
+  })).toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Periodicity Diagnostics JSON"
+  })).not.toBeInTheDocument());
+
+  fireEvent.click(createButton);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Periodicity Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  await waitFor(() => expect(runDataset).toHaveBeenCalledTimes(2));
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create Grid Lattice Periodicity Diagnostics"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create Grid Lattice Periodicity Diagnostics"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download Grid Lattice Periodicity Diagnostics JSON"
+  })).toBeInTheDocument();
+
+  selectFiles([createPdfFile("two.pdf")]);
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Periodicity Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Create Grid Lattice Periodicity Diagnostics"
+  })).not.toBeInTheDocument();
+});
+
+test("creates, downloads and invalidates Grid Lattice Period Identifiability Diagnostics", async () => {
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const diagnostics = {
+    type: "grid-lattice-period-identifiability-diagnostics",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createDiagnostics = jest.fn(() => diagnostics);
+  const downloadDiagnostics = jest.fn();
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createGridLatticePeriodIdentifiabilityDiagnostics={createDiagnostics}
+      downloadGridLatticePeriodIdentifiabilityDiagnostics={downloadDiagnostics}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  const createButton = screen.getByRole("button", {
+    name: "Create Grid Lattice Period Identifiability Diagnostics"
+  });
+
+  expect(createButton).toBeDisabled();
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(createButton).toBeEnabled());
+  fireEvent.click(createButton);
+
+  expect(createDiagnostics).toHaveBeenCalledWith({
+    datasetReport,
+    groundTruth: expect.objectContaining({
+      type: "digitization-grid-ground-truth",
+      datasetId: "localhost-pdf-dataset"
+    })
+  });
+  expect(runDataset).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download Grid Lattice Period Identifiability Diagnostics JSON"
+  }));
+  expect(downloadDiagnostics).toHaveBeenCalledWith(diagnostics);
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Period Identifiability Diagnostics JSON"
+  })).not.toBeInTheDocument());
+  expect(screen.getByLabelText(
+    "Create Grid Lattice Period Identifiability Diagnostics status"
+  )).toHaveTextContent("Ready to create");
+
+  fireEvent.click(createButton);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Period Identifiability Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  await waitFor(() => expect(runDataset).toHaveBeenCalledTimes(2));
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create Grid Lattice Period Identifiability Diagnostics"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create Grid Lattice Period Identifiability Diagnostics"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download Grid Lattice Period Identifiability Diagnostics JSON"
+  })).toBeInTheDocument();
+
+  selectFiles([createPdfFile("two.pdf")]);
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Period Identifiability Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Create Grid Lattice Period Identifiability Diagnostics"
+  })).not.toBeInTheDocument();
+});
+
+test("creates, downloads and invalidates Grid Lattice Period Robustness Diagnostics", async () => {
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const diagnostics = {
+    type: "grid-lattice-period-robustness-diagnostics",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createDiagnostics = jest.fn(() => diagnostics);
+  const downloadDiagnostics = jest.fn();
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createGridLatticePeriodRobustnessDiagnostics={createDiagnostics}
+      downloadGridLatticePeriodRobustnessDiagnostics={downloadDiagnostics}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  const createButton = screen.getByRole("button", {
+    name: "Create Grid Lattice Period Robustness Diagnostics"
+  });
+
+  expect(createButton).toBeDisabled();
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(createButton).toBeEnabled());
+  fireEvent.click(createButton);
+
+  expect(createDiagnostics).toHaveBeenCalledWith({
+    datasetReport,
+    groundTruth: expect.objectContaining({
+      type: "digitization-grid-ground-truth",
+      datasetId: "localhost-pdf-dataset"
+    })
+  });
+  expect(runDataset).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download Grid Lattice Period Robustness Diagnostics JSON"
+  }));
+  expect(downloadDiagnostics).toHaveBeenCalledWith(diagnostics);
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Period Robustness Diagnostics JSON"
+  })).not.toBeInTheDocument());
+  expect(screen.getByLabelText(
+    "Create Grid Lattice Period Robustness Diagnostics status"
+  )).toHaveTextContent("Ready to create");
+
+  fireEvent.click(createButton);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Period Robustness Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  await waitFor(() => expect(runDataset).toHaveBeenCalledTimes(2));
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create Grid Lattice Period Robustness Diagnostics"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create Grid Lattice Period Robustness Diagnostics"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download Grid Lattice Period Robustness Diagnostics JSON"
+  })).toBeInTheDocument();
+
+  selectFiles([createPdfFile("two.pdf")]);
+  expect(screen.queryByRole("button", {
+    name: "Download Grid Lattice Period Robustness Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Create Grid Lattice Period Robustness Diagnostics"
+  })).not.toBeInTheDocument();
 });
 
 function selectFiles(files) {

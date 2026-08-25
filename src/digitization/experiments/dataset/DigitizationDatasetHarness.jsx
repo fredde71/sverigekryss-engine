@@ -40,6 +40,36 @@ import {
 import {
   createHumanAnnotationBiasDiagnosticsExport
 } from "./humanAnnotationBiasDiagnosticsExport";
+import {
+  createGridLatticeGeometryDiagnostics
+} from "./gridLatticeGeometryDiagnostics";
+import {
+  createGridLatticeGeometryDiagnosticsExport
+} from "./gridLatticeGeometryDiagnosticsExport";
+import {
+  createGridLatticePeriodicityDiagnostics
+} from "./gridLatticePeriodicityDiagnostics";
+import {
+  createGridLatticePeriodicityDiagnosticsExport
+} from "./gridLatticePeriodicityDiagnosticsExport";
+import {
+  createGridLatticePeriodIdentifiabilityDiagnostics
+} from "./gridLatticePeriodIdentifiabilityDiagnostics";
+import {
+  createGridLatticePeriodIdentifiabilityDiagnosticsExport
+} from "./gridLatticePeriodIdentifiabilityDiagnosticsExport";
+import {
+  createGridLatticePeriodRobustnessDiagnostics
+} from "./gridLatticePeriodRobustnessDiagnostics";
+import {
+  createGridLatticePeriodRobustnessDiagnosticsExport
+} from "./gridLatticePeriodRobustnessDiagnosticsExport";
+import {
+  createGridLatticePeriodToleranceSensitivityDiagnostics
+} from "./gridLatticePeriodToleranceSensitivityDiagnostics";
+import {
+  createGridLatticePeriodToleranceSensitivityDiagnosticsExport
+} from "./gridLatticePeriodToleranceSensitivityDiagnosticsExport";
 
 const LOCAL_DATASET_ID = "localhost-pdf-dataset";
 
@@ -118,6 +148,92 @@ export default function DigitizationDatasetHarness({
       URL.revokeObjectURL(objectUrl);
     }
   },
+  createGridLatticeGeometryDiagnostics:
+    createGridLatticeGeometryReport = createGridLatticeGeometryDiagnostics,
+  downloadGridLatticeGeometryDiagnostics = report => {
+    const artifact = createGridLatticeGeometryDiagnosticsExport(report);
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
+  createGridLatticePeriodicityDiagnostics:
+    createGridLatticePeriodicityReport = createGridLatticePeriodicityDiagnostics,
+  downloadGridLatticePeriodicityDiagnostics = report => {
+    const artifact = createGridLatticePeriodicityDiagnosticsExport(report);
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
+  createGridLatticePeriodIdentifiabilityDiagnostics:
+    createGridLatticePeriodIdentifiabilityReport =
+      createGridLatticePeriodIdentifiabilityDiagnostics,
+  downloadGridLatticePeriodIdentifiabilityDiagnostics = report => {
+    const artifact = createGridLatticePeriodIdentifiabilityDiagnosticsExport(
+      report
+    );
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
+  createGridLatticePeriodRobustnessDiagnostics:
+    createGridLatticePeriodRobustnessReport =
+      createGridLatticePeriodRobustnessDiagnostics,
+  downloadGridLatticePeriodRobustnessDiagnostics = report => {
+    const artifact = createGridLatticePeriodRobustnessDiagnosticsExport(report);
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
+  createGridLatticePeriodToleranceSensitivityDiagnostics:
+    createGridLatticePeriodToleranceSensitivityReport =
+      createGridLatticePeriodToleranceSensitivityDiagnostics,
+  downloadGridLatticePeriodToleranceSensitivityDiagnostics = report => {
+    const artifact =
+      createGridLatticePeriodToleranceSensitivityDiagnosticsExport(report);
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
   readEnvironment = () => process.env.NODE_ENV,
   readHostname = () => (
     typeof window === "undefined" ? "" : window.location.hostname
@@ -155,6 +271,27 @@ export default function DigitizationDatasetHarness({
     setHumanAnnotationBiasDiagnostics] = useState(null);
   const [humanAnnotationBiasDiagnosticsErrorMessage,
     setHumanAnnotationBiasDiagnosticsErrorMessage] = useState("");
+  const [gridLatticeGeometryDiagnostics,
+    setGridLatticeGeometryDiagnostics] = useState(null);
+  const [gridLatticeGeometryDiagnosticsErrorMessage,
+    setGridLatticeGeometryDiagnosticsErrorMessage] = useState("");
+  const [gridLatticePeriodicityDiagnostics,
+    setGridLatticePeriodicityDiagnostics] = useState(null);
+  const [gridLatticePeriodicityDiagnosticsErrorMessage,
+    setGridLatticePeriodicityDiagnosticsErrorMessage] = useState("");
+  const [gridLatticePeriodIdentifiabilityDiagnostics,
+    setGridLatticePeriodIdentifiabilityDiagnostics] = useState(null);
+  const [gridLatticePeriodIdentifiabilityDiagnosticsErrorMessage,
+    setGridLatticePeriodIdentifiabilityDiagnosticsErrorMessage] = useState("");
+  const [gridLatticePeriodRobustnessDiagnostics,
+    setGridLatticePeriodRobustnessDiagnostics] = useState(null);
+  const [gridLatticePeriodRobustnessDiagnosticsErrorMessage,
+    setGridLatticePeriodRobustnessDiagnosticsErrorMessage] = useState("");
+  const [gridLatticePeriodToleranceSensitivityDiagnostics,
+    setGridLatticePeriodToleranceSensitivityDiagnostics] = useState(null);
+  const [gridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage,
+    setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage] =
+      useState("");
   const datasetItems = createDatasetItems(selectedFiles);
 
   if (
@@ -188,6 +325,16 @@ export default function DigitizationDatasetHarness({
     setOuterLineCenterGeometryValidationErrorMessage("");
     setHumanAnnotationBiasDiagnostics(null);
     setHumanAnnotationBiasDiagnosticsErrorMessage("");
+    setGridLatticeGeometryDiagnostics(null);
+    setGridLatticeGeometryDiagnosticsErrorMessage("");
+    setGridLatticePeriodicityDiagnostics(null);
+    setGridLatticePeriodicityDiagnosticsErrorMessage("");
+    setGridLatticePeriodIdentifiabilityDiagnostics(null);
+    setGridLatticePeriodIdentifiabilityDiagnosticsErrorMessage("");
+    setGridLatticePeriodRobustnessDiagnostics(null);
+    setGridLatticePeriodRobustnessDiagnosticsErrorMessage("");
+    setGridLatticePeriodToleranceSensitivityDiagnostics(null);
+    setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage("");
   };
 
   const handleRun = async () => {
@@ -210,6 +357,16 @@ export default function DigitizationDatasetHarness({
     setOuterLineCenterGeometryValidationErrorMessage("");
     setHumanAnnotationBiasDiagnostics(null);
     setHumanAnnotationBiasDiagnosticsErrorMessage("");
+    setGridLatticeGeometryDiagnostics(null);
+    setGridLatticeGeometryDiagnosticsErrorMessage("");
+    setGridLatticePeriodicityDiagnostics(null);
+    setGridLatticePeriodicityDiagnosticsErrorMessage("");
+    setGridLatticePeriodIdentifiabilityDiagnostics(null);
+    setGridLatticePeriodIdentifiabilityDiagnosticsErrorMessage("");
+    setGridLatticePeriodRobustnessDiagnostics(null);
+    setGridLatticePeriodRobustnessDiagnosticsErrorMessage("");
+    setGridLatticePeriodToleranceSensitivityDiagnostics(null);
+    setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage("");
 
     try {
       const result = await runDataset({
@@ -264,6 +421,16 @@ export default function DigitizationDatasetHarness({
     setOuterLineCenterGeometryValidationErrorMessage("");
     setHumanAnnotationBiasDiagnostics(null);
     setHumanAnnotationBiasDiagnosticsErrorMessage("");
+    setGridLatticeGeometryDiagnostics(null);
+    setGridLatticeGeometryDiagnosticsErrorMessage("");
+    setGridLatticePeriodicityDiagnostics(null);
+    setGridLatticePeriodicityDiagnosticsErrorMessage("");
+    setGridLatticePeriodIdentifiabilityDiagnostics(null);
+    setGridLatticePeriodIdentifiabilityDiagnosticsErrorMessage("");
+    setGridLatticePeriodRobustnessDiagnostics(null);
+    setGridLatticePeriodRobustnessDiagnosticsErrorMessage("");
+    setGridLatticePeriodToleranceSensitivityDiagnostics(null);
+    setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage("");
   };
 
   const handleCreateValidationReport = () => {
@@ -377,6 +544,104 @@ export default function DigitizationDatasetHarness({
     }
   };
 
+  const handleCreateGridLatticeGeometryDiagnostics = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setGridLatticeGeometryDiagnostics(createGridLatticeGeometryReport({
+        datasetReport,
+        groundTruth
+      }));
+      setGridLatticeGeometryDiagnosticsErrorMessage("");
+    } catch (error) {
+      setGridLatticeGeometryDiagnosticsErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
+  const handleCreateGridLatticePeriodicityDiagnostics = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setGridLatticePeriodicityDiagnostics(
+        createGridLatticePeriodicityReport({
+          datasetReport,
+          groundTruth
+        })
+      );
+      setGridLatticePeriodicityDiagnosticsErrorMessage("");
+    } catch (error) {
+      setGridLatticePeriodicityDiagnosticsErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
+  const handleCreateGridLatticePeriodIdentifiabilityDiagnostics = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setGridLatticePeriodIdentifiabilityDiagnostics(
+        createGridLatticePeriodIdentifiabilityReport({
+          datasetReport,
+          groundTruth
+        })
+      );
+      setGridLatticePeriodIdentifiabilityDiagnosticsErrorMessage("");
+    } catch (error) {
+      setGridLatticePeriodIdentifiabilityDiagnosticsErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
+  const handleCreateGridLatticePeriodRobustnessDiagnostics = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setGridLatticePeriodRobustnessDiagnostics(
+        createGridLatticePeriodRobustnessReport({
+          datasetReport,
+          groundTruth
+        })
+      );
+      setGridLatticePeriodRobustnessDiagnosticsErrorMessage("");
+    } catch (error) {
+      setGridLatticePeriodRobustnessDiagnosticsErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
+  const handleCreateGridLatticePeriodToleranceSensitivityDiagnostics = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setGridLatticePeriodToleranceSensitivityDiagnostics(
+        createGridLatticePeriodToleranceSensitivityReport({
+          datasetReport,
+          groundTruth
+        })
+      );
+      setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage("");
+    } catch (error) {
+      setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
   const confirmedItemCount = groundTruth?.annotations?.length ?? 0;
   const datasetStatus = describeDatasetStatus(status, selectedFiles.length);
   const annotationStatus = datasetReport
@@ -451,6 +716,65 @@ export default function DigitizationDatasetHarness({
     humanAnnotationBiasDiagnostics
       ? "Ready"
       : "Waiting for completed human annotation bias diagnostics";
+  const gridLatticeGeometryDiagnosticsStatus = gridLatticeGeometryDiagnostics
+    ? "Completed"
+    : gridLatticeGeometryDiagnosticsErrorMessage
+      ? "Failed"
+      : groundTruth && datasetReport
+        ? "Ready to create"
+        : "Waiting for confirmed ground truth";
+  const gridLatticeGeometryDiagnosticsDownloadStatus =
+    gridLatticeGeometryDiagnostics
+      ? "Ready"
+      : "Waiting for completed grid lattice geometry diagnostics";
+  const gridLatticePeriodicityDiagnosticsStatus =
+    gridLatticePeriodicityDiagnostics
+      ? "Completed"
+      : gridLatticePeriodicityDiagnosticsErrorMessage
+        ? "Failed"
+        : groundTruth && datasetReport
+          ? "Ready to create"
+          : "Waiting for confirmed ground truth";
+  const gridLatticePeriodicityDiagnosticsDownloadStatus =
+    gridLatticePeriodicityDiagnostics
+      ? "Ready"
+      : "Waiting for completed grid lattice periodicity diagnostics";
+  const gridLatticePeriodIdentifiabilityDiagnosticsStatus =
+    gridLatticePeriodIdentifiabilityDiagnostics
+      ? "Completed"
+      : gridLatticePeriodIdentifiabilityDiagnosticsErrorMessage
+        ? "Failed"
+        : groundTruth && datasetReport
+          ? "Ready to create"
+          : "Waiting for confirmed ground truth";
+  const gridLatticePeriodIdentifiabilityDiagnosticsDownloadStatus =
+    gridLatticePeriodIdentifiabilityDiagnostics
+      ? "Ready"
+      : "Waiting for completed grid lattice period identifiability diagnostics";
+  const gridLatticePeriodRobustnessDiagnosticsStatus =
+    gridLatticePeriodRobustnessDiagnostics
+      ? "Completed"
+      : gridLatticePeriodRobustnessDiagnosticsErrorMessage
+        ? "Failed"
+        : groundTruth && datasetReport
+          ? "Ready to create"
+          : "Waiting for confirmed ground truth";
+  const gridLatticePeriodRobustnessDiagnosticsDownloadStatus =
+    gridLatticePeriodRobustnessDiagnostics
+      ? "Ready"
+      : "Waiting for completed grid lattice period robustness diagnostics";
+  const gridLatticePeriodToleranceSensitivityDiagnosticsStatus =
+    gridLatticePeriodToleranceSensitivityDiagnostics
+      ? "Completed"
+      : gridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage
+        ? "Failed"
+        : groundTruth && datasetReport
+          ? "Ready to create"
+          : "Waiting for confirmed ground truth";
+  const gridLatticePeriodToleranceSensitivityDiagnosticsDownloadStatus =
+    gridLatticePeriodToleranceSensitivityDiagnostics
+      ? "Ready"
+      : "Waiting for completed grid lattice period tolerance sensitivity diagnostics";
 
   return (
     <section
@@ -516,6 +840,46 @@ export default function DigitizationDatasetHarness({
         <WorkflowStep
           title="Download Human Annotation Bias Diagnostics JSON"
           status={humanAnnotationBiasDiagnosticsDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create Grid Lattice Geometry Diagnostics"
+          status={gridLatticeGeometryDiagnosticsStatus}
+        />
+        <WorkflowStep
+          title="Download Grid Lattice Geometry Diagnostics JSON"
+          status={gridLatticeGeometryDiagnosticsDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create Grid Lattice Periodicity Diagnostics"
+          status={gridLatticePeriodicityDiagnosticsStatus}
+        />
+        <WorkflowStep
+          title="Download Grid Lattice Periodicity Diagnostics JSON"
+          status={gridLatticePeriodicityDiagnosticsDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create Grid Lattice Period Identifiability Diagnostics"
+          status={gridLatticePeriodIdentifiabilityDiagnosticsStatus}
+        />
+        <WorkflowStep
+          title="Download Grid Lattice Period Identifiability Diagnostics JSON"
+          status={gridLatticePeriodIdentifiabilityDiagnosticsDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create Grid Lattice Period Robustness Diagnostics"
+          status={gridLatticePeriodRobustnessDiagnosticsStatus}
+        />
+        <WorkflowStep
+          title="Download Grid Lattice Period Robustness Diagnostics JSON"
+          status={gridLatticePeriodRobustnessDiagnosticsDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create Grid Lattice Period Tolerance Sensitivity Diagnostics"
+          status={gridLatticePeriodToleranceSensitivityDiagnosticsStatus}
+        />
+        <WorkflowStep
+          title="Download Grid Lattice Period Tolerance Sensitivity Diagnostics JSON"
+          status={gridLatticePeriodToleranceSensitivityDiagnosticsDownloadStatus}
         />
       </ol>
       <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -589,6 +953,36 @@ export default function DigitizationDatasetHarness({
         <span role="alert">
           Human annotation bias diagnostics unavailable:{" "}
           {humanAnnotationBiasDiagnosticsErrorMessage}
+        </span>
+      )}
+      {gridLatticeGeometryDiagnosticsErrorMessage && (
+        <span role="alert">
+          Grid lattice geometry diagnostics unavailable:{" "}
+          {gridLatticeGeometryDiagnosticsErrorMessage}
+        </span>
+      )}
+      {gridLatticePeriodicityDiagnosticsErrorMessage && (
+        <span role="alert">
+          Grid lattice periodicity diagnostics unavailable:{" "}
+          {gridLatticePeriodicityDiagnosticsErrorMessage}
+        </span>
+      )}
+      {gridLatticePeriodIdentifiabilityDiagnosticsErrorMessage && (
+        <span role="alert">
+          Grid lattice period identifiability diagnostics unavailable:{" "}
+          {gridLatticePeriodIdentifiabilityDiagnosticsErrorMessage}
+        </span>
+      )}
+      {gridLatticePeriodRobustnessDiagnosticsErrorMessage && (
+        <span role="alert">
+          Grid lattice period robustness diagnostics unavailable:{" "}
+          {gridLatticePeriodRobustnessDiagnosticsErrorMessage}
+        </span>
+      )}
+      {gridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage && (
+        <span role="alert">
+          Grid lattice period tolerance sensitivity diagnostics unavailable:{" "}
+          {gridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage}
         </span>
       )}
       {analysisReports && (
@@ -759,6 +1153,143 @@ export default function DigitizationDatasetHarness({
             )}
           >
             Download Human Annotation Bias Diagnostics JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateGridLatticeGeometryDiagnostics}
+        >
+          Create Grid Lattice Geometry Diagnostics
+        </button>
+      )}
+      {gridLatticeGeometryDiagnostics && (
+        <>
+          <span
+            role="status"
+            aria-label="Grid lattice geometry diagnostics status"
+          >
+            Grid Lattice Geometry Diagnostics completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadGridLatticeGeometryDiagnostics(
+              gridLatticeGeometryDiagnostics
+            )}
+          >
+            Download Grid Lattice Geometry Diagnostics JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateGridLatticePeriodicityDiagnostics}
+        >
+          Create Grid Lattice Periodicity Diagnostics
+        </button>
+      )}
+      {gridLatticePeriodicityDiagnostics && (
+        <>
+          <span
+            role="status"
+            aria-label="Grid lattice periodicity diagnostics status"
+          >
+            Grid Lattice Periodicity Diagnostics completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadGridLatticePeriodicityDiagnostics(
+              gridLatticePeriodicityDiagnostics
+            )}
+          >
+            Download Grid Lattice Periodicity Diagnostics JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateGridLatticePeriodIdentifiabilityDiagnostics}
+        >
+          Create Grid Lattice Period Identifiability Diagnostics
+        </button>
+      )}
+      {gridLatticePeriodIdentifiabilityDiagnostics && (
+        <>
+          <span
+            role="status"
+            aria-label="Grid lattice period identifiability diagnostics status"
+          >
+            Grid Lattice Period Identifiability Diagnostics completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadGridLatticePeriodIdentifiabilityDiagnostics(
+              gridLatticePeriodIdentifiabilityDiagnostics
+            )}
+          >
+            Download Grid Lattice Period Identifiability Diagnostics JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateGridLatticePeriodRobustnessDiagnostics}
+        >
+          Create Grid Lattice Period Robustness Diagnostics
+        </button>
+      )}
+      {gridLatticePeriodRobustnessDiagnostics && (
+        <>
+          <span
+            role="status"
+            aria-label="Grid lattice period robustness diagnostics status"
+          >
+            Grid Lattice Period Robustness Diagnostics completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadGridLatticePeriodRobustnessDiagnostics(
+              gridLatticePeriodRobustnessDiagnostics
+            )}
+          >
+            Download Grid Lattice Period Robustness Diagnostics JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateGridLatticePeriodToleranceSensitivityDiagnostics}
+        >
+          Create Grid Lattice Period Tolerance Sensitivity Diagnostics
+        </button>
+      )}
+      {gridLatticePeriodToleranceSensitivityDiagnostics && (
+        <>
+          <span
+            role="status"
+            aria-label="Grid lattice period tolerance sensitivity diagnostics status"
+          >
+            Grid Lattice Period Tolerance Sensitivity Diagnostics completed
+          </span>
+          <button
+            type="button"
+            onClick={() => (
+              downloadGridLatticePeriodToleranceSensitivityDiagnostics(
+                gridLatticePeriodToleranceSensitivityDiagnostics
+              )
+            )}
+          >
+            Download Grid Lattice Period Tolerance Sensitivity Diagnostics JSON
           </button>
         </>
       )}
