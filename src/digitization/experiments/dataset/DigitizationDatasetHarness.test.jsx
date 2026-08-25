@@ -48,7 +48,9 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     "Create Outer Line Center Validation Report",
     "Download Outer Line Center Validation Report JSON",
     "Create Outer Line Center Geometry Validation Report",
-    "Download Outer Line Center Geometry Validation Report JSON"
+    "Download Outer Line Center Geometry Validation Report JSON",
+    "Create Human Annotation Bias Diagnostics",
+    "Download Human Annotation Bias Diagnostics JSON"
   ]);
   expect(screen.getByLabelText("Run dataset status")).toHaveTextContent("Not started");
   expect(screen.getByLabelText("Annotate ground truth status"))
@@ -86,6 +88,14 @@ test("renders a minimal multiple-PDF Digitization Lab in test mode", () => {
     "Download Outer Line Center Geometry Validation Report JSON status"
   )).toHaveTextContent(
     "Waiting for a completed outer line center geometry validation report"
+  );
+  expect(screen.getByLabelText(
+    "Create Human Annotation Bias Diagnostics status"
+  )).toHaveTextContent("Waiting for confirmed ground truth");
+  expect(screen.getByLabelText(
+    "Download Human Annotation Bias Diagnostics JSON status"
+  )).toHaveTextContent(
+    "Waiting for completed human annotation bias diagnostics"
   );
 });
 
@@ -1158,6 +1168,137 @@ test("Ground Truth, dataset rerun and PDF changes invalidate geometry validation
     name: "Create Outer Line Center Geometry Validation Report"
   })).not.toBeInTheDocument();
   expect(createGeometryValidation).toHaveBeenCalledTimes(3);
+});
+
+test("creates and downloads Human Annotation Bias Diagnostics from loaded Ground Truth without rerunning the dataset", async () => {
+  const datasetReport = {
+    type: "digitization-dataset-report",
+    version: 1,
+    datasetRun: { datasetId: "localhost-pdf-dataset" },
+    items: []
+  };
+  const biasDiagnostics = {
+    type: "outer-line-center-human-annotation-bias-diagnostics",
+    version: 1,
+    status: "complete",
+    datasetId: "localhost-pdf-dataset"
+  };
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createBiasDiagnostics = jest.fn(() => biasDiagnostics);
+  const downloadBiasDiagnostics = jest.fn();
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createDatasetReport={() => datasetReport}
+      createFailureReport={() => createFailureReport()}
+      createAnalysisSummary={() => createAnalysisSummary()}
+      createHumanAnnotationBiasDiagnostics={createBiasDiagnostics}
+      downloadHumanAnnotationBiasDiagnostics={downloadBiasDiagnostics}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  const createButton = screen.getByRole("button", {
+    name: "Create Human Annotation Bias Diagnostics"
+  });
+
+  expect(createButton).toBeDisabled();
+  expect(screen.queryByRole("button", {
+    name: "Download Human Annotation Bias Diagnostics JSON"
+  })).not.toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(createButton).toBeEnabled());
+  fireEvent.click(createButton);
+
+  expect(createBiasDiagnostics).toHaveBeenCalledTimes(1);
+  expect(createBiasDiagnostics).toHaveBeenCalledWith({
+    datasetReport,
+    groundTruth: expect.objectContaining({
+      type: "digitization-grid-ground-truth",
+      datasetId: "localhost-pdf-dataset"
+    })
+  });
+  expect(runDataset).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText(
+    "Create Human Annotation Bias Diagnostics status"
+  )).toHaveTextContent("Completed");
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Download Human Annotation Bias Diagnostics JSON"
+  }));
+  expect(downloadBiasDiagnostics).toHaveBeenCalledTimes(1);
+  expect(downloadBiasDiagnostics).toHaveBeenCalledWith(biasDiagnostics);
+});
+
+test("Ground Truth, dataset rerun and PDF changes invalidate Human Annotation Bias Diagnostics", async () => {
+  const runDataset = jest.fn(async () => createCompletedResult());
+  const createBiasDiagnostics = jest.fn(() => ({
+    type: "outer-line-center-human-annotation-bias-diagnostics",
+    version: 1,
+    status: "complete"
+  }));
+
+  render(
+    <DigitizationDatasetHarness
+      runDataset={runDataset}
+      createHumanAnnotationBiasDiagnostics={createBiasDiagnostics}
+    />
+  );
+
+  selectFiles([createPdfFile("one.pdf")]);
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  await screen.findByLabelText("Load ground truth JSON");
+  loadGroundTruth(createGroundTruthFixture());
+  const createButton = screen.getByRole("button", {
+    name: "Create Human Annotation Bias Diagnostics"
+  });
+  await waitFor(() => expect(createButton).toBeEnabled());
+  fireEvent.click(createButton);
+  expect(screen.getByRole("button", {
+    name: "Download Human Annotation Bias Diagnostics JSON"
+  })).toBeInTheDocument();
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.queryByRole("button", {
+    name: "Download Human Annotation Bias Diagnostics JSON"
+  })).not.toBeInTheDocument());
+  expect(screen.getByLabelText(
+    "Create Human Annotation Bias Diagnostics status"
+  )).toHaveTextContent("Ready to create");
+
+  fireEvent.click(createButton);
+  expect(screen.getByRole("button", {
+    name: "Download Human Annotation Bias Diagnostics JSON"
+  })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Run dataset" }));
+  expect(screen.queryByRole("button", {
+    name: "Download Human Annotation Bias Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  await waitFor(() => expect(runDataset).toHaveBeenCalledTimes(2));
+
+  loadGroundTruth(createGroundTruthFixture());
+  await waitFor(() => expect(screen.getByRole("button", {
+    name: "Create Human Annotation Bias Diagnostics"
+  })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", {
+    name: "Create Human Annotation Bias Diagnostics"
+  }));
+  expect(screen.getByRole("button", {
+    name: "Download Human Annotation Bias Diagnostics JSON"
+  })).toBeInTheDocument();
+
+  selectFiles([createPdfFile("two.pdf")]);
+  expect(screen.queryByRole("button", {
+    name: "Download Human Annotation Bias Diagnostics JSON"
+  })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {
+    name: "Create Human Annotation Bias Diagnostics"
+  })).not.toBeInTheDocument();
+  expect(createBiasDiagnostics).toHaveBeenCalledTimes(3);
 });
 
 function selectFiles(files) {

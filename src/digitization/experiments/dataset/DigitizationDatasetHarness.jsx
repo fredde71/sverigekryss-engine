@@ -34,6 +34,12 @@ import {
 import {
   createOuterLineCenterGeometryValidationReportExport
 } from "./outerLineCenterGeometryValidationReportExport";
+import {
+  createHumanAnnotationBiasDiagnostics
+} from "./humanAnnotationBiasDiagnostics";
+import {
+  createHumanAnnotationBiasDiagnosticsExport
+} from "./humanAnnotationBiasDiagnosticsExport";
 
 const LOCAL_DATASET_ID = "localhost-pdf-dataset";
 
@@ -96,6 +102,22 @@ export default function DigitizationDatasetHarness({
       URL.revokeObjectURL(objectUrl);
     }
   },
+  createHumanAnnotationBiasDiagnostics:
+    createHumanAnnotationBiasReport = createHumanAnnotationBiasDiagnostics,
+  downloadHumanAnnotationBiasDiagnostics = report => {
+    const artifact = createHumanAnnotationBiasDiagnosticsExport(report);
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
   readEnvironment = () => process.env.NODE_ENV,
   readHostname = () => (
     typeof window === "undefined" ? "" : window.location.hostname
@@ -129,6 +151,10 @@ export default function DigitizationDatasetHarness({
     setOuterLineCenterGeometryValidationReport] = useState(null);
   const [outerLineCenterGeometryValidationErrorMessage,
     setOuterLineCenterGeometryValidationErrorMessage] = useState("");
+  const [humanAnnotationBiasDiagnostics,
+    setHumanAnnotationBiasDiagnostics] = useState(null);
+  const [humanAnnotationBiasDiagnosticsErrorMessage,
+    setHumanAnnotationBiasDiagnosticsErrorMessage] = useState("");
   const datasetItems = createDatasetItems(selectedFiles);
 
   if (
@@ -160,6 +186,8 @@ export default function DigitizationDatasetHarness({
     setOuterLineCenterValidationErrorMessage("");
     setOuterLineCenterGeometryValidationReport(null);
     setOuterLineCenterGeometryValidationErrorMessage("");
+    setHumanAnnotationBiasDiagnostics(null);
+    setHumanAnnotationBiasDiagnosticsErrorMessage("");
   };
 
   const handleRun = async () => {
@@ -180,6 +208,8 @@ export default function DigitizationDatasetHarness({
     setOuterLineCenterValidationErrorMessage("");
     setOuterLineCenterGeometryValidationReport(null);
     setOuterLineCenterGeometryValidationErrorMessage("");
+    setHumanAnnotationBiasDiagnostics(null);
+    setHumanAnnotationBiasDiagnosticsErrorMessage("");
 
     try {
       const result = await runDataset({
@@ -232,6 +262,8 @@ export default function DigitizationDatasetHarness({
     setOuterLineCenterValidationErrorMessage("");
     setOuterLineCenterGeometryValidationReport(null);
     setOuterLineCenterGeometryValidationErrorMessage("");
+    setHumanAnnotationBiasDiagnostics(null);
+    setHumanAnnotationBiasDiagnosticsErrorMessage("");
   };
 
   const handleCreateValidationReport = () => {
@@ -327,6 +359,24 @@ export default function DigitizationDatasetHarness({
     }
   };
 
+  const handleCreateHumanAnnotationBiasDiagnostics = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setHumanAnnotationBiasDiagnostics(createHumanAnnotationBiasReport({
+        datasetReport,
+        groundTruth
+      }));
+      setHumanAnnotationBiasDiagnosticsErrorMessage("");
+    } catch (error) {
+      setHumanAnnotationBiasDiagnosticsErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
   const confirmedItemCount = groundTruth?.annotations?.length ?? 0;
   const datasetStatus = describeDatasetStatus(status, selectedFiles.length);
   const annotationStatus = datasetReport
@@ -390,6 +440,17 @@ export default function DigitizationDatasetHarness({
     outerLineCenterGeometryValidationReport
       ? "Ready"
       : "Waiting for a completed outer line center geometry validation report";
+  const humanAnnotationBiasDiagnosticsStatus = humanAnnotationBiasDiagnostics
+    ? "Completed"
+    : humanAnnotationBiasDiagnosticsErrorMessage
+      ? "Failed"
+      : groundTruth && datasetReport
+        ? "Ready to create"
+        : "Waiting for confirmed ground truth";
+  const humanAnnotationBiasDiagnosticsDownloadStatus =
+    humanAnnotationBiasDiagnostics
+      ? "Ready"
+      : "Waiting for completed human annotation bias diagnostics";
 
   return (
     <section
@@ -447,6 +508,14 @@ export default function DigitizationDatasetHarness({
         <WorkflowStep
           title="Download Outer Line Center Geometry Validation Report JSON"
           status={outerLineCenterGeometryValidationDownloadStatus}
+        />
+        <WorkflowStep
+          title="Create Human Annotation Bias Diagnostics"
+          status={humanAnnotationBiasDiagnosticsStatus}
+        />
+        <WorkflowStep
+          title="Download Human Annotation Bias Diagnostics JSON"
+          status={humanAnnotationBiasDiagnosticsDownloadStatus}
         />
       </ol>
       <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -514,6 +583,12 @@ export default function DigitizationDatasetHarness({
         <span role="alert">
           Outer line center geometry validation unavailable:{" "}
           {outerLineCenterGeometryValidationErrorMessage}
+        </span>
+      )}
+      {humanAnnotationBiasDiagnosticsErrorMessage && (
+        <span role="alert">
+          Human annotation bias diagnostics unavailable:{" "}
+          {humanAnnotationBiasDiagnosticsErrorMessage}
         </span>
       )}
       {analysisReports && (
@@ -657,6 +732,33 @@ export default function DigitizationDatasetHarness({
             )}
           >
             Download Outer Line Center Geometry Validation Report JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateHumanAnnotationBiasDiagnostics}
+        >
+          Create Human Annotation Bias Diagnostics
+        </button>
+      )}
+      {humanAnnotationBiasDiagnostics && (
+        <>
+          <span
+            role="status"
+            aria-label="Human annotation bias diagnostics status"
+          >
+            Human Annotation Bias Diagnostics completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadHumanAnnotationBiasDiagnostics(
+              humanAnnotationBiasDiagnostics
+            )}
+          >
+            Download Human Annotation Bias Diagnostics JSON
           </button>
         </>
       )}

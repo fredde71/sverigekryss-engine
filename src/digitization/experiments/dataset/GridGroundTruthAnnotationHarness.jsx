@@ -45,13 +45,25 @@ export default function GridGroundTruthAnnotationHarness({
   const [panEnabled, setPanEnabled] = useState(false);
   const [panning, setPanning] = useState(null);
   const [confirmedAnnotations, setConfirmedAnnotations] = useState({});
+  const [draftsByItemId, setDraftsByItemId] = useState({});
+  const [renderedByItemId, setRenderedByItemId] = useState({});
+  const [copySourceItemId, setCopySourceItemId] = useState("");
   const [groundTruth, setGroundTruth] = useState(null);
   const [showShadowOverlay, setShowShadowOverlay] = useState(false);
   const canvasHostRef = useRef(null);
   const surfaceRef = useRef(null);
   const viewportRef = useRef(null);
+  const renderRequestIdRef = useRef(0);
   const selectedItem = items.find(item => item.id === selectedItemId) ?? null;
   const currentAnnotation = confirmedAnnotations[selectedItemId] ?? null;
+  const copySourceItems = items.filter(item => (
+    item.id !== selectedItemId && confirmedAnnotations[item.id]
+  ));
+  const effectiveCopySourceItemId = copySourceItems.some(item => (
+    item.id === copySourceItemId
+  ))
+    ? copySourceItemId
+    : copySourceItems[0]?.id ?? "";
 
   useEffect(() => {
     if (items.length === 0) {
@@ -101,45 +113,60 @@ export default function GridGroundTruthAnnotationHarness({
   const handleItemSelection = event => {
     const itemId = event.target.value;
     const annotation = confirmedAnnotations[itemId];
+    const draft = draftsByItemId[itemId];
+    const cachedRendered = renderedByItemId[itemId];
+
+    renderRequestIdRef.current += 1;
+    preserveCurrentDraft();
 
     setSelectedItemId(itemId);
-    setRendered(null);
-    setRenderStatus("idle");
+    setRendered(cachedRendered ?? null);
+    setRenderStatus(cachedRendered ? "rendered" : "idle");
     setErrorMessage("");
     setActiveTool(null);
     setSelectedLine(null);
-    setWorkspaceOpen(false);
+    setWorkspaceOpen(Boolean(cachedRendered));
     setPanEnabled(false);
     setPanning(null);
     setShowShadowOverlay(false);
 
     if (annotation) {
-      setBoundaries({
-        top: annotation.gridBounds.top,
-        bottom: annotation.gridBounds.top + annotation.gridBounds.height,
-        left: annotation.gridBounds.left,
-        right: annotation.gridBounds.left + annotation.gridBounds.width
-      });
-      setRows(String(annotation.rows));
-      setCols(String(annotation.cols));
-      setHorizontalLines(annotation.horizontalLinePositions.slice());
-      setVerticalLines(annotation.verticalLinePositions.slice());
+      applyAnnotationToDraft(annotation);
+    } else if (draft) {
+      applyDraft(draft);
     } else {
       resetDraft();
+    }
+
+    if (!cachedRendered) {
+      renderItem(itemId);
     }
   };
 
   const handleRender = async () => {
-    if (!selectedItem) {
+    if (!selectedItemId) {
       return;
     }
+
+    await renderItem(selectedItemId);
+  };
+
+  const renderItem = async itemId => {
+    const item = items.find(candidate => candidate.id === itemId);
+
+    if (!item) {
+      return;
+    }
+
+    const requestId = renderRequestIdRef.current + 1;
+    renderRequestIdRef.current = requestId;
 
     setRenderStatus("rendering");
     setErrorMessage("");
     setShowShadowOverlay(false);
 
     try {
-      const prepared = await prepareInput(selectedItem);
+      const prepared = await prepareInput(item);
       const source = prepared?.source;
 
       if (
@@ -152,17 +179,32 @@ export default function GridGroundTruthAnnotationHarness({
         throw new Error("Rendered PDF canvas dimensions are required");
       }
 
-      setRendered({
+      const nextRendered = {
         source,
         width: source.width,
         height: source.height
-      });
+      };
+
+      setRenderedByItemId(previous => ({
+        ...previous,
+        [itemId]: nextRendered
+      }));
+
+      if (renderRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setRendered(nextRendered);
       setSelectedLine(null);
       setWorkspaceOpen(true);
       setPanEnabled(false);
       setPanning(null);
       setRenderStatus("rendered");
     } catch (error) {
+      if (renderRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setRendered(null);
       setRenderStatus("failed");
       setErrorMessage(error instanceof Error ? error.message : String(error));
@@ -201,9 +243,16 @@ export default function GridGroundTruthAnnotationHarness({
       const next = Object.fromEntries(
         artifact.annotations.map(annotation => [annotation.itemId, annotation])
       );
+      const loadedDrafts = Object.fromEntries(
+        artifact.annotations.map(annotation => [
+          annotation.itemId,
+          createDraftFromAnnotation(annotation)
+        ])
+      );
       const selectedAnnotation = next[selectedItemId];
 
       setConfirmedAnnotations(next);
+      setDraftsByItemId(loadedDrafts);
       setGroundTruth(artifact);
       onGroundTruthChange(artifact);
       setErrorMessage("");
@@ -515,12 +564,50 @@ export default function GridGroundTruthAnnotationHarness({
         ...confirmedAnnotations,
         [selectedItem.id]: annotation
       });
+      setDraftsByItemId(previous => ({
+        ...previous,
+        [selectedItem.id]: {
+          ...createDraftFromAnnotation(annotation),
+          zoom
+        }
+      }));
       setRows(String(annotation.rows));
       setCols(String(annotation.cols));
       setErrorMessage("");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     }
+  };
+
+  const handleCopyConfirmedAnnotation = () => {
+    if (
+      !selectedItemId
+      || currentAnnotation
+      || !effectiveCopySourceItemId
+    ) {
+      return;
+    }
+
+    const sourceAnnotation = confirmedAnnotations[effectiveCopySourceItemId];
+
+    if (!sourceAnnotation) {
+      return;
+    }
+
+    const draft = {
+      ...createDraftFromAnnotation(sourceAnnotation),
+      zoom
+    };
+
+    setDraftsByItemId(previous => ({
+      ...previous,
+      [selectedItemId]: draft
+    }));
+    applyDraft(draft);
+    setActiveTool(null);
+    setSelectedLine(null);
+    setShowShadowOverlay(false);
+    setErrorMessage("");
   };
 
   const shadowObservation = shadowComparison?.normalizedObservation ?? null;
@@ -563,11 +650,28 @@ export default function GridGroundTruthAnnotationHarness({
         >
           {items.map(item => (
             <option key={item.id} value={item.id}>
-              {item.id}: {item.metadata?.filename}
+              {item.id}: {item.metadata?.filename} — {confirmedAnnotations[item.id]
+                ? "annotated"
+                : "not annotated"}
             </option>
           ))}
         </select>
       </label>
+      <ul aria-label="Dataset document annotation status">
+        {items.map(item => (
+          <li key={item.id}>
+            <span>{item.id}: {item.metadata?.filename}</span>{" "}
+            <span aria-label={`${item.id} annotation status`}>
+              {confirmedAnnotations[item.id] ? "annotated" : "not annotated"}
+            </span>
+            {item.id === selectedItemId && (
+              <span aria-label={`${item.id} active annotation target`}>
+                {" "}(active)
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
       <button
         type="button"
         disabled={!selectedItem || renderStatus === "rendering"}
@@ -693,6 +797,34 @@ export default function GridGroundTruthAnnotationHarness({
             </label>
             <button type="button" onClick={handleGenerateDraft}>
               Generate draft line handles
+            </button>
+            <label>
+              Copy confirmed annotation from{" "}
+              <select
+                aria-label="Copy confirmed annotation from"
+                value={effectiveCopySourceItemId}
+                disabled={copySourceItems.length === 0 || Boolean(currentAnnotation)}
+                onChange={event => setCopySourceItemId(event.target.value)}
+              >
+                {copySourceItems.length === 0 && (
+                  <option value="">No confirmed source available</option>
+                )}
+                {copySourceItems.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {item.id}: {item.metadata?.filename}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={
+                !effectiveCopySourceItemId
+                || Boolean(currentAnnotation)
+              }
+              onClick={handleCopyConfirmedAnnotation}
+            >
+              Copy confirmed annotation to selected draft
             </button>
             <button
               type="button"
@@ -904,18 +1036,38 @@ export default function GridGroundTruthAnnotationHarness({
     setSelectedLine(null);
   }
 
-  function applyAnnotationToDraft(annotation) {
-    setBoundaries({
-      top: annotation.gridBounds.top,
-      bottom: annotation.gridBounds.top + annotation.gridBounds.height,
-      left: annotation.gridBounds.left,
-      right: annotation.gridBounds.left + annotation.gridBounds.width
-    });
-    setRows(String(annotation.rows));
-    setCols(String(annotation.cols));
-    setHorizontalLines(annotation.horizontalLinePositions.slice());
-    setVerticalLines(annotation.verticalLinePositions.slice());
+  function preserveCurrentDraft() {
+    if (!selectedItemId) {
+      return;
+    }
+
+    const draft = {
+      boundaries: { ...boundaries },
+      rows,
+      cols,
+      horizontalLines: horizontalLines.slice(),
+      verticalLines: verticalLines.slice(),
+      zoom
+    };
+
+    setDraftsByItemId(previous => ({
+      ...previous,
+      [selectedItemId]: draft
+    }));
+  }
+
+  function applyDraft(draft) {
+    setBoundaries({ ...draft.boundaries });
+    setRows(draft.rows);
+    setCols(draft.cols);
+    setHorizontalLines(draft.horizontalLines.slice());
+    setVerticalLines(draft.verticalLines.slice());
+    setZoom(Number.isFinite(draft.zoom) ? draft.zoom : 1);
     setSelectedLine(null);
+  }
+
+  function applyAnnotationToDraft(annotation) {
+    applyDraft(createDraftFromAnnotation(annotation));
   }
 
   function commitConfirmedAnnotations(next) {
@@ -930,6 +1082,22 @@ export default function GridGroundTruthAnnotationHarness({
     setGroundTruth(artifact);
     onGroundTruthChange(artifact);
   }
+}
+
+function createDraftFromAnnotation(annotation) {
+  return {
+    boundaries: {
+      top: annotation.gridBounds.top,
+      bottom: annotation.gridBounds.top + annotation.gridBounds.height,
+      left: annotation.gridBounds.left,
+      right: annotation.gridBounds.left + annotation.gridBounds.width
+    },
+    rows: String(annotation.rows),
+    cols: String(annotation.cols),
+    horizontalLines: annotation.horizontalLinePositions.slice(),
+    verticalLines: annotation.verticalLinePositions.slice(),
+    zoom: 1
+  };
 }
 
 function BoundaryHandle({

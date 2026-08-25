@@ -89,13 +89,220 @@ test("selects a dataset item and renders it through the existing PDF adapter bou
   fireEvent.change(screen.getByLabelText("Dataset item"), {
     target: { value: "item-002" }
   });
-  fireEvent.click(screen.getByRole("button", { name: "Render selected PDF" }));
 
   await screen.findByLabelText("Rendered PDF page 1 at scale 2");
   expect(prepareInput).toHaveBeenCalledTimes(1);
   expect(prepareInput).toHaveBeenCalledWith(createItems()[1]);
   expect(readImageData).not.toHaveBeenCalled();
   expect(screen.getByTestId("ground-truth-surface")).toContainElement(source);
+});
+
+test("shows annotation status for every dataset document and the active target", () => {
+  renderHarness();
+
+  expect(screen.getByLabelText("item-001 annotation status"))
+    .toHaveTextContent("not annotated");
+  expect(screen.getByLabelText("item-002 annotation status"))
+    .toHaveTextContent("not annotated");
+  expect(screen.getByLabelText("item-001 active annotation target"))
+    .toHaveTextContent("active");
+  expect(screen.queryByLabelText("item-002 active annotation target"))
+    .not.toBeInTheDocument();
+});
+
+test("annotates two documents independently and exports annotations in dataset order", async () => {
+  const onGroundTruthChange = jest.fn();
+  const prepareInput = jest.fn(async () => ({ source: createCanvas() }));
+
+  renderHarness({ onGroundTruthChange, prepareInput });
+  await renderPdf();
+  placeBoundaries({ top: 10, bottom: 30, left: 5, right: 25 });
+  setCountsAndGenerate();
+  fireEvent.click(screen.getByRole("button", {
+    name: "Confirm ground truth for selected item"
+  }));
+
+  expect(screen.getByLabelText("item-001 annotation status"))
+    .toHaveTextContent("annotated");
+  expect(screen.getByLabelText("item-002 annotation status"))
+    .toHaveTextContent("not annotated");
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Close annotation workspace"
+  }));
+  fireEvent.change(screen.getByLabelText("Dataset item"), {
+    target: { value: "item-002" }
+  });
+  const secondWorkspace = await screen.findByRole("dialog", {
+    name: "Grid ground truth annotation workspace"
+  });
+
+  expect(secondWorkspace).toHaveTextContent("two.pdf");
+  expect(screen.getByLabelText("item-002 active annotation target"))
+    .toHaveTextContent("active");
+  placeBoundaries({ top: 40, bottom: 60, left: 30, right: 50 });
+  setCountsAndGenerate();
+  fireEvent.click(screen.getByRole("button", {
+    name: "Confirm ground truth for selected item"
+  }));
+
+  const artifact = onGroundTruthChange.mock.calls[1][0];
+
+  expect(artifact.annotations).toEqual([
+    expect.objectContaining({
+      itemId: "item-001",
+      filename: "one.pdf",
+      gridBounds: { top: 10, left: 5, width: 20, height: 20 },
+      horizontalLinePositions: [10, 20, 30],
+      verticalLinePositions: [5, 15, 25]
+    }),
+    expect.objectContaining({
+      itemId: "item-002",
+      filename: "two.pdf",
+      gridBounds: { top: 40, left: 30, width: 20, height: 20 },
+      horizontalLinePositions: [40, 50, 60],
+      verticalLinePositions: [30, 40, 50]
+    })
+  ]);
+  expect(screen.getByLabelText("item-001 annotation status"))
+    .toHaveTextContent("annotated");
+  expect(screen.getByLabelText("item-002 annotation status"))
+    .toHaveTextContent("annotated");
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Close annotation workspace"
+  }));
+  fireEvent.change(screen.getByLabelText("Dataset item"), {
+    target: { value: "item-001" }
+  });
+  await screen.findByRole("dialog", {
+    name: "Grid ground truth annotation workspace"
+  });
+
+  expect(screen.getByRole("slider", { name: "Horizontal line 2" }))
+    .toHaveAttribute("aria-valuenow", "20");
+  expect(screen.getByRole("slider", { name: "Vertical line 2" }))
+    .toHaveAttribute("aria-valuenow", "15");
+  expect(prepareInput).toHaveBeenCalledTimes(2);
+});
+
+test("preserves an unconfirmed draft independently while switching documents", async () => {
+  const onGroundTruthChange = jest.fn();
+
+  renderHarness({ onGroundTruthChange });
+  await renderPdf();
+  placeBoundaries({ top: 10, bottom: 30, left: 5, right: 25 });
+  setCountsAndGenerate();
+  fireEvent.click(screen.getByRole("button", {
+    name: "Close annotation workspace"
+  }));
+
+  fireEvent.change(screen.getByLabelText("Dataset item"), {
+    target: { value: "item-002" }
+  });
+  await screen.findByRole("dialog", {
+    name: "Grid ground truth annotation workspace"
+  });
+  expect(screen.queryByRole("slider", { name: "Horizontal line 2" }))
+    .not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", {
+    name: "Close annotation workspace"
+  }));
+
+  fireEvent.change(screen.getByLabelText("Dataset item"), {
+    target: { value: "item-001" }
+  });
+  await screen.findByRole("dialog", {
+    name: "Grid ground truth annotation workspace"
+  });
+  expect(screen.getByRole("slider", { name: "Horizontal line 2" }))
+    .toHaveAttribute("aria-valuenow", "20");
+  expect(screen.getByRole("slider", { name: "Vertical line 2" }))
+    .toHaveAttribute("aria-valuenow", "15");
+  expect(onGroundTruthChange).not.toHaveBeenCalled();
+});
+
+test("copies confirmed geometry to another item as an unconfirmed draft", async () => {
+  const onGroundTruthChange = jest.fn();
+
+  renderHarness({ onGroundTruthChange });
+  await renderPdf();
+  placeBoundaries({ top: 10, bottom: 30, left: 5, right: 25 });
+  setCountsAndGenerate();
+  fireEvent.click(screen.getByRole("button", {
+    name: "Confirm ground truth for selected item"
+  }));
+  expect(onGroundTruthChange).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Close annotation workspace"
+  }));
+  fireEvent.change(screen.getByLabelText("Dataset item"), {
+    target: { value: "item-002" }
+  });
+  await screen.findByRole("dialog", {
+    name: "Grid ground truth annotation workspace"
+  });
+
+  const source = screen.getByLabelText("Copy confirmed annotation from");
+  const copy = screen.getByRole("button", {
+    name: "Copy confirmed annotation to selected draft"
+  });
+
+  expect(source).toBeEnabled();
+  expect(source).toHaveValue("item-001");
+  expect(copy).toBeEnabled();
+  fireEvent.click(copy);
+
+  expect(screen.getByRole("slider", { name: "Horizontal line 2" }))
+    .toHaveAttribute("aria-valuenow", "20");
+  expect(screen.getByRole("slider", { name: "Vertical line 2" }))
+    .toHaveAttribute("aria-valuenow", "15");
+  expect(screen.getByLabelText("item-002 annotation status"))
+    .toHaveTextContent("not annotated");
+  expect(screen.getByText("Ground truth not confirmed for item-002"))
+    .toBeInTheDocument();
+  expect(onGroundTruthChange).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole("button", {
+    name: "Confirm ground truth for selected item"
+  }));
+  expect(onGroundTruthChange).toHaveBeenCalledTimes(2);
+  expect(onGroundTruthChange.mock.calls[1][0].annotations).toEqual([
+    expect.objectContaining({
+      itemId: "item-001",
+      filename: "one.pdf",
+      horizontalLinePositions: [10, 20, 30],
+      verticalLinePositions: [5, 15, 25]
+    }),
+    expect.objectContaining({
+      itemId: "item-002",
+      filename: "two.pdf",
+      horizontalLinePositions: [10, 20, 30],
+      verticalLinePositions: [5, 15, 25],
+      annotation: expect.objectContaining({ status: "human-confirmed" })
+    })
+  ]);
+  expect(copy).toBeDisabled();
+  fireEvent.click(copy);
+  expect(onGroundTruthChange).toHaveBeenCalledTimes(2);
+});
+
+test("does not offer the selected confirmed annotation as a copy source", async () => {
+  renderHarness();
+  await renderPdf();
+  placeBoundaries({ top: 10, bottom: 30, left: 5, right: 25 });
+  setCountsAndGenerate();
+  fireEvent.click(screen.getByRole("button", {
+    name: "Confirm ground truth for selected item"
+  }));
+
+  expect(screen.getByLabelText("Copy confirmed annotation from")).toBeDisabled();
+  expect(screen.getByRole("button", {
+    name: "Copy confirmed annotation to selected draft"
+  })).toBeDisabled();
+  expect(screen.getByLabelText("Copy confirmed annotation from"))
+    .toHaveTextContent("No confirmed source available");
 });
 
 test("opens the PDF in a full-workspace portal with a compact toolbar", async () => {
@@ -408,6 +615,17 @@ test("loads a confirmed ground-truth artifact without rendering or detection", a
         rows: 2,
         cols: 2,
         annotation: { status: "human-confirmed" }
+      },
+      {
+        itemId: "item-002",
+        filename: "two.pdf",
+        document: { width: 100, height: 120 },
+        gridBounds: { top: 40, left: 30, width: 20, height: 20 },
+        horizontalLinePositions: [40, 50, 60],
+        verticalLinePositions: [30, 40, 50],
+        rows: 2,
+        cols: 2,
+        annotation: { status: "human-confirmed" }
       }
     ]
   };
@@ -430,6 +648,10 @@ test("loads a confirmed ground-truth artifact without rendering or detection", a
   expect(prepareInput).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: "Download grid ground-truth JSON" }))
     .toBeInTheDocument();
+  expect(screen.getByLabelText("item-001 annotation status"))
+    .toHaveTextContent("annotated");
+  expect(screen.getByLabelText("item-002 annotation status"))
+    .toHaveTextContent("annotated");
 });
 
 test("does not import or invoke production detection, experiments, or persistence", () => {
