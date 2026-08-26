@@ -70,6 +70,12 @@ import {
 import {
   createGridLatticePeriodToleranceSensitivityDiagnosticsExport
 } from "./gridLatticePeriodToleranceSensitivityDiagnosticsExport";
+import {
+  createGridLatticeReconstructionValidationReport
+} from "./gridLatticeReconstructionValidationReport";
+import {
+  createGridLatticeReconstructionValidationReportExport
+} from "./gridLatticeReconstructionValidationReportExport";
 
 const LOCAL_DATASET_ID = "localhost-pdf-dataset";
 
@@ -234,6 +240,23 @@ export default function DigitizationDatasetHarness({
       URL.revokeObjectURL(objectUrl);
     }
   },
+  createGridLatticeReconstructionValidationReport:
+    createGridLatticeReconstructionReport =
+      createGridLatticeReconstructionValidationReport,
+  downloadGridLatticeReconstructionValidationReport = report => {
+    const artifact = createGridLatticeReconstructionValidationReportExport(report);
+    const blob = new Blob([artifact.contents], { type: artifact.mimeType });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    try {
+      anchor.href = objectUrl;
+      anchor.download = artifact.fileName;
+      anchor.click();
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  },
   readEnvironment = () => process.env.NODE_ENV,
   readHostname = () => (
     typeof window === "undefined" ? "" : window.location.hostname
@@ -292,6 +315,10 @@ export default function DigitizationDatasetHarness({
   const [gridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage,
     setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage] =
       useState("");
+  const [gridLatticeReconstructionValidationReport,
+    setGridLatticeReconstructionValidationReport] = useState(null);
+  const [gridLatticeReconstructionValidationErrorMessage,
+    setGridLatticeReconstructionValidationErrorMessage] = useState("");
   const datasetItems = createDatasetItems(selectedFiles);
 
   if (
@@ -335,6 +362,8 @@ export default function DigitizationDatasetHarness({
     setGridLatticePeriodRobustnessDiagnosticsErrorMessage("");
     setGridLatticePeriodToleranceSensitivityDiagnostics(null);
     setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage("");
+    setGridLatticeReconstructionValidationReport(null);
+    setGridLatticeReconstructionValidationErrorMessage("");
   };
 
   const handleRun = async () => {
@@ -367,6 +396,8 @@ export default function DigitizationDatasetHarness({
     setGridLatticePeriodRobustnessDiagnosticsErrorMessage("");
     setGridLatticePeriodToleranceSensitivityDiagnostics(null);
     setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage("");
+    setGridLatticeReconstructionValidationReport(null);
+    setGridLatticeReconstructionValidationErrorMessage("");
 
     try {
       const result = await runDataset({
@@ -431,6 +462,8 @@ export default function DigitizationDatasetHarness({
     setGridLatticePeriodRobustnessDiagnosticsErrorMessage("");
     setGridLatticePeriodToleranceSensitivityDiagnostics(null);
     setGridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage("");
+    setGridLatticeReconstructionValidationReport(null);
+    setGridLatticeReconstructionValidationErrorMessage("");
   };
 
   const handleCreateValidationReport = () => {
@@ -642,6 +675,26 @@ export default function DigitizationDatasetHarness({
     }
   };
 
+  const handleCreateGridLatticeReconstructionValidationReport = () => {
+    if (!groundTruth || !datasetReport) {
+      return;
+    }
+
+    try {
+      setGridLatticeReconstructionValidationReport(
+        createGridLatticeReconstructionReport({
+          datasetReport,
+          groundTruth
+        })
+      );
+      setGridLatticeReconstructionValidationErrorMessage("");
+    } catch (error) {
+      setGridLatticeReconstructionValidationErrorMessage(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
   const confirmedItemCount = groundTruth?.annotations?.length ?? 0;
   const datasetStatus = describeDatasetStatus(status, selectedFiles.length);
   const annotationStatus = datasetReport
@@ -775,6 +828,18 @@ export default function DigitizationDatasetHarness({
     gridLatticePeriodToleranceSensitivityDiagnostics
       ? "Ready"
       : "Waiting for completed grid lattice period tolerance sensitivity diagnostics";
+  const gridLatticeReconstructionValidationStatus =
+    gridLatticeReconstructionValidationReport
+      ? "Completed"
+      : gridLatticeReconstructionValidationErrorMessage
+        ? "Failed"
+        : groundTruth && datasetReport
+          ? "Ready to create"
+          : "Waiting for confirmed ground truth";
+  const gridLatticeReconstructionValidationDownloadStatus =
+    gridLatticeReconstructionValidationReport
+      ? "Ready"
+      : "Waiting for completed Grid Lattice Reconstruction Validation Report";
 
   return (
     <section
@@ -881,6 +946,14 @@ export default function DigitizationDatasetHarness({
           title="Download Grid Lattice Period Tolerance Sensitivity Diagnostics JSON"
           status={gridLatticePeriodToleranceSensitivityDiagnosticsDownloadStatus}
         />
+        <WorkflowStep
+          title="Create Grid Lattice Reconstruction Validation Report"
+          status={gridLatticeReconstructionValidationStatus}
+        />
+        <WorkflowStep
+          title="Download Grid Lattice Reconstruction Validation Report JSON"
+          status={gridLatticeReconstructionValidationDownloadStatus}
+        />
       </ol>
       <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
         Select local PDFs
@@ -983,6 +1056,12 @@ export default function DigitizationDatasetHarness({
         <span role="alert">
           Grid lattice period tolerance sensitivity diagnostics unavailable:{" "}
           {gridLatticePeriodToleranceSensitivityDiagnosticsErrorMessage}
+        </span>
+      )}
+      {gridLatticeReconstructionValidationErrorMessage && (
+        <span role="alert">
+          Grid Lattice Reconstruction Validation Report unavailable:{" "}
+          {gridLatticeReconstructionValidationErrorMessage}
         </span>
       )}
       {analysisReports && (
@@ -1290,6 +1369,33 @@ export default function DigitizationDatasetHarness({
             )}
           >
             Download Grid Lattice Period Tolerance Sensitivity Diagnostics JSON
+          </button>
+        </>
+      )}
+      {status === "completed" && datasetReport && (
+        <button
+          type="button"
+          disabled={!groundTruth || confirmedItemCount === 0}
+          onClick={handleCreateGridLatticeReconstructionValidationReport}
+        >
+          Create Grid Lattice Reconstruction Validation Report
+        </button>
+      )}
+      {gridLatticeReconstructionValidationReport && (
+        <>
+          <span
+            role="status"
+            aria-label="Grid lattice reconstruction validation status"
+          >
+            Grid Lattice Reconstruction Validation Report completed
+          </span>
+          <button
+            type="button"
+            onClick={() => downloadGridLatticeReconstructionValidationReport(
+              gridLatticeReconstructionValidationReport
+            )}
+          >
+            Download Grid Lattice Reconstruction Validation Report JSON
           </button>
         </>
       )}
