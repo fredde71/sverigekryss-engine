@@ -9,9 +9,6 @@ import {
   selectGridLatticeCandidate
 } from "../../analysis/reconstruction/GridLatticeCandidateSelection";
 import {
-  createGridLatticeReconstructionResult
-} from "../../analysis/reconstruction/GridLatticeReconstructionResult";
-import {
   createGridLatticeBoundsEvidenceProjection
 } from "../../analysis/reconstruction/GridLatticeBoundsEvidenceProjection";
 import { compareLinePositions } from "./shadowGridValidationReport";
@@ -32,7 +29,7 @@ export function createGridLatticeReconstructionValidationReportFactory({
   generateCandidates = generateGridLatticeCandidates,
   fuseEvidence = fuseGridLatticeCandidateEvidence,
   selectCandidate = selectGridLatticeCandidate,
-  createReconstruction = createGridLatticeReconstructionResult,
+  createReconstruction = createFactoredValidationReconstructionResult,
   projectBounds = createGridLatticeBoundsEvidenceProjection
 } = {}) {
   [
@@ -163,18 +160,29 @@ function reconstructDatasetItem(item, dependencies) {
           boundsProvider?.regions,
           gridRegion?.regionId
         );
-        const availableBounds = Array.isArray(boundsRegion?.boundsCandidates)
-          ? boundsRegion.boundsCandidates
-          : [];
+        const availableBounds = createUniqueBoundsCompatibilityInput(boundsRegion);
 
         if (availableBounds.length === 0) {
+          if (boundsRegion?.status === "ambiguous") {
+            regions.push(runReconstructionChain({
+              providerId: provider.id,
+              regionId: gridRegion?.regionId,
+              observationIndex: null,
+              gridRegion,
+              reconstructionRegion,
+              boundsEvidenceRegion: boundsRegion,
+              boundsObservation: createFactoredBoundsPlaceholder(boundsRegion),
+              factoredBounds: boundsRegion,
+              dependencies
+            }));
+            continue;
+          }
           regions.push(createUnavailableReconstruction({
             providerId: provider.id,
             regionId: gridRegion?.regionId,
-            status: boundsRegion?.status === "ambiguous"
-              ? "ambiguous"
-              : "unavailable",
-            reason: "outer-line-center-envelope-observation-unavailable"
+            status: "unavailable",
+            reason: "outer-line-center-envelope-observation-unavailable",
+            sourceBoundsSpace: createSourceBoundsSpace(boundsRegion)
           }));
           continue;
         }
@@ -186,6 +194,7 @@ function reconstructDatasetItem(item, dependencies) {
             observationIndex,
             gridRegion,
             reconstructionRegion,
+            boundsEvidenceRegion: boundsRegion,
             boundsObservation: boundsCandidate.boundsObservation,
             dependencies
           }));
@@ -207,17 +216,291 @@ function reconstructDatasetItem(item, dependencies) {
   };
 }
 
+function createUniqueBoundsCompatibilityInput(boundsRegion) {
+  if (
+    boundsRegion?.rectangularCombinationSpace?.exactCombinationCount !== 1
+    || boundsRegion?.axisBounds?.horizontal?.length !== 1
+    || boundsRegion?.axisBounds?.vertical?.length !== 1
+  ) {
+    return [];
+  }
+
+  const horizontal = boundsRegion.axisBounds.horizontal[0];
+  const vertical = boundsRegion.axisBounds.vertical[0];
+  const edgeInterpretations = {
+    top: cloneValue(horizontal.startAlternative),
+    bottom: cloneValue(horizontal.endAlternative),
+    left: cloneValue(vertical.startAlternative),
+    right: cloneValue(vertical.endAlternative)
+  };
+  const interpretationIds = Object.values(edgeInterpretations).map(
+    value => value.interpretationId
+  );
+  const interpretationId = interpretationIds.every(
+    value => value === interpretationIds[0]
+  )
+    ? interpretationIds[0]
+    : "mixed-edge-geometric-descriptions";
+  const evidenceReferences = [
+    ...horizontal.evidenceReferences,
+    ...vertical.evidenceReferences
+  ];
+  const provenance = {
+    source: "shadow-outer-line-center-geometry-diagnostics",
+    providerId: boundsRegion.providerId,
+    regionId: boundsRegion.regionId,
+    interpretationId,
+    establishment: "unconfirmed-observational-outer-line-envelope",
+    sourceObservationProvenance: cloneValue(
+      horizontal.provenance.sourceObservationProvenance
+    ),
+    sourceEdgeProvenance: {
+      top: cloneValue(horizontal.provenance.sourceEdgeProvenance.top),
+      bottom: cloneValue(horizontal.provenance.sourceEdgeProvenance.bottom),
+      left: cloneValue(vertical.provenance.sourceEdgeProvenance.left),
+      right: cloneValue(vertical.provenance.sourceEdgeProvenance.right)
+    }
+  };
+
+  return [{
+    boundsObservation: {
+      status: "available",
+      semantics: "outer-line-center-envelope",
+      coordinateSpace: horizontal.coordinateSystem.space,
+      bounds: {
+        top: horizontal.start,
+        left: vertical.start,
+        width: vertical.span,
+        height: horizontal.span
+      },
+      provenance,
+      evidenceReferences
+    }
+  }];
+}
+
+function createFactoredBoundsPlaceholder(boundsRegion) {
+  return {
+    status: "unavailable",
+    semantics: "outer-line-center-envelope",
+    coordinateSpace: boundsRegion.coordinateSystem.space,
+    bounds: null,
+    provenance: {
+      source: "grid-lattice-reconstruction-bounds-evidence",
+      providerId: boundsRegion.providerId,
+      regionId: boundsRegion.regionId,
+      representation: "factored-axis-bounds",
+      singularEnvelope: "not-materialized"
+    },
+    evidenceReferences: []
+  };
+}
+
+function createSourceBoundsSpace(boundsRegion) {
+  if (!boundsRegion) {
+    return null;
+  }
+  return cloneValue({
+    status: boundsRegion.status,
+    coordinateSystem: boundsRegion.coordinateSystem,
+    sourceCoordinateSystem: boundsRegion.sourceCoordinateSystem,
+    sourceAcceptedCandidateEnvelope:
+      boundsRegion.sourceAcceptedCandidateEnvelope ?? null,
+    interpretationOrder: boundsRegion.interpretationOrder,
+    interpretationInventory: boundsRegion.interpretationInventory,
+    edgeAlternativeInventory: boundsRegion.edgeAlternativeInventory,
+    combinationInventory: boundsRegion.combinationInventory,
+    axisBounds: boundsRegion.axisBounds,
+    rectangularCombinationSpace: boundsRegion.rectangularCombinationSpace,
+    provenance: boundsRegion.provenance,
+    reasons: boundsRegion.reasons
+  });
+}
+
+export function createFactoredValidationReconstructionResult({
+  candidateGeneration,
+  evidenceFusion,
+  candidateSelection
+} = {}) {
+  validateFactoredReconstructionInputs({
+    candidateGeneration,
+    evidenceFusion,
+    candidateSelection
+  });
+  const selectedReference = candidateSelection.selectedCandidateReference;
+  const horizontal = selectedReference
+    ? findAxisCandidate(
+      candidateGeneration.axisCandidates.horizontal,
+      selectedReference.horizontalAxisCandidateId
+    )
+    : null;
+  const vertical = selectedReference
+    ? findAxisCandidate(
+      candidateGeneration.axisCandidates.vertical,
+      selectedReference.verticalAxisCandidateId
+    )
+    : null;
+  const status = candidateSelection.status === "selected"
+    ? "available"
+    : candidateSelection.status;
+  const lattice = selectedReference
+    ? {
+      gridDimensions: {
+        rows: horizontal.intervalCount,
+        cols: vertical.intervalCount
+      },
+      axes: {
+        horizontal: materializeSelectedAxis(horizontal),
+        vertical: materializeSelectedAxis(vertical)
+      },
+      coordinateSystem: cloneValue(candidateGeneration.coordinateSystem)
+    }
+    : null;
+
+  return {
+    status,
+    lattice,
+    sourceCandidateId: selectedReference?.candidateId ?? null,
+    sourceCandidateReference: cloneValue(selectedReference),
+    reconstructionProvenance: {
+      materializer: "grid-lattice-reconstruction-result-v1",
+      candidateGeneration: {
+        type: candidateGeneration.type,
+        version: candidateGeneration.version,
+        status: candidateGeneration.status,
+        evidenceId: candidateGeneration.evidenceId,
+        primitivePeriodEvidenceId:
+          candidateGeneration.primitivePeriodEvidenceId,
+        provenance: cloneValue(candidateGeneration.provenance),
+        candidateSpace: cloneValue(candidateGeneration.candidateSpace)
+      },
+      evidenceFusion: {
+        type: evidenceFusion.type,
+        version: evidenceFusion.version,
+        status: evidenceFusion.status,
+        provenance: cloneValue(evidenceFusion.provenance),
+        confidenceSpace: cloneValue(evidenceFusion.confidenceSpace)
+      },
+      candidateDecision: {
+        status: candidateSelection.status,
+        selectedCandidateId: candidateSelection.selectedCandidateId,
+        selectedCandidateReference: cloneValue(selectedReference),
+        decisionPolicy: cloneValue(candidateSelection.decisionPolicy),
+        decisionProvenance: compactDecisionProvenance(
+          candidateSelection.decisionProvenance
+        )
+      }
+    },
+    reasons: candidateSelection.reasons.slice()
+  };
+}
+
+function validateFactoredReconstructionInputs({
+  candidateGeneration,
+  evidenceFusion,
+  candidateSelection
+}) {
+  if (
+    candidateGeneration?.type !== "grid-lattice-candidate-generation"
+    || candidateGeneration?.candidateSpace?.representation
+      !== "cartesian-product-by-reference"
+    || evidenceFusion?.type !== "grid-lattice-evidence-fusion"
+    || evidenceFusion?.confidenceSpace?.representation
+      !== "cartesian-product-by-reference"
+    || candidateSelection?.type !== "grid-lattice-candidate-selection"
+  ) {
+    throw new Error("factored reconstruction inputs are required");
+  }
+  if (
+    candidateGeneration.evidenceId !== evidenceFusion.evidenceId
+    || candidateGeneration.primitivePeriodEvidenceId
+      !== evidenceFusion.primitivePeriodEvidenceId
+    || candidateGeneration.candidateSpace.exactCandidateCount
+      !== evidenceFusion.confidenceSpace.exactConfidenceCount
+  ) {
+    throw new Error("factored reconstruction sources must match");
+  }
+  if (candidateSelection.status === "selected") {
+    const reference = candidateSelection.selectedCandidateReference;
+    const verticalCandidateCount =
+      candidateGeneration.axisCandidates.vertical.length;
+    const horizontalIndex = Math.floor(
+      reference?.candidateIndex / verticalCandidateCount
+    );
+    const verticalIndex = reference?.candidateIndex % verticalCandidateCount;
+    const horizontal = findAxisCandidate(
+      candidateGeneration.axisCandidates.horizontal,
+      reference?.horizontalAxisCandidateId
+    );
+    const vertical = findAxisCandidate(
+      candidateGeneration.axisCandidates.vertical,
+      reference?.verticalAxisCandidateId
+    );
+    if (
+      !reference
+      || reference.candidateId !== candidateSelection.selectedCandidateId
+      || !horizontal
+      || !vertical
+      || evidenceFusion.axisEvidence.horizontal[horizontalIndex]
+        ?.axisCandidateId !== horizontal.id
+      || evidenceFusion.axisEvidence.vertical[verticalIndex]
+        ?.axisCandidateId !== vertical.id
+    ) {
+      throw new Error("selected factored candidate reference is invalid");
+    }
+  } else if (candidateSelection.selectedCandidateReference !== null) {
+    throw new Error("non-selected factored result cannot reference a candidate");
+  }
+}
+
+function findAxisCandidate(candidates, id) {
+  return Array.isArray(candidates)
+    ? candidates.find(candidate => candidate.id === id) ?? null
+    : null;
+}
+
+function materializeSelectedAxis(axisCandidate) {
+  return {
+    origin: axisCandidate.origin,
+    period: axisCandidate.period,
+    intervalCount: axisCandidate.intervalCount,
+    lineCount: axisCandidate.lineCount,
+    positions: Array.from(
+      { length: axisCandidate.lineCount },
+      (_value, index) => axisCandidate.origin + index * axisCandidate.period
+    )
+  };
+}
+
+function compactDecisionProvenance(provenance) {
+  if (!provenance) {
+    return null;
+  }
+  return cloneValue({
+    candidateGeneration: provenance.candidateGeneration,
+    evidenceFusion: provenance.evidenceFusion,
+    confidenceSpace: provenance.confidenceSpace,
+    referenceLookup: provenance.referenceLookup
+  });
+}
+
 function runReconstructionChain({
   providerId,
   regionId,
   observationIndex,
   gridRegion,
   reconstructionRegion,
+  boundsEvidenceRegion,
   boundsObservation,
+  factoredBounds = null,
   dependencies
 }) {
   try {
-    const transform = readGridRegionTransform(gridRegion, reconstructionRegion);
+    const transform = readGridRegionTransform(
+      gridRegion,
+      reconstructionRegion,
+      boundsEvidenceRegion
+    );
     const positions = normalizeCandidatePositions(gridRegion, transform);
     const primitivePeriodEvidence = createPrimitivePeriodEvidence({
       providerId,
@@ -247,10 +530,14 @@ function runReconstructionChain({
       diagnostics: [],
       reasons: []
     });
-    const generation = dependencies.generateCandidates({
+    const generationInput = {
       evidence,
       primitivePeriodEvidence
-    });
+    };
+    if (factoredBounds) {
+      generationInput.factoredBounds = factoredBounds;
+    }
+    const generation = dependencies.generateCandidates(generationInput);
     const fusion = dependencies.fuseEvidence({
       candidateGeneration: generation,
       evidence,
@@ -271,6 +558,7 @@ function runReconstructionChain({
       regionId,
       observationIndex,
       boundsObservation,
+      boundsEvidenceRegion,
       primitivePeriodEvidence,
       generation,
       fusion,
@@ -283,7 +571,8 @@ function runReconstructionChain({
       regionId,
       observationIndex,
       status: "unavailable",
-      reason: normalizeError(error)
+      reason: normalizeError(error),
+      sourceBoundsSpace: createSourceBoundsSpace(boundsEvidenceRegion)
     });
   }
 }
@@ -293,6 +582,7 @@ function compactReconstruction({
   regionId,
   observationIndex,
   boundsObservation,
+  boundsEvidenceRegion,
   primitivePeriodEvidence,
   generation,
   fusion,
@@ -307,21 +597,36 @@ function compactReconstruction({
     status: result.status,
     reasons: cloneValue(result.reasons),
     sourceOuterBounds: cloneValue(boundsObservation),
+    sourceBoundsSpace: createSourceBoundsSpace(boundsEvidenceRegion),
     primitivePeriodEvidence: cloneValue(primitivePeriodEvidence),
     pipeline: {
       candidateGeneration: {
         status: generation.status,
-        candidateCount: generation.candidates.length
+        candidateCount: generation.candidateSpace.exactCandidateCount,
+        candidateSpace: cloneValue(generation.candidateSpace)
       },
       evidenceFusion: {
         status: fusion.status,
-        confidenceArtifactCount: fusion.confidences.length
+        confidenceArtifactCount: fusion.confidenceSpace.exactConfidenceCount,
+        confidenceSpace: cloneValue(fusion.confidenceSpace)
       },
       candidateSelection: {
         status: selection.status,
         selectedCandidateId: selection.selectedCandidateId,
-        competingCandidateIds: selection.competingCandidates.map(value => value.id),
-        ambiguousCandidateIds: selection.ambiguousCandidateIds.slice()
+        selectedCandidateReference: cloneValue(
+          selection.selectedCandidateReference
+        ),
+        competingCandidateIds:
+          selection.competingCandidateSpace.exactCandidateCount === 0
+            ? []
+            : null,
+        ambiguousCandidateIds: selection.status === "ambiguous" ? null : [],
+        competingCandidateSpace: cloneValue(
+          selection.competingCandidateSpace
+        ),
+        candidateEvaluationSpace: cloneValue(
+          selection.candidateEvaluationSpace
+        )
       },
       reconstructionResult: {
         status: result.status,
@@ -342,7 +647,8 @@ function createUnavailableReconstruction({
   regionId,
   observationIndex = null,
   status,
-  reason
+  reason,
+  sourceBoundsSpace = null
 }) {
   return {
     providerId,
@@ -351,6 +657,7 @@ function createUnavailableReconstruction({
     status,
     reasons: [reason],
     sourceOuterBounds: null,
+    sourceBoundsSpace,
     primitivePeriodEvidence: null,
     pipeline: null,
     selectedRows: null,
@@ -637,10 +944,16 @@ function normalizeCandidatePositions(gridRegion, transform) {
   };
 }
 
-function readGridRegionTransform(gridRegion, reconstructionRegion) {
+function readGridRegionTransform(
+  gridRegion,
+  reconstructionRegion,
+  boundsEvidenceRegion
+) {
   const provenanceTransform = reconstructionRegion?.coordinateProvenance
     ?.localToBinaryImage;
-  const transform = provenanceTransform ?? {
+  const boundsSourceTransform = boundsEvidenceRegion?.sourceCoordinateSystem
+    ?.localToBinaryImage;
+  const transform = provenanceTransform ?? boundsSourceTransform ?? {
     offsetX: gridRegion?.regionBounds?.left,
     offsetY: gridRegion?.regionBounds?.top,
     scaleX: 1,
@@ -673,7 +986,9 @@ function readExperiment(item, id) {
 }
 
 function findById(values, id) {
-  return Array.isArray(values) ? values.find(value => value?.id === id) : null;
+  return Array.isArray(values)
+    ? values.find(value => (value?.id ?? value?.providerId) === id)
+    : null;
 }
 
 function findRegion(values, regionId) {

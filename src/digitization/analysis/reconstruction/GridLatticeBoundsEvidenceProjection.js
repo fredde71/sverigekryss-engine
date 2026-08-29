@@ -72,7 +72,9 @@ export function createGridLatticeBoundsEvidenceProjection({
   const providers = outerLineGeometryDiagnostics.providers.map(projectProvider);
   const regions = providers.flatMap(provider => provider.regions);
   const boundsCandidateCount = regions.reduce(
-    (count, region) => count + region.boundsCandidates.length,
+    (count, region) => (
+      count + region.combinationInventory.validBoundsCandidateCount
+    ),
     0
   );
   const status = boundsCandidateCount === 0
@@ -107,7 +109,9 @@ function projectProvider(provider) {
     : [];
   const regions = sourceRegions.map(region => projectRegion(provider, region));
   const candidateCount = regions.reduce(
-    (count, region) => count + region.boundsCandidates.length,
+    (count, region) => (
+      count + region.combinationInventory.validBoundsCandidateCount
+    ),
     0
   );
 
@@ -150,9 +154,21 @@ function projectRegion(provider, region) {
     combinationInventory: {
       totalCombinationCount: 0,
       validBoundsCandidateCount: 0,
-      rejectedCombinationCount: 0
+      rejectedCombinationCount: 0,
+      representation: "factored-axis-product"
     },
-    boundsCandidates: [],
+    axisBounds: {
+      horizontal: [],
+      vertical: []
+    },
+    rectangularCombinationSpace: {
+      representation: "cartesian-product-by-reference",
+      combinationOrder: "horizontal-major-vertical-minor",
+      horizontalAxisBoundsIds: [],
+      verticalAxisBoundsIds: [],
+      exactCombinationCount: 0,
+      materializedCombinationCount: 0
+    },
     provenance: {
       source: SOURCE_TYPE,
       providerId: provider?.id ?? region?.providerId ?? null,
@@ -209,33 +225,59 @@ function projectRegion(provider, region) {
     }
   ]));
   const hasEveryEdge = EDGE_ORDER.every(edge => edgeAlternatives[edge].length > 0);
-  const combinations = hasEveryEdge
-    ? enumerateCombinations(edgeAlternatives)
-    : [];
-  base.combinationInventory.totalCombinationCount = combinations.length;
-
-  for (const combination of combinations) {
-    if (
-      combination.bottom.position <= combination.top.position
-      || combination.right.position <= combination.left.position
-    ) {
-      base.combinationInventory.rejectedCombinationCount += 1;
-      continue;
-    }
-    const candidateIndex = base.boundsCandidates.length;
-    base.boundsCandidates.push(createBoundsCandidate({
+  const rawHorizontalCount = hasEveryEdge
+    ? edgeAlternatives.top.length * edgeAlternatives.bottom.length
+    : 0;
+  const rawVerticalCount = hasEveryEdge
+    ? edgeAlternatives.left.length * edgeAlternatives.right.length
+    : 0;
+  base.axisBounds.horizontal = hasEveryEdge
+    ? createAxisBoundsCandidates({
+      axis: "horizontal",
+      startEdge: "top",
+      endEdge: "bottom",
+      startAlternatives: edgeAlternatives.top,
+      endAlternatives: edgeAlternatives.bottom,
       providerId: base.providerId,
       regionId: base.regionId,
-      candidateIndex,
-      combination,
       observation
-    }));
-    base.combinationInventory.validBoundsCandidateCount += 1;
-  }
+    })
+    : [];
+  base.axisBounds.vertical = hasEveryEdge
+    ? createAxisBoundsCandidates({
+      axis: "vertical",
+      startEdge: "left",
+      endEdge: "right",
+      startAlternatives: edgeAlternatives.left,
+      endAlternatives: edgeAlternatives.right,
+      providerId: base.providerId,
+      regionId: base.regionId,
+      observation
+    })
+    : [];
 
-  base.status = base.boundsCandidates.length === 0
+  const totalCombinationCount = rawHorizontalCount * rawVerticalCount;
+  const validBoundsCandidateCount = (
+    base.axisBounds.horizontal.length * base.axisBounds.vertical.length
+  );
+  base.combinationInventory.totalCombinationCount = totalCombinationCount;
+  base.combinationInventory.validBoundsCandidateCount = validBoundsCandidateCount;
+  base.combinationInventory.rejectedCombinationCount = (
+    totalCombinationCount - validBoundsCandidateCount
+  );
+  base.rectangularCombinationSpace.horizontalAxisBoundsIds = (
+    base.axisBounds.horizontal.map(value => value.id)
+  );
+  base.rectangularCombinationSpace.verticalAxisBoundsIds = (
+    base.axisBounds.vertical.map(value => value.id)
+  );
+  base.rectangularCombinationSpace.exactCombinationCount = (
+    validBoundsCandidateCount
+  );
+
+  base.status = validBoundsCandidateCount === 0
     ? "unavailable"
-    : base.boundsCandidates.length === 1
+    : validBoundsCandidateCount === 1
       ? "available"
       : "ambiguous";
   base.reasons = base.status === "unavailable"
@@ -244,105 +286,70 @@ function projectRegion(provider, region) {
   return base;
 }
 
-function createBoundsCandidate({
+function createAxisBoundsCandidates({
+  axis,
+  startEdge,
+  endEdge,
+  startAlternatives,
+  endAlternatives,
   providerId,
   regionId,
-  candidateIndex,
-  combination,
   observation
 }) {
-  const id = [
-    "grid-lattice-bounds",
-    safeId(providerId),
-    safeId(regionId),
-    String(candidateIndex + 1).padStart(3, "0")
-  ].join(":");
-  const edgeInterpretations = Object.fromEntries(EDGE_ORDER.map(edge => [
-    edge,
-    cloneDeterministicValue(combination[edge])
-  ]));
-  const interpretationIds = EDGE_ORDER.map(edge => (
-    combination[edge].interpretationId
-  ));
-  const interpretationId = interpretationIds.every(value => (
-    value === interpretationIds[0]
-  ))
-    ? interpretationIds[0]
-    : "mixed-edge-geometric-descriptions";
-  const evidenceReference = [
-    SOURCE_TYPE,
-    safeId(providerId),
-    safeId(regionId),
-    interpretationId,
-    String(candidateIndex)
-  ].join(":");
-  const provenance = {
-    source: SOURCE_TYPE,
-    providerId,
-    regionId,
-    interpretationId,
-    establishment: "unconfirmed-observational-outer-line-envelope",
-    sourceObservationProvenance: cloneDeterministicValue(
-      observation?.provenance ?? null
-    ),
-    sourceEdgeProvenance: Object.fromEntries(EDGE_ORDER.map(edge => [
-      edge,
-      cloneDeterministicValue(observation.edges[edge]?.provenance ?? null)
-    ]))
-  };
-  const bounds = {
-    top: combination.top.position,
-    left: combination.left.position,
-    width: combination.right.position - combination.left.position,
-    height: combination.bottom.position - combination.top.position
-  };
-
-  return {
-    id,
-    status: "available",
-    confirmationStatus: "unconfirmed-observation",
-    interpretationId,
-    edgeInterpretations,
-    coordinateSystem: renderedCoordinateSystem(),
-    edgePositions: Object.fromEntries(EDGE_ORDER.map(edge => [
-      edge,
-      combination[edge].position
-    ])),
-    bounds: cloneDeterministicValue(bounds),
-    boundsObservation: {
-      status: "available",
-      semantics: "outer-line-center-envelope",
-      coordinateSpace: "rendered-binary-image-pixels",
-      bounds: cloneDeterministicValue(bounds),
-      provenance: cloneDeterministicValue(provenance),
-      evidenceReferences: [evidenceReference]
-    },
-    provenance,
-    evidenceReferences: [evidenceReference],
-    assumptions: [{
-      code: "outer-edge-geometric-observations-combined-without-selection",
-      edgeInterpretations: cloneDeterministicValue(edgeInterpretations)
-    }],
-    diagnostics: [{
-      code: "outer-edge-positions-projected-as-unconfirmed-bounds-evidence",
-      edgeOrder: EDGE_ORDER.slice()
-    }],
-    reasons: []
-  };
-}
-
-function enumerateCombinations(edgePositions) {
-  const combinations = [];
-  for (const top of edgePositions.top) {
-    for (const bottom of edgePositions.bottom) {
-      for (const left of edgePositions.left) {
-        for (const right of edgePositions.right) {
-          combinations.push({ top, bottom, left, right });
-        }
+  const candidates = [];
+  for (const startAlternative of startAlternatives) {
+    for (const endAlternative of endAlternatives) {
+      if (endAlternative.position <= startAlternative.position) {
+        continue;
       }
+      const candidateIndex = candidates.length;
+      const evidenceReference = [
+        SOURCE_TYPE,
+        safeId(providerId),
+        safeId(regionId),
+        axis,
+        String(candidateIndex)
+      ].join(":");
+      candidates.push({
+        id: [
+          "grid-lattice-axis-bounds",
+          safeId(providerId),
+          safeId(regionId),
+          axis,
+          String(candidateIndex + 1).padStart(3, "0")
+        ].join(":"),
+        axis,
+        startEdge,
+        endEdge,
+        start: startAlternative.position,
+        end: endAlternative.position,
+        span: endAlternative.position - startAlternative.position,
+        startAlternative: cloneDeterministicValue(startAlternative),
+        endAlternative: cloneDeterministicValue(endAlternative),
+        coordinateSystem: renderedCoordinateSystem(),
+        provenance: {
+          source: SOURCE_TYPE,
+          providerId,
+          regionId,
+          axis,
+          establishment: "unconfirmed-observational-axis-envelope",
+          sourceObservationProvenance: cloneDeterministicValue(
+            observation?.provenance ?? null
+          ),
+          sourceEdgeProvenance: {
+            [startEdge]: cloneDeterministicValue(
+              observation?.edges?.[startEdge]?.provenance ?? null
+            ),
+            [endEdge]: cloneDeterministicValue(
+              observation?.edges?.[endEdge]?.provenance ?? null
+            )
+          }
+        },
+        evidenceReferences: [evidenceReference]
+      });
     }
   }
-  return combinations;
+  return candidates;
 }
 
 function readDerivedPositions(values, field) {

@@ -9,28 +9,52 @@ import {
   selectGridLatticeCandidate
 } from "../../analysis/reconstruction/GridLatticeCandidateSelection";
 import {
-  createGridLatticeReconstructionResult
-} from "../../analysis/reconstruction/GridLatticeReconstructionResult";
+  createGridLatticeBoundsEvidenceProjection
+} from "../../analysis/reconstruction/GridLatticeBoundsEvidenceProjection";
 import {
   createGridLatticeReconstructionValidationReport,
-  createGridLatticeReconstructionValidationReportFactory
+  createGridLatticeReconstructionValidationReportFactory,
+  createFactoredValidationReconstructionResult
 } from "./gridLatticeReconstructionValidationReport";
 
 test("runs the complete reconstruction chain before exact Ground Truth validation", () => {
+  const datasetReport = createDatasetReport();
   const report = createGridLatticeReconstructionValidationReport({
-    datasetReport: createDatasetReport(),
+    datasetReport,
     groundTruth: createGroundTruth()
   });
   const observation = report.items[0].reconstructions[0];
 
-  expect(observation.reconstruction.pipeline).toEqual({
-    candidateGeneration: { status: "available", candidateCount: 1 },
-    evidenceFusion: { status: "available", confidenceArtifactCount: 1 },
+  expect(observation.reconstruction.pipeline).toMatchObject({
+    candidateGeneration: {
+      status: "available",
+      candidateCount: 1,
+      candidateSpace: {
+        exactCandidateCount: 1,
+        eagerlyMaterializedCandidateCount: 0
+      }
+    },
+    evidenceFusion: {
+      status: "available",
+      confidenceArtifactCount: 1,
+      confidenceSpace: {
+        exactConfidenceCount: 1,
+        eagerlyMaterializedConfidenceArtifactCount: 0
+      }
+    },
     candidateSelection: {
       status: "selected",
       selectedCandidateId: "grid-lattice-candidate-001",
       competingCandidateIds: [],
-      ambiguousCandidateIds: []
+      ambiguousCandidateIds: [],
+      competingCandidateSpace: {
+        exactCandidateCount: 0,
+        eagerlyMaterializedCandidateCount: 0
+      },
+      candidateEvaluationSpace: {
+        exactEvaluationCount: 1,
+        eagerlyMaterializedEvaluationCount: 0
+      }
     },
     reconstructionResult: {
       status: "available",
@@ -53,6 +77,30 @@ test("runs the complete reconstruction chain before exact Ground Truth validatio
     sampleCount: 7,
     maximumAbsoluteError: 0,
     rmsError: 0
+  });
+});
+
+test("preserves the singular bounds pipeline without factored adaptation", () => {
+  const generateCandidates = jest.fn(generateGridLatticeCandidates);
+  const createReport = createGridLatticeReconstructionValidationReportFactory({
+    generateCandidates
+  });
+
+  const report = createReport({
+    datasetReport: createDatasetReport(),
+    groundTruth: createGroundTruth()
+  });
+
+  expect(generateCandidates).toHaveBeenCalledTimes(1);
+  expect(generateCandidates.mock.calls[0][0]).not.toHaveProperty(
+    "factoredBounds"
+  );
+  expect(report.items[0].reconstructions[0].reconstruction).toMatchObject({
+    status: "available",
+    selectedRows: 2,
+    selectedCols: 3,
+    horizontalLinePositions: [100, 110, 120],
+    verticalLinePositions: [50, 60, 70, 80]
   });
 });
 
@@ -136,7 +184,7 @@ test("normalizes local bounds, anchors and periods into rendered coordinates", (
   );
 });
 
-test("preserves provider, region and bounds-observation order", () => {
+test("preserves provider and region order without materializing ambiguous bounds", () => {
   const datasetReport = createDatasetReport();
   const diagnostics = datasetReport.items[0].comparison.result.benchmark.experiments;
   diagnostics.forEach(experiment => {
@@ -175,11 +223,205 @@ test("preserves provider, region and bounds-observation order", () => {
     value.regionId,
     value.boundsObservationIndex
   ])).toEqual([
-    ["provider-a", "region-a", 0],
-    ["provider-a", "region-a", 1],
-    ["provider-a", "region-b", 0],
-    ["provider-a", "region-b", 1]
+    ["provider-a", "region-a", null],
+    ["provider-a", "region-b", null]
   ]);
+});
+
+test("passes ambiguous factored bounds through the reconstruction chain once", () => {
+  const datasetReport = createDatasetReport();
+  const geometry = findExperiment(
+    datasetReport,
+    "shadow-outer-line-center-geometry-diagnostics"
+  );
+  geometry.providers[0].geometryObservations[0].observation.edges.top
+    .geometry.projectionWeightedCentroid = { position: 101 };
+  const createEvidence = jest.fn(createGridLatticeEvidence);
+  const generateCandidates = jest.fn(input => rejectCompatibilityReads(
+    generateGridLatticeCandidates(input),
+    ["candidates"]
+  ));
+  const fuseEvidence = jest.fn(input => rejectCompatibilityReads(
+    fuseGridLatticeCandidateEvidence(input),
+    ["candidateIds", "confidences"]
+  ));
+  const selectCandidate = jest.fn(input => rejectCompatibilityReads(
+    selectGridLatticeCandidate(input),
+    [
+      "selectedCandidate",
+      "competingCandidates",
+      "candidateEvaluations",
+      "ambiguousCandidateIds"
+    ]
+  ));
+  const createReconstruction = jest.fn(
+    createFactoredValidationReconstructionResult
+  );
+  const projectBounds = jest.fn(createGridLatticeBoundsEvidenceProjection);
+  const createReport = createGridLatticeReconstructionValidationReportFactory({
+    createEvidence,
+    generateCandidates,
+    fuseEvidence,
+    selectCandidate,
+    createReconstruction,
+    projectBounds
+  });
+
+  const report = createReport({
+    datasetReport,
+    groundTruth: createGroundTruth()
+  });
+
+  expect(projectBounds).toHaveBeenCalledTimes(1);
+  expect(projectBounds).toHaveBeenCalledWith({
+    outerLineGeometryDiagnostics: geometry
+  });
+  const factoredBounds = projectBounds.mock.results[0].value
+    .providers[0].regions[0];
+  expect(createEvidence).toHaveBeenCalledTimes(1);
+  expect(createEvidence.mock.calls[0][0].boundsObservation).toMatchObject({
+    status: "unavailable",
+    bounds: null,
+    provenance: {
+      representation: "factored-axis-bounds",
+      singularEnvelope: "not-materialized"
+    }
+  });
+  expect(generateCandidates).toHaveBeenCalledTimes(1);
+  expect(generateCandidates).toHaveBeenCalledWith({
+    evidence: createEvidence.mock.results[0].value,
+    primitivePeriodEvidence: expect.any(Object),
+    factoredBounds
+  });
+  expect(fuseEvidence).toHaveBeenCalledTimes(1);
+  expect(selectCandidate).toHaveBeenCalledTimes(1);
+  expect(createReconstruction).toHaveBeenCalledTimes(1);
+  expect(report.items[0].reconstructions).toHaveLength(1);
+  expect(report.items[0].reconstructions[0].reconstruction.status).toBe(
+    "available"
+  );
+  expect(
+    report.items[0].reconstructions[0].reconstruction.pipeline
+      .candidateGeneration
+  ).toMatchObject({
+    status: "ambiguous",
+    candidateCount: 3,
+    candidateSpace: { eagerlyMaterializedCandidateCount: 0 }
+  });
+  expect(
+    report.items[0].reconstructions[0].reconstruction.sourceBoundsSpace
+      .rectangularCombinationSpace
+  ).toMatchObject({
+    exactCombinationCount: 2,
+    materializedCombinationCount: 0
+  });
+});
+
+test("runs a realistic 1296-bound search space without eager materialization", () => {
+  const datasetReport = createDatasetReport();
+  const geometry = findExperiment(
+    datasetReport,
+    "shadow-outer-line-center-geometry-diagnostics"
+  );
+  const edges = geometry.providers[0].geometryObservations[0]
+    .observation.edges;
+  Object.values(edges).forEach(edge => addSixGeometricAlternatives(edge));
+  const createEvidence = jest.fn(createGridLatticeEvidence);
+  const generateCandidates = jest.fn(input => rejectCompatibilityReads(
+    generateGridLatticeCandidates(input),
+    ["candidates"]
+  ));
+  const fuseEvidence = jest.fn(input => rejectCompatibilityReads(
+    fuseGridLatticeCandidateEvidence(input),
+    ["candidateIds", "confidences"]
+  ));
+  const selectCandidate = jest.fn(input => rejectCompatibilityReads(
+    selectGridLatticeCandidate(input),
+    [
+      "selectedCandidate",
+      "competingCandidates",
+      "candidateEvaluations",
+      "ambiguousCandidateIds"
+    ]
+  ));
+  const createReconstruction = jest.fn(
+    createFactoredValidationReconstructionResult
+  );
+  const createReport = createGridLatticeReconstructionValidationReportFactory({
+    createEvidence,
+    generateCandidates,
+    fuseEvidence,
+    selectCandidate,
+    createReconstruction
+  });
+
+  const report = createReport({
+    datasetReport,
+    groundTruth: createGroundTruth()
+  });
+  const reconstruction = report.items[0].reconstructions[0].reconstruction;
+
+  expect(createEvidence).toHaveBeenCalledTimes(1);
+  expect(generateCandidates).toHaveBeenCalledTimes(1);
+  expect(fuseEvidence).toHaveBeenCalledTimes(1);
+  expect(selectCandidate).toHaveBeenCalledTimes(1);
+  expect(createReconstruction).toHaveBeenCalledTimes(1);
+  expect(reconstruction.status).toBe("available");
+  expect(reconstruction.sourceBoundsSpace.axisBounds.horizontal).toHaveLength(36);
+  expect(reconstruction.sourceBoundsSpace.axisBounds.vertical).toHaveLength(36);
+  expect(
+    reconstruction.sourceBoundsSpace.rectangularCombinationSpace
+  ).toMatchObject({
+    representation: "cartesian-product-by-reference",
+    exactCombinationCount: 1296,
+    materializedCombinationCount: 0
+  });
+  const candidateSpace = reconstruction.pipeline.candidateGeneration
+    .candidateSpace;
+  const confidenceSpace = reconstruction.pipeline.evidenceFusion
+    .confidenceSpace;
+  expect(candidateSpace.exactCandidateCount).toBe(
+    candidateSpace.horizontalAxisCandidateIds.length
+      * candidateSpace.verticalAxisCandidateIds.length
+  );
+  expect(candidateSpace.eagerlyMaterializedCandidateCount).toBe(0);
+  expect(confidenceSpace.exactConfidenceCount).toBe(
+    candidateSpace.exactCandidateCount
+  );
+  expect(confidenceSpace.eagerlyMaterializedConfidenceArtifactCount).toBe(0);
+});
+
+test("never reads rectangular compatibility views in the validation chain", () => {
+  const createReport = createGridLatticeReconstructionValidationReportFactory({
+    generateCandidates(input) {
+      return rejectCompatibilityReads(
+        generateGridLatticeCandidates(input),
+        ["candidates"]
+      );
+    },
+    fuseEvidence(input) {
+      return rejectCompatibilityReads(
+        fuseGridLatticeCandidateEvidence(input),
+        ["candidateIds", "confidences"]
+      );
+    },
+    selectCandidate(input) {
+      return rejectCompatibilityReads(
+        selectGridLatticeCandidate(input),
+        [
+          "selectedCandidate",
+          "competingCandidates",
+          "candidateEvaluations",
+          "ambiguousCandidateIds"
+        ]
+      );
+    }
+  });
+
+  expect(() => createReport({
+    datasetReport: createDatasetReport(),
+    groundTruth: createGroundTruth()
+  })).not.toThrow();
 });
 
 test("keeps incomplete projected outer geometry explicitly unavailable", () => {
@@ -220,7 +462,7 @@ test("Ground Truth is not read until reconstruction has completed", () => {
     }
   };
   const createReconstruction = jest.fn(input => {
-    const result = createGridLatticeReconstructionResult(input);
+    const result = createFactoredValidationReconstructionResult(input);
     reconstructionCompleted = true;
     return result;
   });
@@ -421,6 +663,34 @@ function createGeometryEdge(edge, acceptedCenter) {
     },
     provenance: { source: "synthetic-outer-line-edge", edge }
   };
+}
+
+function addSixGeometricAlternatives(edge) {
+  const center = edge.acceptedCenterInParentBinaryImage;
+  edge.geometry.contiguousStrongOrFullLineRuns = [{
+    midpoint: { position: center + 0.1 }
+  }];
+  edge.geometry.maximumProjectionPlateaus = [{
+    midpoint: { position: center + 0.2 }
+  }];
+  edge.geometry.projectionWeightedCentroid = { position: center + 0.3 };
+  edge.geometry.firstStrongOrFullContinuityPosition = {
+    position: center + 0.4
+  };
+  edge.geometry.lastStrongOrFullContinuityPosition = {
+    position: center + 0.5
+  };
+}
+
+function rejectCompatibilityReads(value, fields) {
+  return new Proxy(value, {
+    get(target, property, receiver) {
+      if (fields.includes(property)) {
+        throw new Error(`compatibility view ${String(property)} was read`);
+      }
+      return Reflect.get(target, property, receiver);
+    }
+  });
 }
 
 function interpretation(derivedSpacing) {

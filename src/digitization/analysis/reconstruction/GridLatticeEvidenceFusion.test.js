@@ -68,6 +68,125 @@ test("reports exact bounds observations independently for each axis", () => {
   expect(first.observation.axes.vertical.exactMatch).toBe(true);
 });
 
+test("evaluates ambiguous factored bounds independently by axis", () => {
+  const input = createEvidenceInput();
+  input.boundsObservation = createUnavailableBoundsObservation();
+  const factoredBounds = createFactoredBounds({
+    horizontal: [[10, 30], [11, 31]],
+    vertical: [[5, 35], [7, 37]]
+  });
+  const { evidence, periods, generation } = createPipelineInputs({
+    input,
+    factoredBounds
+  });
+
+  const result = fuseGridLatticeCandidateEvidence({
+    candidateGeneration: generation,
+    evidence,
+    primitivePeriodEvidence: periods
+  });
+
+  expect(result.status).toBe("available");
+  expect(result.boundsSpace).toEqual(generation.boundsSpace);
+  expect(result.axisEvidence.horizontal.map(value => (
+    value.assessments["outer-bounds-consistency"].observation
+  ))).toEqual([
+    expect.objectContaining({
+      sourceAxisBoundsId: "horizontal-bounds-001",
+      expectedStart: 10,
+      expectedEnd: 30,
+      candidateStart: 10,
+      candidateModeledEnd: 30,
+      startDelta: 0,
+      endDelta: 0,
+      exactMatch: true
+    }),
+    expect.objectContaining({
+      sourceAxisBoundsId: "horizontal-bounds-002",
+      expectedStart: 11,
+      expectedEnd: 31,
+      candidateStart: 11,
+      candidateModeledEnd: 31,
+      startDelta: 0,
+      endDelta: 0,
+      exactMatch: true
+    })
+  ]);
+  expect(result.axisEvidence.vertical.map(value => (
+    value.assessments["outer-bounds-consistency"].observation
+      .sourceAxisBoundsId
+  ))).toEqual(["vertical-bounds-001", "vertical-bounds-002"]);
+  expect(result.confidenceSpace).toMatchObject({
+    horizontalAxisBoundsIds: [
+      "horizontal-bounds-001",
+      "horizontal-bounds-002"
+    ],
+    verticalAxisBoundsIds: [
+      "vertical-bounds-001",
+      "vertical-bounds-002"
+    ],
+    exactBoundsCombinationCount: 4,
+    exactConfidenceCount: 4,
+    eagerlyMaterializedConfidenceArtifactCount: 0
+  });
+});
+
+test("preserves factored bounds provenance without Cartesian evaluation", () => {
+  const input = createEvidenceInput();
+  input.boundsObservation = createUnavailableBoundsObservation();
+  const factoredBounds = createFactoredBounds({
+    horizontal: [[10, 30], [11, 31]],
+    vertical: [[5, 35], [7, 37], [9, 39]]
+  });
+  const { evidence, periods, generation } = createPipelineInputs({
+    input,
+    factoredBounds
+  });
+  const guardedGeneration = new Proxy(generation, {
+    get(target, property, receiver) {
+      if (property === "candidates") {
+        throw new Error("Cartesian candidates must not be read");
+      }
+      return Reflect.get(target, property, receiver);
+    }
+  });
+
+  const result = fuseGridLatticeCandidateEvidence({
+    candidateGeneration: guardedGeneration,
+    evidence,
+    primitivePeriodEvidence: periods
+  });
+
+  expect(result.axisEvidence.horizontal).toHaveLength(2);
+  expect(result.axisEvidence.vertical).toHaveLength(3);
+  expect(result.confidenceSpace.exactBoundsCombinationCount).toBe(6);
+  expect(result.confidenceSpace.exactConfidenceCount).toBe(6);
+  expect(result.axisEvidence.horizontal[1]).toMatchObject({
+    axisBoundsId: "horizontal-bounds-002",
+    provenance: {
+      axisBounds: {
+        source: "synthetic-factored-bounds",
+        axis: "horizontal",
+        sourceOrder: 1
+      }
+    },
+    assessments: {
+      "outer-bounds-consistency": {
+        observation: {
+          evidenceReferences: ["bounds:horizontal:1"],
+          provenance: {
+            source: "synthetic-factored-bounds",
+            axis: "horizontal",
+            sourceOrder: 1
+          }
+        }
+      }
+    }
+  });
+  expect(result.confidenceSpace.eagerlyMaterializedConfidenceArtifactCount)
+    .toBe(0);
+});
+
 test("reports anchor residual statistics without tolerance or candidate removal", () => {
   const input = createEvidenceInput();
   input.axes.horizontal.positions = [10.5, 19, 30];
@@ -179,12 +298,65 @@ test("evaluates ambiguous candidates independently and preserves candidate order
   });
 
   expect(generation.status).toBe("ambiguous");
+  expect(result.axisEvidence.horizontal.map(value => value.axisCandidateId)).toEqual(
+    generation.axisCandidates.horizontal.map(value => value.id)
+  );
+  expect(result.axisEvidence.vertical.map(value => value.axisCandidateId)).toEqual(
+    generation.axisCandidates.vertical.map(value => value.id)
+  );
+  expect(result.confidenceSpace.exactConfidenceCount).toBe(4);
+  expect(result.confidenceSpace.eagerlyMaterializedConfidenceArtifactCount).toBe(0);
   expect(result.confidences).toHaveLength(4);
   expect(result.confidences.map(value => value.candidateId)).toEqual(
     generation.candidates.map(value => value.id)
   );
   expect(result.candidateIds).toEqual(generation.candidates.map(value => value.id));
-  expect(result.diagnostics[0].evaluatedCandidateCount).toBe(4);
+  expect(result.diagnostics[0]).toMatchObject({
+    candidateCount: 4,
+    evaluatedCandidateCount: 0,
+    horizontalAxisCandidateCount: 2,
+    verticalAxisCandidateCount: 2,
+    evaluatedAxisCandidateCount: 4,
+    rectangularConfidenceRepresentation: "factored-axis-product"
+  });
+});
+
+test("fuses axis evidence without reading the Cartesian compatibility view", () => {
+  const { evidence, periods, generation } = createPipelineInputs();
+  const guardedGeneration = new Proxy(generation, {
+    get(target, property, receiver) {
+      if (property === "candidates") {
+        throw new Error("Cartesian candidates must not be read");
+      }
+      return Reflect.get(target, property, receiver);
+    }
+  });
+
+  const result = fuseGridLatticeCandidateEvidence({
+    candidateGeneration: guardedGeneration,
+    evidence,
+    primitivePeriodEvidence: periods
+  });
+
+  expect(result.axisEvidence.horizontal).toHaveLength(1);
+  expect(result.axisEvidence.vertical).toHaveLength(1);
+  expect(result.confidenceSpace).toEqual({
+    representation: "cartesian-product-by-reference",
+    combinationOrder: "horizontal-major-vertical-minor",
+    horizontalAxisEvidenceIds: [
+      "grid-lattice-axis-evidence-horizontal-period-001-intervals-2"
+    ],
+    verticalAxisEvidenceIds: [
+      "grid-lattice-axis-evidence-vertical-period-001-intervals-3"
+    ],
+    horizontalAxisBoundsIds: ["horizontal-bounds-001"],
+    verticalAxisBoundsIds: ["vertical-bounds-001"],
+    exactBoundsCombinationCount: 1,
+    exactConfidenceCount: 1,
+    eagerlyMaterializedConfidenceArtifactCount: 0
+  });
+  expect(Object.getOwnPropertyDescriptor(result, "confidences").get)
+    .toEqual(expect.any(Function));
 });
 
 test("preserves unavailable evidence as a partial confidence observation", () => {
@@ -277,6 +449,8 @@ test("is deterministic, immutable and accepts frozen inputs", () => {
   expect(second).toEqual(first);
   expect(JSON.stringify(second)).toBe(JSON.stringify(first));
   expect(Object.isFrozen(first)).toBe(true);
+  expect(Object.isFrozen(first.axisEvidence.horizontal[0])).toBe(true);
+  expect(Object.isFrozen(first.confidenceSpace)).toBe(true);
   expect(Object.isFrozen(first.confidences[0])).toBe(true);
   expect(Object.isFrozen(first.confidences[0].assessments[0].observation)).toBe(true);
 });
@@ -291,8 +465,16 @@ test.each([
   ["primitive-period association", values => {
     values.generation.primitivePeriodEvidenceId = "other-period-evidence";
   }],
-  ["candidate evidence association", values => {
-    values.generation.candidates[0].evidenceId = "other-evidence";
+  ["axis candidate evidence association", values => {
+    values.generation.axisCandidates.horizontal[0]
+      .provenance.gridLatticeEvidenceId = "other-evidence";
+  }],
+  ["axis bounds association", values => {
+    values.generation.axisCandidates.horizontal[0].axisBoundsId =
+      "missing-horizontal-bounds";
+  }],
+  ["bounds cardinality", values => {
+    values.generation.boundsSpace.exactBoundsCombinationCount += 1;
   }]
 ])("rejects mismatched fusion input: %s", (_label, mutate) => {
   const source = createPipelineInputs();
@@ -344,6 +526,7 @@ test("has no grid-size, crossword-type, Ground Truth or selection policy", () =>
     "utf8"
   );
   expect(source).not.toMatch(/GroundTruth|detectGrid|GridAnalysis|experiments\//);
+  expect(source).not.toMatch(/candidateGeneration\.candidates/);
 });
 
 function findAssessment(confidence, id) {
@@ -353,6 +536,7 @@ function findAssessment(confidence, id) {
 function createPipelineInputs({
   input = createEvidenceInput(),
   periods = null,
+  factoredBounds = null,
   width,
   height,
   horizontalPeriod = 10,
@@ -370,7 +554,8 @@ function createPipelineInputs({
   const evidence = createGridLatticeEvidence(input);
   const generation = generateGridLatticeCandidates({
     evidence,
-    primitivePeriodEvidence: periods
+    primitivePeriodEvidence: periods,
+    factoredBounds
   });
   return { evidence, periods, generation };
 }
@@ -414,6 +599,60 @@ function createEvidenceAxis(axis, positions) {
     spacingObservations: [],
     evidenceReferences: [`anchors:${axis}`],
     diagnostics: []
+  };
+}
+
+function createUnavailableBoundsObservation() {
+  return {
+    status: "unavailable",
+    semantics: "outer-line-center-envelope",
+    coordinateSpace: "analysis-region-local",
+    bounds: null,
+    provenance: { source: "single-bounds-unavailable" },
+    evidenceReferences: []
+  };
+}
+
+function createFactoredBounds({ horizontal, vertical }) {
+  const axisBounds = {
+    horizontal: horizontal.map((bounds, index) => (
+      createAxisBounds("horizontal", bounds, index)
+    )),
+    vertical: vertical.map((bounds, index) => (
+      createAxisBounds("vertical", bounds, index)
+    ))
+  };
+  const exactCombinationCount = horizontal.length * vertical.length;
+  return {
+    status: exactCombinationCount === 1 ? "available" : "ambiguous",
+    coordinateSystem: createEvidenceInput().coordinateSystem,
+    axisBounds,
+    rectangularCombinationSpace: {
+      representation: "cartesian-product-by-reference",
+      combinationOrder: "horizontal-major-vertical-minor",
+      horizontalAxisBoundsIds: axisBounds.horizontal.map(value => value.id),
+      verticalAxisBoundsIds: axisBounds.vertical.map(value => value.id),
+      exactCombinationCount,
+      materializedCombinationCount: 0
+    },
+    provenance: { source: "synthetic-factored-bounds" },
+    reasons: []
+  };
+}
+
+function createAxisBounds(axis, [start, end], index) {
+  return {
+    id: `${axis}-bounds-${String(index + 1).padStart(3, "0")}`,
+    axis,
+    start,
+    end,
+    coordinateSystem: createEvidenceInput().coordinateSystem,
+    evidenceReferences: [`bounds:${axis}:${index}`],
+    provenance: {
+      source: "synthetic-factored-bounds",
+      axis,
+      sourceOrder: index
+    }
   };
 }
 

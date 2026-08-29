@@ -128,6 +128,7 @@ function adaptAxis(axis, diagnostic, region) {
         interpretation?.candidateAssignmentAttempts ?? []
       ),
       interpretationStatus: interpretation?.status ?? "rejected",
+      admission: cloneValue(interpretation?.admission ?? null),
       rejectionReasons: cloneValue(
         interpretation?.rejectionReasons ?? []
       ),
@@ -139,6 +140,22 @@ function adaptAxis(axis, diagnostic, region) {
         ),
         skippedIntervalCounts: cloneValue(
           interpretation?.skippedIntervalCounts ?? []
+        ),
+        oneXSupport: cloneValue(
+          interpretation?.oneXSupport ?? {
+            status: "not-assessed",
+            count: null,
+            observedPairCount: null,
+            observations: []
+          }
+        ),
+        alignmentQualifiedOneXSupport: cloneValue(
+          interpretation?.alignmentQualifiedOneXSupport ?? {
+            status: "not-assessed",
+            count: null,
+            observedPairCount: null,
+            observations: []
+          }
         )
       },
       provenance: {

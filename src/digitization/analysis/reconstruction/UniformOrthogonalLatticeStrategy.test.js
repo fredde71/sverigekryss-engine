@@ -90,9 +90,15 @@ test("supports non-25x25 grids and different axis spacing", () => {
   const result = reconstructUniformOrthogonalLattice(input);
 
   expect(result.status).toBe("available");
-  expect(result.gridHypotheses[0]).toMatchObject({ rows: 3, cols: 4 });
-  expect(result.axes.horizontal.hypotheses[0].spacing).toBe(10);
-  expect(result.axes.vertical.hypotheses[0].spacing).toBe(7);
+  expect(result.gridHypotheses).toEqual(expect.arrayContaining([
+    expect.objectContaining({ rows: 3, cols: 4 })
+  ]));
+  expect(result.axes.horizontal.hypotheses.map(hypothesis => (
+    hypothesis.spacing
+  ))).toEqual([10]);
+  expect(result.axes.vertical.hypotheses.map(hypothesis => (
+    hypothesis.spacing
+  ))).toEqual([7]);
 });
 
 test("preserves half-pixel positions and exact signed residuals", () => {
@@ -157,7 +163,10 @@ test("reports contradictory candidate evidence as unavailable", () => {
     verticalPositions: [0, 10, 20],
     bounds: { top: 0, left: 0, width: 20, height: 20 },
     intervals: { minimum: 2, maximum: 2 },
-    parameterOverrides: { candidateAlignmentTolerancePx: 1 }
+    parameterOverrides: {
+      candidateAlignmentTolerancePx: 1,
+      maximumInferredLineFraction: 0.2
+    }
   }));
 
   expect(result.status).toBe("partial");
@@ -170,6 +179,223 @@ test("reports contradictory candidate evidence as unavailable", () => {
     axis: "horizontal",
     observedCandidateCount: 3
   }]);
+  const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
+
+  expect(diagnostic.rejectionReasons).toContainEqual({
+    code: "candidate-alignment-failed",
+    candidateIndex: 1,
+    candidatePosition: 13,
+    lineIndex: 1,
+    linePosition: 10,
+    residual: 3,
+    absoluteResidual: 3,
+    tolerancePx: 1
+  });
+  expect(diagnostic.candidateAssignmentAttempts.map(attempt => (
+    attempt.status
+  ))).toEqual(["assigned", "rejected", "assigned"]);
+  expect(diagnostic.skippedIntervalCounts).toEqual([{
+    fromCandidateIndex: 0,
+    toCandidateIndex: 2,
+    fromLineIndex: 0,
+    toLineIndex: 2,
+    skippedIntervalCount: 1
+  }]);
+  expect(diagnostic.oneXSupport).toEqual({
+    status: "available",
+    count: 2,
+    observedPairCount: 2,
+    observations: [
+      {
+        fromCandidateIndex: 0,
+        toCandidateIndex: 1,
+        fromLineIndex: 0,
+        toLineIndex: 1,
+        intervalCount: 1,
+        supported: true
+      },
+      {
+        fromCandidateIndex: 1,
+        toCandidateIndex: 2,
+        fromLineIndex: 1,
+        toLineIndex: 2,
+        intervalCount: 1,
+        supported: true
+      }
+    ]
+  });
+  expect(diagnostic.alignmentQualifiedOneXSupport).toEqual({
+    status: "available",
+    count: 0,
+    observedPairCount: 1,
+    observations: [{
+      fromCandidateIndex: 0,
+      toCandidateIndex: 2,
+      fromLineIndex: 0,
+      toLineIndex: 2,
+      intervalCount: 2,
+      supported: false
+    }]
+  });
+  expect(diagnostic).toMatchObject({
+    status: "rejected",
+    inferredLineCount: 1,
+    longestInferredRun: 1,
+    inferredLineFraction: 1 / 3
+  });
+  expect(diagnostic.admission).toMatchObject({
+    status: "rejected",
+    candidateAlignmentFailureCount: 1,
+    observedOneXSupportCount: 2,
+    alignmentQualifiedObservedOneXSupportCount: 0,
+    alignmentFailureEffect:
+      "blocking-without-alignment-qualified-observed-one-x-support",
+    additionalBlockingRejectionCodes: [
+      "inferred-fraction-limit-exceeded"
+    ]
+  });
+  expect(result.axes.horizontal.hypotheses).toEqual([]);
+});
+
+test("does not use a nominal one-x pair containing failed alignment for admission", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [0, 11.25, 20],
+    verticalPositions: [0, 10, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 2, maximum: 2 },
+    parameterOverrides: { candidateAlignmentTolerancePx: 1 }
+  }));
+  const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
+
+  expect(diagnostic.status).toBe("rejected");
+  expect(diagnostic.rejectionReasons.map(reason => reason.code))
+    .toEqual(["candidate-alignment-failed"]);
+  expect(diagnostic.oneXSupport).toMatchObject({
+    status: "available",
+    count: 2,
+    observedPairCount: 2
+  });
+  expect(diagnostic.alignmentQualifiedOneXSupport).toMatchObject({
+    status: "available",
+    count: 0,
+    observedPairCount: 1
+  });
+  expect(diagnostic.admission).toEqual({
+    status: "rejected",
+    policy:
+      "complete-evidence-with-alignment-qualified-observed-one-x-support",
+    candidateAlignmentCriterionPx: 1,
+    candidateAlignmentFailureCount: 1,
+    observedOneXSupportCount: 2,
+    alignmentQualifiedObservedOneXSupportCount: 0,
+    alignmentFailureEffect:
+      "blocking-without-alignment-qualified-observed-one-x-support",
+    additionalBlockingRejectionCodes: []
+  });
+  expect(result.axes.horizontal.hypotheses).toEqual([]);
+});
+
+test("uses a one-x transition between aligned observations for admission", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [0, 10, 21.25, 30],
+    verticalPositions: [0, 10, 20, 30],
+    bounds: { top: 0, left: 0, width: 30, height: 30 },
+    intervals: { minimum: 3, maximum: 3 },
+    parameterOverrides: { candidateAlignmentTolerancePx: 1 }
+  }));
+  const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
+
+  expect(diagnostic.status).toBe("survived");
+  expect(diagnostic.oneXSupport).toMatchObject({ count: 3 });
+  expect(diagnostic.alignmentQualifiedOneXSupport).toMatchObject({
+    status: "available",
+    count: 1,
+    observedPairCount: 2
+  });
+  expect(diagnostic.admission).toMatchObject({
+    status: "admitted",
+    observedOneXSupportCount: 3,
+    alignmentQualifiedObservedOneXSupportCount: 1,
+    alignmentFailureEffect:
+      "recorded-non-blocking-with-alignment-qualified-observed-one-x-support"
+  });
+  expect(result.axes.horizontal.hypotheses).toHaveLength(1);
+});
+
+test("keeps an alignment-failing harmonic without one-x support rejected", () => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: [0, 11.25, 20],
+    verticalPositions: [0, 10, 20],
+    bounds: { top: 0, left: 0, width: 20, height: 20 },
+    intervals: { minimum: 4, maximum: 4 },
+    parameterOverrides: { candidateAlignmentTolerancePx: 1 }
+  }));
+  const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
+
+  expect(diagnostic.status).toBe("rejected");
+  expect(diagnostic.rejectionReasons.map(reason => reason.code))
+    .toEqual(["candidate-alignment-failed"]);
+  expect(diagnostic.oneXSupport).toMatchObject({
+    status: "available",
+    count: 0,
+    observedPairCount: 2
+  });
+  expect(diagnostic.admission).toMatchObject({
+    status: "rejected",
+    candidateAlignmentFailureCount: 1,
+    observedOneXSupportCount: 0,
+    alignmentQualifiedObservedOneXSupportCount: 0,
+    alignmentFailureEffect:
+      "blocking-without-alignment-qualified-observed-one-x-support",
+    additionalBlockingRejectionCodes: []
+  });
+  expect(result.axes.horizontal.hypotheses).toEqual([]);
+});
+
+test.each([
+  {
+    period: 7,
+    intervalCount: 4,
+    positions: [0, 7, 14.75, 21, 28],
+    end: 28,
+    tolerance: 0.5
+  },
+  {
+    period: 40,
+    intervalCount: 3,
+    positions: [0, 40, 81.25, 120],
+    end: 120,
+    tolerance: 1
+  }
+])("applies one-x admission independently of $period px period and $intervalCount intervals", ({
+  intervalCount,
+  positions,
+  end,
+  tolerance
+}) => {
+  const result = reconstructUniformOrthogonalLattice(createInput({
+    horizontalPositions: positions,
+    verticalPositions: positions,
+    bounds: { top: 0, left: 0, width: end, height: end },
+    intervals: { minimum: intervalCount, maximum: intervalCount },
+    parameterOverrides: { candidateAlignmentTolerancePx: tolerance }
+  }));
+  const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
+
+  expect(diagnostic).toMatchObject({
+    status: "survived",
+    intervalCount,
+    admission: {
+      status: "admitted",
+      candidateAlignmentFailureCount: 1,
+      alignmentFailureEffect:
+        "recorded-non-blocking-with-alignment-qualified-observed-one-x-support"
+    }
+  });
+  expect(diagnostic.oneXSupport.count).toBeGreaterThan(0);
+  expect(diagnostic.alignmentQualifiedOneXSupport.count).toBeGreaterThan(0);
+  expect(diagnostic.rejectionReasons.map(reason => reason.code))
+    .toEqual(["candidate-alignment-failed"]);
 });
 
 test("preserves every valid spacing and count variant in canonical order", () => {
@@ -239,17 +465,25 @@ test("reports hypothesis-limit overflow without returning a truncated subset", (
     }
   }));
 
-  expect(result.status).toBe("partial");
+  expect(result.status).toBe("unavailable");
   expect(result.axes.horizontal).toEqual({
     status: "unavailable",
     hypotheses: []
   });
-  expect(result.reasons).toEqual([{
-    code: "axis-hypothesis-limit-exceeded",
-    axis: "horizontal",
-    compatibleHypothesisCount: 4,
-    maximumHypothesisCount: 2
-  }]);
+  expect(result.reasons).toEqual([
+    {
+      code: "axis-hypothesis-limit-exceeded",
+      axis: "horizontal",
+      compatibleHypothesisCount: 4,
+      maximumHypothesisCount: 2
+    },
+    {
+      code: "axis-hypothesis-limit-exceeded",
+      axis: "vertical",
+      compatibleHypothesisCount: 3,
+      maximumHypothesisCount: 2
+    }
+  ]);
 });
 
 test("does not truncate a grid Cartesian product that exceeds the limit", () => {
@@ -326,36 +560,32 @@ test("is deterministic across repeated execution", () => {
     .toBe(JSON.stringify(reconstructUniformOrthogonalLattice(input)));
 });
 
-test("adds rejection diagnostics without changing reconstruction behavior", () => {
+test("retains alignment evidence when qualified one-x support makes it admissible", () => {
   const result = reconstructUniformOrthogonalLattice(createInput({
-    horizontalPositions: [0, 10, 20],
-    verticalPositions: [0, 13, 20],
-    bounds: { top: 0, left: 0, width: 20, height: 20 },
-    intervals: { minimum: 2, maximum: 2 },
+    horizontalPositions: [0, 10, 20, 30],
+    verticalPositions: [0, 10, 21.25, 30],
+    bounds: { top: 0, left: 0, width: 30, height: 30 },
+    intervals: { minimum: 3, maximum: 3 },
     parameterOverrides: { candidateAlignmentTolerancePx: 1 }
   }));
 
-  expect(projectReconstructionBehavior(result)).toEqual({
-    status: "partial",
+  expect(projectReconstructionBehavior(result)).toMatchObject({
+    status: "available",
     axisStatuses: {
       horizontal: "available",
-      vertical: "unavailable"
-    },
-    axisHypotheses: {
-      horizontal: [{
-        id: "horizontal-uniform-intervals-2",
-        intervalCount: 2,
-        linePositions: [0, 10, 20],
-        candidateLineIndexes: [0, 1, 2]
-      }],
-      vertical: []
-    },
-    gridHypotheses: [],
-    reasons: [{
-      code: "no-compatible-lattice",
-      axis: "vertical",
-      observedCandidateCount: 3
-    }]
+      vertical: "available"
+    }
+  });
+  expect(result.gridHypotheses).toHaveLength(1);
+  const vertical = getAxisDiagnostic(result, "vertical").interpretations[0];
+
+  expect(vertical.status).toBe("survived");
+  expect(vertical.rejectionReasons.map(reason => reason.code))
+    .toEqual(["candidate-alignment-failed"]);
+  expect(vertical.admission).toMatchObject({
+    status: "admitted",
+    observedOneXSupportCount: 3,
+    alignmentQualifiedObservedOneXSupportCount: 1
   });
 });
 
@@ -509,7 +739,7 @@ test("reports the first alignment failure and every candidate residual", () => {
   const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
 
   expect(diagnostic).toMatchObject({
-    assignedCandidateCount: 1,
+    assignedCandidateCount: 2,
     rejectedCandidateCount: 1,
     maximumAbsoluteResidual: 1.25,
     averageAbsoluteResidual: 1.25 / 3,
@@ -551,9 +781,26 @@ test("reports the first alignment failure and every candidate residual", () => {
       modeledPosition: 20,
       residual: 0,
       absoluteResidual: 0,
-      assignmentStatus: "not-assessed"
+      assignmentStatus: "assigned"
     }
   ]);
+  expect(diagnostic).toMatchObject({
+    status: "rejected",
+    inferredLineCount: 1,
+    longestInferredRun: 1,
+    inferredLineFraction: 1 / 3
+  });
+  expect(diagnostic.oneXSupport).toMatchObject({
+    status: "available",
+    count: 2,
+    observedPairCount: 2
+  });
+  expect(diagnostic.alignmentQualifiedOneXSupport).toMatchObject({
+    status: "available",
+    count: 0,
+    observedPairCount: 1
+  });
+  expect(result.axes.horizontal.hypotheses).toEqual([]);
 });
 
 test("keeps residual observations unavailable before candidate assignment", () => {
@@ -639,7 +886,10 @@ test.each([
     code: "candidate-alignment-failed",
     positions: [0, 13, 20],
     bounds: { top: 0, left: 0, width: 20, height: 20 },
-    overrides: { candidateAlignmentTolerancePx: 1 }
+    overrides: {
+      candidateAlignmentTolerancePx: 1,
+      maximumInferredLineFraction: 0.2
+    }
   },
   {
     code: "interval-count-incompatible",
@@ -774,7 +1024,7 @@ test("keeps a non-quantum lattice continuous and records its representation", ()
   expect(diagnostic.candidateAssignmentAttempts).toHaveLength(4);
 });
 
-test("uses continuous modeled positions for candidate-alignment rejection", () => {
+test("uses continuous modeled positions for candidate-alignment evidence", () => {
   const result = reconstructUniformOrthogonalLattice(createInput({
     horizontalPositions: [0, 6.5, 40 / 3, 20],
     verticalPositions: [0, 20 / 3, 40 / 3, 20],
@@ -784,10 +1034,15 @@ test("uses continuous modeled positions for candidate-alignment rejection", () =
   }));
   const diagnostic = getAxisDiagnostic(result, "horizontal").interpretations[0];
 
-  expect(result.status).toBe("partial");
+  expect(result.status).toBe("available");
   expect(diagnostic.quantumCompatibility.status).toBe("incompatible");
   expect(diagnostic.rejectionReasons.map(reason => reason.code))
     .toEqual(["candidate-alignment-failed"]);
+  expect(diagnostic.admission).toMatchObject({
+    status: "admitted",
+    observedOneXSupportCount: 3,
+    alignmentQualifiedObservedOneXSupportCount: 1
+  });
   expect(diagnostic.candidateAssignmentAttempts[1]).toMatchObject({
     candidatePosition: 6.5,
     linePosition: 20 / 3,

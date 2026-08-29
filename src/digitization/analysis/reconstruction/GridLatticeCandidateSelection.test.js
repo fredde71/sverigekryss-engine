@@ -50,6 +50,28 @@ test("returns ambiguous when candidates have identical evidence observations", (
     "grid-lattice-candidate-001",
     "grid-lattice-candidate-002"
   ]);
+  expect(result.globallyTiedCandidateSpace).toEqual({
+    representation: "ordered-union-of-axis-products-by-reference",
+    combinationOrder: "candidate-index-ascending",
+    groups: [{
+      horizontalAxisCandidateIds: [
+        "horizontal-period-001-intervals-2",
+        "horizontal-period-001-intervals-3"
+      ],
+      horizontalAxisEvidenceIds: [
+        "grid-lattice-axis-evidence-horizontal-period-001-intervals-2",
+        "grid-lattice-axis-evidence-horizontal-period-001-intervals-3"
+      ],
+      verticalAxisCandidateIds: ["vertical-period-001-intervals-3"],
+      verticalAxisEvidenceIds: [
+        "grid-lattice-axis-evidence-vertical-period-001-intervals-3"
+      ],
+      exactCandidateCount: 2
+    }],
+    exactCandidateCount: 2,
+    exactCompetitorCount: 2,
+    eagerlyMaterializedCandidateCount: 0
+  });
   expect(result.competingCandidates).toEqual(pipeline.generation.candidates);
   expect(result.competingCandidates[0]).toBe(pipeline.generation.candidates[0]);
   expect(result.reasons).toEqual([
@@ -174,6 +196,16 @@ test("preserves complete decision provenance and confidence associations", () =>
       primitivePeriodEvidenceId: pipeline.fusion.primitivePeriodEvidenceId,
       provenance: pipeline.fusion.provenance
     },
+    confidenceSpace: {
+      representation: "cartesian-product-by-reference",
+      combinationOrder: "horizontal-major-vertical-minor",
+      horizontalAxisEvidenceIds:
+        pipeline.fusion.confidenceSpace.horizontalAxisEvidenceIds,
+      verticalAxisEvidenceIds:
+        pipeline.fusion.confidenceSpace.verticalAxisEvidenceIds,
+      exactConfidenceCount: 2
+    },
+    referenceLookup: "horizontal-major-index-plus-vertical-index",
     confidenceArtifactIds: pipeline.fusion.confidences.map(value => value.id)
   });
   expect(result.candidateEvaluations.map(value => value.confidenceArtifactId))
@@ -227,16 +259,16 @@ test.each([
     values.fusion.evidenceId = "other-evidence";
   }],
   ["candidate order", values => {
-    values.fusion.candidateIds.reverse();
+    values.generation.candidateSpace.horizontalAxisCandidateIds.reverse();
   }],
   ["confidence order", values => {
-    values.fusion.confidences.reverse();
+    values.fusion.confidenceSpace.horizontalAxisEvidenceIds.reverse();
   }],
   ["candidate evidence artifact", values => {
-    values.generation.candidates[0].type = "other-candidate";
+    values.generation.axisCandidates.horizontal[0].id = "other-candidate";
   }],
   ["confidence artifact", values => {
-    values.fusion.confidences[0].type = "other-confidence";
+    values.fusion.axisEvidence.horizontal[0].id = "other-confidence";
   }]
 ])("rejects mismatched selection input: %s", (_label, mutate) => {
   const source = createPipeline({ height: 24 });
@@ -252,6 +284,175 @@ test.each([
     candidateGeneration: values.generation,
     evidenceFusion: values.fusion
   })).toThrow();
+});
+
+test("selects directly from factored evidence without reading Cartesian views", () => {
+  const pipeline = createPipeline({ height: 24 });
+  const generation = new Proxy(pipeline.generation, {
+    get(target, property, receiver) {
+      if (property === "candidates") {
+        throw new Error("Cartesian candidates must not be read");
+      }
+      return Reflect.get(target, property, receiver);
+    }
+  });
+  const fusion = new Proxy(pipeline.fusion, {
+    get(target, property, receiver) {
+      if (property === "confidences" || property === "candidateIds") {
+        throw new Error("Cartesian confidence views must not be read");
+      }
+      return Reflect.get(target, property, receiver);
+    }
+  });
+
+  const result = selectGridLatticeCandidate({
+    candidateGeneration: generation,
+    evidenceFusion: fusion
+  });
+
+  expect(result.status).toBe("selected");
+  expect(result.selectedCandidateReference).toEqual({
+    candidateId: "grid-lattice-candidate-001",
+    candidateIndex: 0,
+    horizontalAxisCandidateId: "horizontal-period-001-intervals-2",
+    verticalAxisCandidateId: "vertical-period-001-intervals-3",
+    horizontalAxisEvidenceId:
+      "grid-lattice-axis-evidence-horizontal-period-001-intervals-2",
+    verticalAxisEvidenceId:
+      "grid-lattice-axis-evidence-vertical-period-001-intervals-3"
+  });
+  expect(result.competingCandidateSpace).toMatchObject({
+    representation: "cartesian-product-by-reference",
+    exactCandidateCount: 1,
+    eagerlyMaterializedCandidateCount: 0
+  });
+  expect(result.candidateEvaluationSpace).toMatchObject({
+    representation: "factored-axis-evidence-product",
+    exactEvaluationCount: 2,
+    horizontalAxisEvaluationCount: 2,
+    verticalAxisEvaluationCount: 1,
+    exactFactoredEvaluationCount: 3,
+    eagerlyMaterializedEvaluationCount: 0
+  });
+});
+
+test("is exhaustively equivalent to Cartesian selection on bounded fixtures", () => {
+  const periodFixtures = [
+    [[10], [10]],
+    [[10, 5], [10]],
+    [[10], [10, 5]],
+    [[10, 5], [10, 5]]
+  ];
+  let fixtureCount = 0;
+
+  for (const height of [19, 20, 21, 24, 25]) {
+    for (const width of [29, 30, 31, 34, 35]) {
+      for (const [horizontalPeriods, verticalPeriods] of periodFixtures) {
+        const periods = createPrimitivePeriodEvidence();
+        periods.status = horizontalPeriods.length > 1
+          || verticalPeriods.length > 1
+          ? "ambiguous"
+          : "available";
+        periods.axes.horizontal = createPeriodAxis(
+          "horizontal",
+          horizontalPeriods
+        );
+        periods.axes.vertical = createPeriodAxis(
+          "vertical",
+          verticalPeriods
+        );
+        const pipeline = createPipeline({ height, width, periods });
+        const result = selectGridLatticeCandidate({
+          candidateGeneration: pipeline.generation,
+          evidenceFusion: pipeline.fusion
+        });
+        const oracle = selectCartesianReference(result.candidateEvaluations);
+
+        expect({
+          status: result.status,
+          selectedCandidateId: result.selectedCandidateId,
+          globallyTiedCandidateCount:
+            result.globallyTiedCandidateSpace.exactCandidateCount,
+          globallyTiedCandidateIds: result.status === "ambiguous"
+            ? result.ambiguousCandidateIds
+            : result.selectedCandidateId === null
+              ? []
+              : [result.selectedCandidateId]
+        }).toEqual(oracle);
+        fixtureCount += 1;
+      }
+    }
+  }
+
+  expect(fixtureCount).toBe(100);
+});
+
+test("selects a realistic factored cardinality without Cartesian evaluation", () => {
+  const pipeline = createPipeline();
+  const horizontalCount = 1200;
+  const verticalCount = 1100;
+  const reads = { horizontal: 0, vertical: 0 };
+  const generation = clone(pipeline.generation);
+  const fusion = clone(pipeline.fusion);
+  generation.axisCandidates.horizontal = createRepeatedAxisCandidates(
+    generation.axisCandidates.horizontal[0],
+    "horizontal",
+    horizontalCount
+  );
+  generation.axisCandidates.vertical = createRepeatedAxisCandidates(
+    generation.axisCandidates.vertical[0],
+    "vertical",
+    verticalCount
+  );
+  fusion.axisEvidence.horizontal = createRepeatedAxisEvidence(
+    fusion.axisEvidence.horizontal[0],
+    "horizontal",
+    horizontalCount,
+    reads
+  );
+  fusion.axisEvidence.vertical = createRepeatedAxisEvidence(
+    fusion.axisEvidence.vertical[0],
+    "vertical",
+    verticalCount,
+    reads
+  );
+  generation.candidateSpace.horizontalAxisCandidateIds =
+    generation.axisCandidates.horizontal.map(value => value.id);
+  generation.candidateSpace.verticalAxisCandidateIds =
+    generation.axisCandidates.vertical.map(value => value.id);
+  generation.candidateSpace.exactCandidateCount =
+    horizontalCount * verticalCount;
+  fusion.confidenceSpace.horizontalAxisEvidenceIds =
+    fusion.axisEvidence.horizontal.map(value => value.id);
+  fusion.confidenceSpace.verticalAxisEvidenceIds =
+    fusion.axisEvidence.vertical.map(value => value.id);
+  fusion.confidenceSpace.exactConfidenceCount = horizontalCount * verticalCount;
+
+  const result = selectGridLatticeCandidate({
+    candidateGeneration: generation,
+    evidenceFusion: fusion
+  });
+
+  expect(result.status).toBe("ambiguous");
+  expect(result.candidateEvaluationSpace).toMatchObject({
+    exactEvaluationCount: 1320000,
+    horizontalAxisEvaluationCount: horizontalCount,
+    verticalAxisEvaluationCount: verticalCount,
+    exactFactoredEvaluationCount: horizontalCount + verticalCount,
+    eagerlyMaterializedEvaluationCount: 0
+  });
+  expect(result.globallyTiedCandidateSpace).toMatchObject({
+    exactCandidateCount: 1320000,
+    exactCompetitorCount: 1320000,
+    eagerlyMaterializedCandidateCount: 0
+  });
+  expect(reads.horizontal + reads.vertical).toBeLessThan(
+    50 * (horizontalCount + verticalCount)
+  );
+  expect(Object.getOwnPropertyDescriptor(result, "candidateEvaluations").get)
+    .toEqual(expect.any(Function));
+  expect(Object.getOwnPropertyDescriptor(result, "ambiguousCandidateIds").get)
+    .toEqual(expect.any(Function));
 });
 
 test("has no Ground Truth, production or crossword-type dependency", () => {
@@ -369,6 +570,83 @@ function createPeriodAxis(axis, periods) {
     })),
     reasons: []
   };
+}
+
+function selectCartesianReference(evaluations) {
+  let minimumVector = null;
+  let matching = [];
+  for (const evaluation of evaluations) {
+    if (evaluation.status !== "comparable") {
+      continue;
+    }
+    const comparison = minimumVector === null
+      ? -1
+      : compareReferenceVectors(evaluation.comparisonVector, minimumVector);
+    if (comparison < 0) {
+      minimumVector = evaluation.comparisonVector;
+      matching = [evaluation.candidateId];
+    } else if (comparison === 0) {
+      matching.push(evaluation.candidateId);
+    }
+  }
+  return {
+    status: matching.length === 0
+      ? "unavailable"
+      : matching.length === 1
+        ? "selected"
+        : "ambiguous",
+    selectedCandidateId: matching.length === 1 ? matching[0] : null,
+    globallyTiedCandidateCount: matching.length,
+    globallyTiedCandidateIds: matching
+  };
+}
+
+function compareReferenceVectors(left, right) {
+  for (const field of [
+    "contradictionCount",
+    "outsideExtentAnchorCount",
+    "outerBoundsTotalAbsoluteDelta",
+    "anchorMaximumAbsoluteResidual",
+    "anchorRmsResidual",
+    "primitivePeriodTotalAbsoluteDelta",
+    "intervalMaximumAbsoluteResidual",
+    "intervalRmsResidual"
+  ]) {
+    if (left[field] < right[field]) {
+      return -1;
+    }
+    if (left[field] > right[field]) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+function createRepeatedAxisCandidates(source, axis, count) {
+  return Array.from({ length: count }, (_value, index) => ({
+    ...clone(source),
+    id: `${axis}-candidate-${String(index + 1).padStart(4, "0")}`,
+    axis
+  }));
+}
+
+function createRepeatedAxisEvidence(source, axis, count, reads) {
+  return Array.from({ length: count }, (_value, index) => {
+    const value = clone(source);
+    const assessments = value.assessments;
+    delete value.assessments;
+    value.id = `${axis}-evidence-${String(index + 1).padStart(4, "0")}`;
+    value.axisCandidateId = `${axis}-candidate-${String(index + 1).padStart(4, "0")}`;
+    Object.defineProperty(value, "assessments", {
+      enumerable: true,
+      configurable: true,
+      get() {
+        reads[axis] += 1;
+        return assessments;
+      }
+    });
+    return value;
+  });
 }
 
 function clone(value) {

@@ -52,12 +52,35 @@ test("preserves rejected and surviving axis interpretations in exact order", () 
       residual: 0.5,
       status: "assigned"
     }],
+    admission: {
+      status: "rejected",
+      observedOneXSupportCount: 1
+    },
     rejectionReasons: [{ code: "candidate-alignment-failed" }],
     inferredLineDiagnostics: {
       inferredLineCount: null,
       longestInferredRun: null,
       inferredLineFraction: null,
-      skippedIntervalCounts: []
+      skippedIntervalCounts: [],
+      oneXSupport: {
+        status: "available",
+        count: 1,
+        observedPairCount: 1,
+        observations: [{
+          fromCandidateIndex: 0,
+          toCandidateIndex: 1,
+          fromLineIndex: 0,
+          toLineIndex: 1,
+          intervalCount: 1,
+          supported: true
+        }]
+      },
+      alignmentQualifiedOneXSupport: {
+        status: "available",
+        count: 0,
+        observedPairCount: 0,
+        observations: []
+      }
     }
   });
 });
@@ -213,10 +236,40 @@ function createAxisDiagnostic(intervalCounts) {
       rejectionReasons: index === 0
         ? [{ code: "candidate-alignment-failed" }]
         : [],
+      admission: {
+        status: index === 0 ? "rejected" : "admitted",
+        observedOneXSupportCount: 1
+      },
       inferredLineCount: index === 0 ? null : 1,
       longestInferredRun: index === 0 ? null : 1,
       inferredLineFraction: index === 0 ? null : 0.2,
-      skippedIntervalCounts: []
+      skippedIntervalCounts: [],
+      oneXSupport: {
+        status: "available",
+        count: 1,
+        observedPairCount: 1,
+        observations: [{
+          fromCandidateIndex: 0,
+          toCandidateIndex: 1,
+          fromLineIndex: 0,
+          toLineIndex: 1,
+          intervalCount: 1,
+          supported: true
+        }]
+      },
+      alignmentQualifiedOneXSupport: {
+        status: "available",
+        count: index === 0 ? 0 : 1,
+        observedPairCount: index === 0 ? 0 : 1,
+        observations: index === 0 ? [] : [{
+          fromCandidateIndex: 0,
+          toCandidateIndex: 1,
+          fromLineIndex: 0,
+          toLineIndex: 1,
+          intervalCount: 1,
+          supported: true
+        }]
+      }
     }))
   };
 }

@@ -5,7 +5,7 @@ import {
   generateGridLatticeCandidates
 } from "./GridLatticeCandidateGeneration";
 
-test("generates one deterministic rectangular GridLatticeCandidate", () => {
+test("represents one deterministic rectangular candidate by axis references", () => {
   const evidence = createGridLatticeEvidence(createEvidenceInput());
   const result = generateGridLatticeCandidates({
     evidence,
@@ -19,6 +19,32 @@ test("generates one deterministic rectangular GridLatticeCandidate", () => {
     evidenceId: "evidence-001",
     primitivePeriodEvidenceId: "primitive-period-evidence-001"
   });
+  expect(result.candidateSpace).toEqual({
+    representation: "cartesian-product-by-reference",
+    combinationOrder: "horizontal-major-vertical-minor",
+    horizontalAxisCandidateIds: ["horizontal-period-001-intervals-2"],
+    verticalAxisCandidateIds: ["vertical-period-001-intervals-3"],
+    exactCandidateCount: 1,
+    eagerlyMaterializedCandidateCount: 0
+  });
+  expect(result.boundsSpace).toMatchObject({
+    representation: "factored-axis-bounds",
+    source: "grid-lattice-evidence-bounds-observation",
+    status: "available",
+    combinationOrder: "horizontal-major-vertical-minor",
+    horizontalAxisBoundsIds: ["horizontal-bounds-001"],
+    verticalAxisBoundsIds: ["vertical-bounds-001"],
+    exactBoundsCombinationCount: 1,
+    eagerlyMaterializedRectangularBoundsCount: 0,
+    provenance: { source: "confirmed-outer-bounds-observation" },
+    reasons: []
+  });
+  expect(result.boundsSpace.axisBounds).toMatchObject({
+    horizontal: [{ id: "horizontal-bounds-001", start: 10, end: 30 }],
+    vertical: [{ id: "vertical-bounds-001", start: 5, end: 35 }]
+  });
+  expect(Object.getOwnPropertyDescriptor(result, "candidates").get)
+    .toEqual(expect.any(Function));
   expect(result.candidates).toHaveLength(1);
   expect(result.candidates[0]).toMatchObject({
     type: "grid-lattice-candidate",
@@ -98,6 +124,18 @@ test("combines horizontal and vertical candidates in deterministic rectangular o
   expect(result.status).toBe("ambiguous");
   expect(result.axisCandidates.horizontal.map(value => value.period)).toEqual([10, 5]);
   expect(result.axisCandidates.vertical.map(value => value.period)).toEqual([10, 15]);
+  expect(result.candidateSpace).toEqual({
+    representation: "cartesian-product-by-reference",
+    combinationOrder: "horizontal-major-vertical-minor",
+    horizontalAxisCandidateIds: result.axisCandidates.horizontal.map(
+      value => value.id
+    ),
+    verticalAxisCandidateIds: result.axisCandidates.vertical.map(
+      value => value.id
+    ),
+    exactCandidateCount: 4,
+    eagerlyMaterializedCandidateCount: 0
+  });
   expect(result.candidates.map(candidate => [
     candidate.axes.horizontal.period,
     candidate.axes.horizontal.intervalCount,
@@ -109,6 +147,207 @@ test("combines horizontal and vertical candidates in deterministic rectangular o
     [5, 4, 10, 3],
     [5, 4, 15, 2]
   ]);
+});
+
+test("preserves realistic Cartesian cardinality without storing reference pairs", () => {
+  const periods = createPrimitivePeriodEvidence();
+  periods.status = "ambiguous";
+  periods.axes.horizontal = createPeriodAxis("horizontal", [10, 5, 4, 2]);
+  periods.axes.vertical = createPeriodAxis("vertical", [10, 6, 5, 3]);
+
+  const result = generateGridLatticeCandidates({
+    evidence: createGridLatticeEvidence(createEvidenceInput()),
+    primitivePeriodEvidence: periods
+  });
+
+  expect(result.axisCandidates.horizontal).toHaveLength(4);
+  expect(result.axisCandidates.vertical).toHaveLength(4);
+  expect(result.candidateSpace.exactCandidateCount).toBe(16);
+  expect(result.candidateSpace.eagerlyMaterializedCandidateCount).toBe(0);
+  expect(result.candidateSpace).not.toHaveProperty("candidatePairs");
+  expect(result.candidateSpace).not.toHaveProperty("rectangularCandidates");
+});
+
+test("generates axis candidates directly from ambiguous factored bounds", () => {
+  const input = createEvidenceInput();
+  input.boundsObservation = createUnavailableBoundsObservation();
+  const factoredBounds = createFactoredBounds({
+    horizontal: [[10, 30], [11, 31]],
+    vertical: [[5, 35], [6, 36], [7, 37]]
+  });
+
+  const result = generateGridLatticeCandidates({
+    evidence: createGridLatticeEvidence(input),
+    primitivePeriodEvidence: createPrimitivePeriodEvidence(),
+    factoredBounds
+  });
+
+  expect(result.status).toBe("ambiguous");
+  expect(result.boundsSpace).toMatchObject({
+    status: "ambiguous",
+    horizontalAxisBoundsIds: ["horizontal-bounds-001", "horizontal-bounds-002"],
+    verticalAxisBoundsIds: [
+      "vertical-bounds-001",
+      "vertical-bounds-002",
+      "vertical-bounds-003"
+    ],
+    exactBoundsCombinationCount: 6,
+    eagerlyMaterializedRectangularBoundsCount: 0
+  });
+  expect(result.boundsSpace.axisBounds.horizontal[1]).toEqual(
+    factoredBounds.axisBounds.horizontal[1]
+  );
+  expect(result.boundsSpace.axisBounds.horizontal[1]).toMatchObject({
+    startAlternative: {
+      interpretationId: "horizontal-start-interpretation-002",
+      position: 11
+    },
+    endAlternative: {
+      interpretationId: "horizontal-end-interpretation-002",
+      position: 31
+    },
+    provenance: {
+      source: "synthetic-factored-bounds",
+      sourceOrder: 1
+    }
+  });
+  expect(result.axisCandidates.horizontal.map(value => [
+    value.id,
+    value.axisBoundsId,
+    value.origin,
+    value.intervalCount
+  ])).toEqual([
+    [
+      "horizontal-bounds-001-period-001-intervals-2",
+      "horizontal-bounds-001",
+      10,
+      2
+    ],
+    [
+      "horizontal-bounds-002-period-001-intervals-2",
+      "horizontal-bounds-002",
+      11,
+      2
+    ]
+  ]);
+  expect(result.axisCandidates.vertical.map(value => value.origin)).toEqual([
+    5, 6, 7
+  ]);
+  expect(result.candidateSpace.exactCandidateCount).toBe(6);
+  expect(result.candidateSpace.eagerlyMaterializedCandidateCount).toBe(0);
+});
+
+test("keeps each bounds interpretation paired only with same-axis evidence", () => {
+  const input = createEvidenceInput();
+  input.boundsObservation = createUnavailableBoundsObservation();
+  input.axes.horizontal.positions = [10, 20, 30];
+  input.axes.vertical.positions = [5, 15, 25, 35];
+  const factoredBounds = createFactoredBounds({
+    horizontal: [[10, 30], [12, 32]],
+    vertical: [[5, 35], [8, 38]]
+  });
+
+  const result = generateGridLatticeCandidates({
+    evidence: createGridLatticeEvidence(input),
+    primitivePeriodEvidence: createPrimitivePeriodEvidence(),
+    factoredBounds
+  });
+
+  expect(result.axisCandidates.horizontal[1]).toMatchObject({
+    axisBoundsId: "horizontal-bounds-002",
+    assignments: [
+      { observedPosition: 10, modeledPosition: 12, residual: -2 },
+      { observedPosition: 20, modeledPosition: 22, residual: -2 },
+      { observedPosition: 30, modeledPosition: 32, residual: -2 }
+    ],
+    provenance: {
+      axisBoundsOrder: 1,
+      axisBounds: {
+        source: "synthetic-factored-bounds",
+        axis: "horizontal",
+        sourceOrder: 1
+      }
+    }
+  });
+  expect(result.axisCandidates.vertical[1]).toMatchObject({
+    axisBoundsId: "vertical-bounds-002",
+    assignments: [
+      { observedPosition: 5, modeledPosition: 8, residual: -3 },
+      { observedPosition: 15, modeledPosition: 18, residual: -3 },
+      { observedPosition: 25, modeledPosition: 28, residual: -3 },
+      { observedPosition: 35, modeledPosition: 38, residual: -3 }
+    ]
+  });
+});
+
+test("preserves large factored bounds cardinality without rectangular bounds", () => {
+  const input = createEvidenceInput();
+  input.boundsObservation = createUnavailableBoundsObservation();
+  const horizontal = Array.from(
+    { length: 36 },
+    (_value, index) => [10 + index, 30 + index]
+  );
+  const vertical = Array.from(
+    { length: 36 },
+    (_value, index) => [5 + index, 35 + index]
+  );
+
+  const result = generateGridLatticeCandidates({
+    evidence: createGridLatticeEvidence(input),
+    primitivePeriodEvidence: createPrimitivePeriodEvidence(),
+    factoredBounds: createFactoredBounds({ horizontal, vertical })
+  });
+
+  expect(result.axisCandidates.horizontal).toHaveLength(36);
+  expect(result.axisCandidates.vertical).toHaveLength(36);
+  expect(result.boundsSpace.exactBoundsCombinationCount).toBe(1296);
+  expect(result.boundsSpace.eagerlyMaterializedRectangularBoundsCount).toBe(0);
+  expect(result.candidateSpace.exactCandidateCount).toBe(1296);
+  expect(result.candidateSpace.eagerlyMaterializedCandidateCount).toBe(0);
+  expect(result.boundsSpace).not.toHaveProperty("boundsCombinations");
+});
+
+test("rejects inconsistent factored bounds references", () => {
+  const factoredBounds = createFactoredBounds({
+    horizontal: [[10, 30], [11, 31]],
+    vertical: [[5, 35]]
+  });
+  factoredBounds.rectangularCombinationSpace.horizontalAxisBoundsIds.reverse();
+
+  expect(() => generateGridLatticeCandidates({
+    evidence: createGridLatticeEvidence(createEvidenceInput()),
+    primitivePeriodEvidence: createPrimitivePeriodEvidence(),
+    factoredBounds
+  })).toThrow("factoredBounds rectangular combination space is invalid");
+});
+
+test("keeps factored bounds deterministic, immutable and deeply frozen", () => {
+  const input = createEvidenceInput();
+  input.boundsObservation = createUnavailableBoundsObservation();
+  const evidence = createGridLatticeEvidence(input);
+  const periods = deepFreeze(createPrimitivePeriodEvidence());
+  const factoredBounds = deepFreeze(createFactoredBounds({
+    horizontal: [[10, 30], [11, 31]],
+    vertical: [[5, 35], [6, 36]]
+  }));
+  const before = JSON.stringify({ evidence, periods, factoredBounds });
+
+  const first = generateGridLatticeCandidates({
+    evidence,
+    primitivePeriodEvidence: periods,
+    factoredBounds
+  });
+  const second = generateGridLatticeCandidates({
+    evidence,
+    primitivePeriodEvidence: periods,
+    factoredBounds
+  });
+
+  expect(second).toEqual(first);
+  expect(JSON.stringify({ evidence, periods, factoredBounds })).toBe(before);
+  expect(Object.isFrozen(first.boundsSpace)).toBe(true);
+  expect(Object.isFrozen(first.boundsSpace.axisBounds.horizontal[0])).toBe(true);
+  expect(Object.isFrozen(first.axisCandidates.horizontal[0])).toBe(true);
 });
 
 test("preserves observed anchors, assignments, residuals and source provenance", () => {
@@ -219,8 +458,33 @@ test("is deterministic, input-immutable and returns deeply frozen artifacts", ()
   expect(JSON.stringify(second)).toBe(JSON.stringify(first));
   expect(Object.isFrozen(first)).toBe(true);
   expect(Object.isFrozen(first.axisCandidates.horizontal[0])).toBe(true);
+  expect(Object.isFrozen(first.candidateSpace)).toBe(true);
+  expect(Object.isFrozen(first.candidateSpace.horizontalAxisCandidateIds))
+    .toBe(true);
   expect(Object.isFrozen(first.candidates[0].gridDimensions)).toBe(true);
   expect(Object.isFrozen(first.candidates[0].provenance)).toBe(true);
+});
+
+test("snapshots provenance before on-demand compatibility materialization", () => {
+  const evidence = createGridLatticeEvidence(createEvidenceInput());
+  const periods = createPrimitivePeriodEvidence();
+  const result = generateGridLatticeCandidates({
+    evidence,
+    primitivePeriodEvidence: periods
+  });
+
+  periods.provenance.source = "changed-after-generation";
+  periods.axes.horizontal.candidates[0].provenance.source = "changed-source";
+
+  expect(result.candidates[0].provenance).toEqual(expect.objectContaining({
+    primitivePeriodEvidence: { source: "synthetic-period-evidence" },
+    horizontalAxisCandidate: expect.objectContaining({
+      source: {
+        source: "primitive-period-observation",
+        sourceOrder: 0
+      }
+    })
+  }));
 });
 
 test.each([
@@ -325,6 +589,85 @@ function createEvidenceAxis(axis, positions) {
     spacingObservations: [],
     evidenceReferences: [`anchors:${axis}`],
     diagnostics: []
+  };
+}
+
+function createUnavailableBoundsObservation() {
+  return {
+    status: "unavailable",
+    semantics: "outer-line-center-envelope",
+    coordinateSpace: "analysis-region-local",
+    bounds: null,
+    provenance: { source: "single-bounds-unavailable" },
+    evidenceReferences: []
+  };
+}
+
+function createFactoredBounds({ horizontal, vertical }) {
+  const axisBounds = {
+    horizontal: horizontal.map((bounds, index) => (
+      createAxisBounds("horizontal", bounds, index)
+    )),
+    vertical: vertical.map((bounds, index) => (
+      createAxisBounds("vertical", bounds, index)
+    ))
+  };
+  const exactCombinationCount = horizontal.length * vertical.length;
+  return {
+    status: exactCombinationCount === 0
+      ? "unavailable"
+      : exactCombinationCount === 1
+        ? "available"
+        : "ambiguous",
+    coordinateSystem: {
+      space: "analysis-region-local",
+      unit: "pixel",
+      origin: "top-left",
+      xDirection: "right",
+      yDirection: "down",
+      linePosition: "visual-line-center"
+    },
+    axisBounds,
+    rectangularCombinationSpace: {
+      representation: "cartesian-product-by-reference",
+      combinationOrder: "horizontal-major-vertical-minor",
+      horizontalAxisBoundsIds: axisBounds.horizontal.map(value => value.id),
+      verticalAxisBoundsIds: axisBounds.vertical.map(value => value.id),
+      exactCombinationCount,
+      materializedCombinationCount: 0
+    },
+    provenance: { source: "synthetic-factored-bounds" },
+    reasons: exactCombinationCount === 0 ? ["bounds-unavailable"] : []
+  };
+}
+
+function createAxisBounds(axis, [start, end], index) {
+  return {
+    id: `${axis}-bounds-${String(index + 1).padStart(3, "0")}`,
+    axis,
+    start,
+    end,
+    startAlternative: {
+      interpretationId:
+        `${axis}-start-interpretation-${String(index + 1).padStart(3, "0")}`,
+      sourceIndex: index,
+      position: start
+    },
+    endAlternative: {
+      interpretationId:
+        `${axis}-end-interpretation-${String(index + 1).padStart(3, "0")}`,
+      sourceIndex: index,
+      position: end
+    },
+    coordinateSystem: {
+      space: "analysis-region-local"
+    },
+    evidenceReferences: [`bounds:${axis}:${index}`],
+    provenance: {
+      source: "synthetic-factored-bounds",
+      axis,
+      sourceOrder: index
+    }
   };
 }
 

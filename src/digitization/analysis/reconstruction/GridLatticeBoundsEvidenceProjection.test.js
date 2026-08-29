@@ -1,8 +1,4 @@
 import fs from "fs";
-import { createGridLatticeEvidence } from "./GridLatticeEvidence";
-import {
-  generateGridLatticeCandidates
-} from "./GridLatticeCandidateGeneration";
 import {
   createGridLatticeBoundsEvidenceProjection
 } from "./GridLatticeBoundsEvidenceProjection";
@@ -13,26 +9,36 @@ test("projects one factual geometry interpretation as available bounds evidence"
     outerLineGeometryDiagnostics: source
   });
   const region = result.providers[0].regions[0];
-  const candidate = region.boundsCandidates[0];
+  const horizontal = region.axisBounds.horizontal[0];
+  const vertical = region.axisBounds.vertical[0];
 
   expect(result.status).toBe("available");
   expect(region.status).toBe("available");
-  expect(candidate).toMatchObject({
-    status: "available",
-    confirmationStatus: "unconfirmed-observation",
-    interpretationId: "accepted-candidate-center",
-    edgePositions: { top: 10, bottom: 30, left: 5, right: 35 },
-    bounds: { top: 10, left: 5, width: 30, height: 20 },
-    boundsObservation: {
-      status: "available",
-      semantics: "outer-line-center-envelope",
-      coordinateSpace: "rendered-binary-image-pixels",
-      bounds: { top: 10, left: 5, width: 30, height: 20 }
-    }
+  expect(horizontal).toMatchObject({
+    axis: "horizontal",
+    startEdge: "top",
+    endEdge: "bottom",
+    start: 10,
+    end: 30,
+    span: 20
   });
-  expect(candidate.provenance.establishment).toBe(
-    "unconfirmed-observational-outer-line-envelope"
-  );
+  expect(vertical).toMatchObject({
+    axis: "vertical",
+    startEdge: "left",
+    endEdge: "right",
+    start: 5,
+    end: 35,
+    span: 30
+  });
+  expect(region.rectangularCombinationSpace).toEqual({
+    representation: "cartesian-product-by-reference",
+    combinationOrder: "horizontal-major-vertical-minor",
+    horizontalAxisBoundsIds: [horizontal.id],
+    verticalAxisBoundsIds: [vertical.id],
+    exactCombinationCount: 1,
+    materializedCombinationCount: 0
+  });
+  expect(region).not.toHaveProperty("boundsCandidates");
 });
 
 test("preserves alternative definitions and ambiguous runs in deterministic order", () => {
@@ -78,12 +84,19 @@ test("preserves alternative definitions and ambiguous runs in deterministic orde
   expect(region.combinationInventory).toEqual({
     totalCombinationCount: 108,
     validBoundsCandidateCount: 108,
-    rejectedCombinationCount: 0
+    rejectedCombinationCount: 0,
+    representation: "factored-axis-product"
   });
-  expect(region.boundsCandidates).toHaveLength(108);
-  expect(region.boundsCandidates.some(candidate => (
-    candidate.interpretationId === "mixed-edge-geometric-descriptions"
-  ))).toBe(true);
+  expect(region.axisBounds.horizontal).toHaveLength(12);
+  expect(region.axisBounds.vertical).toHaveLength(9);
+  expect(region.rectangularCombinationSpace).toEqual({
+    representation: "cartesian-product-by-reference",
+    combinationOrder: "horizontal-major-vertical-minor",
+    horizontalAxisBoundsIds: region.axisBounds.horizontal.map(value => value.id),
+    verticalAxisBoundsIds: region.axisBounds.vertical.map(value => value.id),
+    exactCombinationCount: 108,
+    materializedCombinationCount: 0
+  });
   expect(region.interpretationInventory[1]).toMatchObject({
     interpretationId: "strong-or-full-run-midpoint",
     status: "available",
@@ -113,11 +126,12 @@ test("preserves provider and region ordering and provenance", () => {
     "region-a",
     "region-b"
   ]);
-  expect(result.providers[1].regions[0].boundsCandidates[0].provenance)
+  expect(result.providers[1].regions[0].axisBounds.horizontal[0].provenance)
     .toMatchObject({
       source: "shadow-outer-line-center-geometry-diagnostics",
       providerId: "provider-b",
       regionId: "region-b",
+      axis: "horizontal",
       sourceObservationProvenance: {
         source: "geometry-fixture",
         providerId: "provider-b",
@@ -138,7 +152,8 @@ test("returns unavailable without inventing bounds from incomplete edges", () =>
 
   expect(result.status).toBe("unavailable");
   expect(region.status).toBe("unavailable");
-  expect(region.boundsCandidates).toEqual([]);
+  expect(region.axisBounds.horizontal).toEqual([]);
+  expect(region.axisBounds.vertical).toEqual([]);
   expect(region.reasons).toEqual([
     "complete-positive-bounds-candidate-unavailable"
   ]);
@@ -158,43 +173,28 @@ test("records invalid edge ordering without creating a bounds candidate", () => 
   expect(inventory).toEqual({
     totalCombinationCount: 1,
     validBoundsCandidateCount: 0,
-    rejectedCombinationCount: 1
+    rejectedCombinationCount: 1,
+    representation: "factored-axis-product"
   });
 });
 
-test("produces a boundsObservation directly consumable by Epic 13", () => {
+test("preserves the unique rectangular search space by axis reference", () => {
   const projection = createGridLatticeBoundsEvidenceProjection({
     outerLineGeometryDiagnostics: createSource({
       availableInterpretations: ["accepted"]
     })
   });
-  const boundsObservation = projection.providers[0].regions[0]
-    .boundsCandidates[0].boundsObservation;
-  const evidence = createGridLatticeEvidence({
-    id: "evidence-with-projected-bounds",
-    status: "available",
-    coordinateSystem: renderedCoordinateSystem(),
-    axes: {
-      horizontal: createEvidenceAxis("horizontal", [10, 20, 30]),
-      vertical: createEvidenceAxis("vertical", [5, 15, 25, 35])
-    },
-    boundsObservation,
-    provenance: { source: "bounds-projection-consumption-test" },
-    evidenceReferences: [],
-    diagnostics: [],
-    reasons: []
-  });
-  const generation = generateGridLatticeCandidates({
-    evidence,
-    primitivePeriodEvidence: createPrimitivePeriodEvidence()
-  });
+  const region = projection.providers[0].regions[0];
 
-  expect(evidence.boundsObservation).toEqual(boundsObservation);
-  expect(generation.status).toBe("available");
-  expect(generation.candidates[0].gridDimensions).toEqual({
-    rows: 2,
-    cols: 3
+  expect(region.rectangularCombinationSpace).toEqual({
+    representation: "cartesian-product-by-reference",
+    combinationOrder: "horizontal-major-vertical-minor",
+    horizontalAxisBoundsIds: [region.axisBounds.horizontal[0].id],
+    verticalAxisBoundsIds: [region.axisBounds.vertical[0].id],
+    exactCombinationCount: 1,
+    materializedCombinationCount: 0
   });
+  expect(region).not.toHaveProperty("boundsCandidates");
 });
 
 test("is deeply immutable without mutating source observations", () => {
@@ -208,11 +208,41 @@ test("is deeply immutable without mutating source observations", () => {
 
   expect(JSON.stringify(source)).toBe(before);
   expect(Object.isFrozen(result)).toBe(true);
-  expect(Object.isFrozen(result.providers[0].regions[0].boundsCandidates[0]))
+  expect(Object.isFrozen(result.providers[0].regions[0].axisBounds.horizontal[0]))
     .toBe(true);
+  expect(Object.isFrozen(
+    result.providers[0].regions[0].rectangularCombinationSpace
+      .horizontalAxisBoundsIds
+  )).toBe(true);
   expect(() => {
-    result.providers[0].regions[0].boundsCandidates[0].bounds.top = 99;
+    result.providers[0].regions[0].axisBounds.horizontal[0].start = 99;
   }).toThrow();
+});
+
+test("reports realistic four-edge cardinality without materializing rectangles", () => {
+  const result = createGridLatticeBoundsEvidenceProjection({
+    outerLineGeometryDiagnostics: createSource({
+      availableInterpretations: [
+        "accepted",
+        "runs",
+        "plateau",
+        "centroid",
+        "first",
+        "last"
+      ]
+    })
+  });
+  const region = result.providers[0].regions[0];
+
+  expect(Object.fromEntries(Object.entries(region.edgeAlternativeInventory).map(
+    ([edge, inventory]) => [edge, inventory.alternativeCount]
+  ))).toEqual({ top: 6, bottom: 6, left: 6, right: 6 });
+  expect(region.axisBounds.horizontal).toHaveLength(36);
+  expect(region.axisBounds.vertical).toHaveLength(36);
+  expect(region.combinationInventory.validBoundsCandidateCount).toBe(1296);
+  expect(region.rectangularCombinationSpace.exactCombinationCount).toBe(1296);
+  expect(region.rectangularCombinationSpace.materializedCombinationCount).toBe(0);
+  expect(region).not.toHaveProperty("boundsCandidates");
 });
 
 test("contains no Ground Truth, reconstruction, ranking, scoring or selection", () => {
@@ -238,6 +268,7 @@ test("contains no Ground Truth, reconstruction, ranking, scoring or selection", 
   ]));
   expect(source).not.toMatch(/groundTruth|grid-ground-truth/i);
   expect(source).not.toMatch(/generateGridLattice|selectGridLattice|createGridLattice\(/);
+  expect(source).not.toMatch(/enumerateCombinations/);
 });
 
 test("returns explicit unavailable output for missing source diagnostics", () => {
@@ -353,55 +384,6 @@ function plateau(start, end) {
     end: { position: end },
     width: end - start + 1,
     midpoint: { position: start + ((end - start) / 2) }
-  };
-}
-
-function createEvidenceAxis(axis, positions) {
-  return {
-    status: "available",
-    axis,
-    positions,
-    spacingObservations: [],
-    evidenceReferences: [],
-    diagnostics: []
-  };
-}
-
-function createPrimitivePeriodEvidence() {
-  return {
-    id: "primitive-periods",
-    status: "available",
-    axes: {
-      horizontal: createPeriodAxis("horizontal", 10),
-      vertical: createPeriodAxis("vertical", 10)
-    },
-    provenance: { source: "synthetic-period-evidence" },
-    evidenceReferences: []
-  };
-}
-
-function createPeriodAxis(axis, period) {
-  return {
-    axis,
-    status: "available",
-    candidates: [{
-      id: `${axis}-period`,
-      period,
-      provenance: { source: "synthetic-period-evidence" },
-      evidenceReferences: []
-    }],
-    reasons: []
-  };
-}
-
-function renderedCoordinateSystem() {
-  return {
-    space: "rendered-binary-image-pixels",
-    unit: "pixel",
-    origin: "top-left",
-    xDirection: "right",
-    yDirection: "down",
-    linePosition: "visual-line-center"
   };
 }
 

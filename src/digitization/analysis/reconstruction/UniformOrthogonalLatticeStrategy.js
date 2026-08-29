@@ -230,11 +230,7 @@ function evaluateAxisInterpretation({
     attempts: assignmentResult.attempts,
     rejectionReasons: assignmentResult.rejectionReasons
   });
-
-  if (!assignmentResult.assignments) {
-    diagnostic.rejectionReasons.push(...assignmentResult.rejectionReasons);
-    return rejectInterpretation(diagnostic);
-  }
+  diagnostic.rejectionReasons.push(...assignmentResult.rejectionReasons);
 
   const assignments = assignmentResult.assignments;
   const skippedIntervalResult = inspectSkippedIntervals(
@@ -242,6 +238,14 @@ function evaluateAxisInterpretation({
     parameters.maximumSkippedIntervalsBetweenCandidates
   );
   diagnostic.skippedIntervalCounts = skippedIntervalResult.counts;
+  diagnostic.oneXSupport = inspectOneXSupport(
+    assignmentResult.attempts
+  );
+  diagnostic.alignmentQualifiedOneXSupport = inspectOneXSupport(
+    assignmentResult.attempts.filter(attempt => (
+      attempt.absoluteResidual <= attempt.tolerancePx
+    ))
+  );
 
   const assignedByLineIndex = new Map(
     assignments.map(assignment => [assignment.lineIndex, assignment])
@@ -282,7 +286,6 @@ function evaluateAxisInterpretation({
 
   if (!skippedIntervalResult.permitted) {
     diagnostic.rejectionReasons.push(...skippedIntervalResult.rejectionReasons);
-    return rejectInterpretation(diagnostic);
   }
 
   if (maximumInferredRun > parameters.maximumConsecutiveInferredLines) {
@@ -302,7 +305,9 @@ function evaluateAxisInterpretation({
     });
   }
 
-  if (diagnostic.rejectionReasons.length > 0) {
+  diagnostic.admission = evaluateInterpretationAdmission(diagnostic);
+
+  if (diagnostic.admission.status === "rejected") {
     return rejectInterpretation(diagnostic);
   }
 
@@ -457,6 +462,7 @@ function assignCandidates(candidates, linePositions, tolerance) {
   const assignments = [];
   const attempts = [];
   const occupiedLines = new Set();
+  const rejectionReasons = [];
 
   for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
     const candidate = candidates[candidateIndex];
@@ -490,34 +496,28 @@ function assignCandidates(candidates, linePositions, tolerance) {
     attempts.push(attempt);
 
     if (!aligned) {
-      return {
-        assignments: null,
-        attempts,
-        rejectionReasons: [{
-          code: "candidate-alignment-failed",
-          candidateIndex,
-          candidatePosition: candidate.position,
-          lineIndex: nearestLineIndex,
-          linePosition,
-          residual: delta,
-          absoluteResidual: nearestDistance,
-          tolerancePx: tolerance
-        }]
-      };
+      rejectionReasons.push({
+        code: "candidate-alignment-failed",
+        candidateIndex,
+        candidatePosition: candidate.position,
+        lineIndex: nearestLineIndex,
+        linePosition,
+        residual: delta,
+        absoluteResidual: nearestDistance,
+        tolerancePx: tolerance
+      });
+      continue;
     }
 
     if (occupied) {
-      return {
-        assignments: null,
-        attempts,
-        rejectionReasons: [{
-          code: "interval-count-incompatible",
-          candidateIndex,
-          candidatePosition: candidate.position,
-          lineIndex: nearestLineIndex,
-          reason: "multiple-candidates-assigned-to-one-line"
-        }]
-      };
+      rejectionReasons.push({
+        code: "interval-count-incompatible",
+        candidateIndex,
+        candidatePosition: candidate.position,
+        lineIndex: nearestLineIndex,
+        reason: "multiple-candidates-assigned-to-one-line"
+      });
+      continue;
     }
 
     occupiedLines.add(nearestLineIndex);
@@ -531,7 +531,77 @@ function assignCandidates(candidates, linePositions, tolerance) {
     });
   }
 
-  return { assignments, attempts, rejectionReasons: [] };
+  return { assignments, attempts, rejectionReasons };
+}
+
+function inspectOneXSupport(attempts) {
+  const ordered = [...attempts].sort((left, right) => (
+    left.candidatePosition - right.candidatePosition
+    || left.candidateIndex - right.candidateIndex
+  ));
+  const observations = [];
+
+  for (let index = 1; index < ordered.length; index += 1) {
+    const previous = ordered[index - 1];
+    const current = ordered[index];
+    const intervalCount = current.lineIndex - previous.lineIndex;
+
+    observations.push({
+      fromCandidateIndex: previous.candidateIndex,
+      toCandidateIndex: current.candidateIndex,
+      fromLineIndex: previous.lineIndex,
+      toLineIndex: current.lineIndex,
+      intervalCount,
+      supported: intervalCount === 1
+    });
+  }
+
+  return {
+    status: "available",
+    count: observations.filter(observation => observation.supported).length,
+    observedPairCount: observations.length,
+    observations
+  };
+}
+
+function evaluateInterpretationAdmission(diagnostic) {
+  const alignmentFailures = diagnostic.rejectionReasons.filter(
+    reason => reason.code === "candidate-alignment-failed"
+  );
+  const additionalRejections = diagnostic.rejectionReasons.filter(
+    reason => reason.code !== "candidate-alignment-failed"
+  );
+  const hasAlignmentQualifiedObservedOneXSupport = (
+    diagnostic.alignmentQualifiedOneXSupport.count > 0
+  );
+  const alignmentFailureBlocksAdmission = (
+    alignmentFailures.length > 0
+    && !hasAlignmentQualifiedObservedOneXSupport
+  );
+  const status = additionalRejections.length === 0
+    && !alignmentFailureBlocksAdmission
+    ? "admitted"
+    : "rejected";
+
+  return {
+    status,
+    policy:
+      "complete-evidence-with-alignment-qualified-observed-one-x-support",
+    candidateAlignmentCriterionPx:
+      diagnostic.candidateAssignmentAttempts[0]?.tolerancePx ?? null,
+    candidateAlignmentFailureCount: alignmentFailures.length,
+    observedOneXSupportCount: diagnostic.oneXSupport.count,
+    alignmentQualifiedObservedOneXSupportCount:
+      diagnostic.alignmentQualifiedOneXSupport.count,
+    alignmentFailureEffect: alignmentFailures.length === 0
+      ? "not-present"
+      : alignmentFailureBlocksAdmission
+        ? "blocking-without-alignment-qualified-observed-one-x-support"
+        : "recorded-non-blocking-with-alignment-qualified-observed-one-x-support",
+    additionalBlockingRejectionCodes: additionalRejections.map(
+      reason => reason.code
+    )
+  };
 }
 
 const RESIDUAL_HISTOGRAM_BOUNDS = Object.freeze([
@@ -938,6 +1008,29 @@ function createInterpretationDiagnostic({
     residualHistogram: createResidualHistogram([]),
     firstFailingCandidate: null,
     skippedIntervalCounts: [],
+    oneXSupport: {
+      status: "not-assessed",
+      count: null,
+      observedPairCount: null,
+      observations: []
+    },
+    alignmentQualifiedOneXSupport: {
+      status: "not-assessed",
+      count: null,
+      observedPairCount: null,
+      observations: []
+    },
+    admission: {
+      status: "not-assessed",
+      policy:
+        "complete-evidence-with-alignment-qualified-observed-one-x-support",
+      candidateAlignmentCriterionPx: null,
+      candidateAlignmentFailureCount: 0,
+      observedOneXSupportCount: null,
+      alignmentQualifiedObservedOneXSupportCount: null,
+      alignmentFailureEffect: "not-assessed",
+      additionalBlockingRejectionCodes: []
+    },
     inferredLineCount: null,
     longestInferredRun: null,
     inferredLineFraction: null,
