@@ -12,6 +12,18 @@ export function createGridLatticeReconstructionResult({
   evidenceFusion,
   candidateSelection
 } = {}) {
+  if (isFactoredReconstruction({
+    candidateGeneration,
+    evidenceFusion,
+    candidateSelection
+  })) {
+    return createFactoredReconstructionResult({
+      candidateGeneration,
+      evidenceFusion,
+      candidateSelection
+    });
+  }
+
   validateInputs(candidateGeneration, evidenceFusion, candidateSelection);
 
   const sourceCandidate = candidateSelection.status === "selected"
@@ -65,6 +77,281 @@ export function createGridLatticeReconstructionResult({
       }
     }),
     reasons: Object.freeze(candidateSelection.reasons.slice())
+  });
+}
+
+function isFactoredReconstruction({ candidateGeneration, evidenceFusion }) {
+  return candidateGeneration?.candidateSpace?.representation
+    === "cartesian-product-by-reference"
+    && evidenceFusion?.confidenceSpace?.representation
+      === "cartesian-product-by-reference";
+}
+
+function createFactoredReconstructionResult({
+  candidateGeneration,
+  evidenceFusion,
+  candidateSelection
+}) {
+  validateFactoredInputs({
+    candidateGeneration,
+    evidenceFusion,
+    candidateSelection
+  });
+  const selectedReference = candidateSelection.selectedCandidateReference;
+  const horizontal = selectedReference
+    ? findAxisCandidate(
+      candidateGeneration.axisCandidates.horizontal,
+      selectedReference.horizontalAxisCandidateId
+    )
+    : null;
+  const vertical = selectedReference
+    ? findAxisCandidate(
+      candidateGeneration.axisCandidates.vertical,
+      selectedReference.verticalAxisCandidateId
+    )
+    : null;
+  const status = candidateSelection.status === "selected"
+    ? "available"
+    : candidateSelection.status;
+  const lattice = selectedReference
+    ? materializeFactoredLattice({
+      selectedReference,
+      horizontal,
+      vertical,
+      candidateGeneration,
+      evidenceFusion,
+      candidateSelection
+    })
+    : null;
+
+  return Object.freeze({
+    type: "grid-lattice-reconstruction-result",
+    version: VERSION,
+    status,
+    lattice,
+    sourceCandidateId: selectedReference?.candidateId ?? null,
+    sourceCandidate: null,
+    sourceCandidateReference: selectedReference
+      ? deepFreeze(cloneDeterministicValue(selectedReference))
+      : null,
+    competingCandidates: null,
+    competingCandidateSpace: deepFreeze(cloneDeterministicValue(
+      candidateSelection.competingCandidateSpace
+    )),
+    candidateSelectionStatus: candidateSelection.status,
+    reconstructionProvenance: deepFreeze({
+      materializer: "grid-lattice-reconstruction-result-v1",
+      candidateGeneration: {
+        type: candidateGeneration.type,
+        version: candidateGeneration.version,
+        status: candidateGeneration.status,
+        evidenceId: candidateGeneration.evidenceId,
+        primitivePeriodEvidenceId:
+          candidateGeneration.primitivePeriodEvidenceId,
+        provenance: cloneDeterministicValue(candidateGeneration.provenance),
+        candidateSpace: cloneDeterministicValue(
+          candidateGeneration.candidateSpace
+        )
+      },
+      evidenceFusion: {
+        type: evidenceFusion.type,
+        version: evidenceFusion.version,
+        status: evidenceFusion.status,
+        provenance: cloneDeterministicValue(evidenceFusion.provenance),
+        confidenceSpace: cloneDeterministicValue(
+          evidenceFusion.confidenceSpace
+        )
+      },
+      candidateDecision: {
+        status: candidateSelection.status,
+        selectedCandidateId: candidateSelection.selectedCandidateId,
+        selectedCandidateReference: cloneDeterministicValue(selectedReference),
+        decisionPolicy: cloneDeterministicValue(
+          candidateSelection.decisionPolicy
+        ),
+        decisionProvenance: compactDecisionProvenance(
+          candidateSelection.decisionProvenance
+        ),
+        competingCandidateSpace: cloneDeterministicValue(
+          candidateSelection.competingCandidateSpace
+        ),
+        candidateEvaluationSpace: cloneDeterministicValue(
+          candidateSelection.candidateEvaluationSpace
+        )
+      }
+    }),
+    reasons: Object.freeze(candidateSelection.reasons.slice())
+  });
+}
+
+function materializeFactoredLattice({
+  selectedReference,
+  horizontal,
+  vertical,
+  candidateGeneration,
+  evidenceFusion,
+  candidateSelection
+}) {
+  const horizontalAxis = materializeFactoredAxis(horizontal);
+  const verticalAxis = materializeFactoredAxis(vertical);
+
+  return createGridLattice({
+    id: `grid-lattice-${selectedReference.candidateId}`,
+    status: "available",
+    sourceCandidateId: selectedReference.candidateId,
+    coordinateSystem: candidateGeneration.coordinateSystem,
+    axes: {
+      horizontal: horizontalAxis,
+      vertical: verticalAxis
+    },
+    gridDimensions: {
+      rows: horizontal.intervalCount,
+      cols: vertical.intervalCount
+    },
+    extent: {
+      status: "available",
+      semantics: "modeled-outer-line-center-envelope",
+      coordinateSpace: candidateGeneration.coordinateSystem.space,
+      bounds: {
+        top: horizontalAxis.origin,
+        left: verticalAxis.origin,
+        width: verticalAxis.positions[verticalAxis.positions.length - 1]
+          - verticalAxis.origin,
+        height: horizontalAxis.positions[horizontalAxis.positions.length - 1]
+          - horizontalAxis.origin
+      }
+    },
+    assumptions: [
+      {
+        code: "outer-bounds-represent-outer-line-centers",
+        boundsObservationStatus:
+          candidateGeneration.boundsSpace?.status ?? null
+      },
+      {
+        code: "axis-periods-are-primitive-period-evidence",
+        primitivePeriodEvidenceId:
+          candidateGeneration.primitivePeriodEvidenceId
+      },
+      { code: "orthogonal-rectangular-lattice" }
+    ],
+    provenance: {
+      materializer: "grid-lattice-reconstruction-result-v1",
+      selectedCandidateReference: cloneDeterministicValue(selectedReference),
+      horizontalAxisCandidate: cloneDeterministicValue(horizontal.provenance),
+      verticalAxisCandidate: cloneDeterministicValue(vertical.provenance),
+      candidateGeneration: cloneDeterministicValue(
+        candidateGeneration.provenance
+      ),
+      evidenceFusion: cloneDeterministicValue(evidenceFusion.provenance),
+      candidateDecisionPolicy: cloneDeterministicValue(
+        candidateSelection.decisionPolicy
+      )
+    },
+    diagnostics: [{
+      code: "selected-factored-candidate-materialized-as-grid-lattice",
+      horizontalLineCount: horizontalAxis.lineCount,
+      verticalLineCount: verticalAxis.lineCount,
+      rowCount: horizontal.intervalCount,
+      columnCount: vertical.intervalCount
+    }],
+    reasons: []
+  });
+}
+
+function materializeFactoredAxis(axisCandidate) {
+  return {
+    status: "available",
+    axis: axisCandidate.axis,
+    origin: axisCandidate.origin,
+    period: axisCandidate.period,
+    intervalCount: axisCandidate.intervalCount,
+    lineCount: axisCandidate.lineCount,
+    positions: Array.from(
+      { length: axisCandidate.lineCount },
+      (_value, index) => axisCandidate.origin + index * axisCandidate.period
+    ),
+    diagnostics: [{
+      code: "positions-materialized-from-candidate-origin-and-period",
+      sourceBoundsStart: axisCandidate.boundsStart,
+      sourceBoundsEnd: axisCandidate.boundsEnd,
+      sourceModeledEnd: axisCandidate.modeledEnd,
+      sourceBoundsResidual: axisCandidate.boundsResidual
+    }]
+  };
+}
+
+function validateFactoredInputs({
+  candidateGeneration,
+  evidenceFusion,
+  candidateSelection
+}) {
+  if (
+    candidateGeneration?.type !== "grid-lattice-candidate-generation"
+    || candidateGeneration?.version !== 1
+    || evidenceFusion?.type !== "grid-lattice-evidence-fusion"
+    || evidenceFusion?.version !== 1
+    || candidateSelection?.type !== "grid-lattice-candidate-selection"
+    || candidateSelection?.version !== 1
+  ) {
+    throw new Error("factored reconstruction inputs are required");
+  }
+  if (
+    candidateGeneration.evidenceId !== evidenceFusion.evidenceId
+    || candidateGeneration.primitivePeriodEvidenceId
+      !== evidenceFusion.primitivePeriodEvidenceId
+    || candidateGeneration.candidateSpace.exactCandidateCount
+      !== evidenceFusion.confidenceSpace.exactConfidenceCount
+  ) {
+    throw new Error("factored reconstruction sources must match");
+  }
+  if (candidateSelection.status === "selected") {
+    const reference = candidateSelection.selectedCandidateReference;
+    const verticalCandidateCount =
+      candidateGeneration.axisCandidates.vertical.length;
+    const horizontalIndex = Math.floor(
+      reference?.candidateIndex / verticalCandidateCount
+    );
+    const verticalIndex = reference?.candidateIndex % verticalCandidateCount;
+    const horizontal = findAxisCandidate(
+      candidateGeneration.axisCandidates.horizontal,
+      reference?.horizontalAxisCandidateId
+    );
+    const vertical = findAxisCandidate(
+      candidateGeneration.axisCandidates.vertical,
+      reference?.verticalAxisCandidateId
+    );
+    if (
+      !reference
+      || reference.candidateId !== candidateSelection.selectedCandidateId
+      || !horizontal
+      || !vertical
+      || evidenceFusion.axisEvidence.horizontal[horizontalIndex]
+        ?.axisCandidateId !== horizontal.id
+      || evidenceFusion.axisEvidence.vertical[verticalIndex]
+        ?.axisCandidateId !== vertical.id
+    ) {
+      throw new Error("selected factored candidate reference is invalid");
+    }
+  } else if (candidateSelection.selectedCandidateReference !== null) {
+    throw new Error("non-selected factored result cannot reference a candidate");
+  }
+}
+
+function findAxisCandidate(candidates, id) {
+  return Array.isArray(candidates)
+    ? candidates.find(candidate => candidate.id === id) ?? null
+    : null;
+}
+
+function compactDecisionProvenance(provenance) {
+  if (!provenance) {
+    return null;
+  }
+  return cloneDeterministicValue({
+    candidateGeneration: provenance.candidateGeneration,
+    evidenceFusion: provenance.evidenceFusion,
+    confidenceSpace: provenance.confidenceSpace,
+    referenceLookup: provenance.referenceLookup
   });
 }
 

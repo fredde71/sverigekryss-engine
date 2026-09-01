@@ -18,6 +18,7 @@ test("createAnalysisContext creates the expected empty technical workspace", () 
     lineCandidates: null,
     gridGeometry: null,
     gridDetection: null,
+    coordinateProvenance: null,
     diagnostics: []
   });
 });

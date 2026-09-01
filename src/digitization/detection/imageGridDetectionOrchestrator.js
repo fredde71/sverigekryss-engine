@@ -89,12 +89,16 @@ function createDetectedContext({
   gridAnalysis,
   gridGeometry
 }) {
+  const coordinateProvenance = createCoordinateProvenance({
+    documentAnalysis,
+    analysisRegion
+  });
   const analysisContext = withGridGeometry(
     withLineCandidates(
       withProjections(
         withBinaryImage(
           withImageData(
-            createAnalysisContext(),
+            createAnalysisContext({ coordinateProvenance }),
             documentAnalysis.imageData
           ),
           analysisRegion.binaryImage
@@ -113,6 +117,37 @@ function createDetectedContext({
       diagnostics: gridAnalysis.diagnostics
     })
   });
+}
+
+function createCoordinateProvenance({ documentAnalysis, analysisRegion }) {
+  return {
+    type: "digitization-coordinate-provenance",
+    version: 1,
+    spaces: {
+      local: "analysis-region-local",
+      binaryImage: "binary-image-pixels",
+      document: "document"
+    },
+    analysisRegion: {
+      id: analysisRegion?.id ?? null,
+      regionType: analysisRegion?.regionType ?? null,
+      relationshipType:
+        analysisRegion?.coordinateRelationship?.type ?? null,
+      localToBinaryImage:
+        analysisRegion?.coordinateRelationship?.localToBinaryImage ?? null,
+      owner: "analysis-region"
+    },
+    documentAnalysis: {
+      type: documentAnalysis?.type ?? null,
+      version: documentAnalysis?.version ?? null,
+      relationshipType:
+        documentAnalysis?.coordinateRelationship?.type ?? null,
+      binaryImageToDocument:
+        documentAnalysis?.coordinateRelationship?.binaryImageToDocument
+          ?? null,
+      owner: "document-analysis"
+    }
+  };
 }
 
 function assertCompatibilityRegion(analysisRegion) {

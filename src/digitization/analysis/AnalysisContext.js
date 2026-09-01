@@ -6,6 +6,7 @@ export function createAnalysisContext(initialState = {}) {
     lineCandidates: null,
     gridGeometry: null,
     gridDetection: null,
+    coordinateProvenance: null,
     diagnostics: [],
     ...initialState
   });

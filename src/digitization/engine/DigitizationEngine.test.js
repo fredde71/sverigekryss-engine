@@ -74,6 +74,41 @@ test("runDigitizationJob orchestrates a single job through image grid detection"
     sourceId: "source-1",
     confidence: "detected"
   });
+  expect(result.context.coordinateProvenance).toEqual({
+    type: "digitization-coordinate-provenance",
+    version: 1,
+    spaces: {
+      local: "analysis-region-local",
+      binaryImage: "binary-image-pixels",
+      document: "document"
+    },
+    analysisRegion: {
+      id: "compatibility-full-binary-image",
+      regionType: "compatibility",
+      relationshipType: "identity",
+      localToBinaryImage: {
+        offsetX: 0,
+        offsetY: 0,
+        scaleX: 1,
+        scaleY: 1
+      },
+      owner: "analysis-region"
+    },
+    documentAnalysis: {
+      type: "document-analysis",
+      version: 1,
+      relationshipType: "axis-aligned-scale",
+      binaryImageToDocument: {
+        scaleX: 1,
+        scaleY: 1
+      },
+      owner: "document-analysis"
+    }
+  });
+  expect(Object.isFrozen(result.context.coordinateProvenance)).toBe(true);
+  expect(Object.isFrozen(
+    result.context.coordinateProvenance.analysisRegion.localToBinaryImage
+  )).toBe(true);
 });
 
 test("runDigitizationJob preserves diagnostics and empty suggestions when grid is missing", async () => {

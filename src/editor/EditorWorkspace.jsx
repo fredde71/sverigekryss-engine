@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import EditorLayer from "./EditorLayer";
 import EditorToolbar from "./EditorToolbar";
 import EditorViewport from "./EditorViewport";
@@ -17,6 +17,7 @@ export default function EditorWorkspace({
   setCropArea,
   setCompetitionCells,
   setCellTypes,
+  gridProposal = null,
   isPublicRuntime,
   children
 }) {
@@ -31,6 +32,27 @@ export default function EditorWorkspace({
     Number.isInteger(competitionMenuCellIndex) &&
     cellTypes[competitionMenuCellIndex] === "write"
   ) ? competitionMenuCellIndex : null;
+
+  const applyGridProposal = useCallback((proposal) => {
+    setRows(proposal.rows);
+    setCols(proposal.cols);
+    setGridArea(proposal.gridArea);
+    setCellTypes(proposal.cellTypes);
+    setCompetitionCells?.(proposal.competitionCells);
+    setCompetitionMenuCellIndex(null);
+  }, [
+    setRows,
+    setCols,
+    setGridArea,
+    setCellTypes,
+    setCompetitionCells
+  ]);
+
+  useEffect(() => {
+    if (gridProposal) {
+      applyGridProposal(gridProposal);
+    }
+  }, [gridProposal, applyGridProposal]);
 
   useEffect(() => {
     setCompetitionCells?.(prev => (
@@ -184,6 +206,7 @@ export default function EditorWorkspace({
       toolbar,
       competitionMenu,
       editor,
+      applyGridProposal,
       cropArea,
       setCropArea
     });

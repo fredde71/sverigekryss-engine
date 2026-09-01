@@ -16,13 +16,31 @@ test("sequences every production stage exactly once with exact references", asyn
     data: new Uint8Array([1, 0, 0, 1])
   };
   const documentAnalysis = {
+    type: "document-analysis",
+    version: 1,
     imageData,
-    binaryImage
+    binaryImage,
+    coordinateRelationship: {
+      type: "axis-aligned-scale",
+      binaryImageToDocument: {
+        scaleX: 2,
+        scaleY: 3
+      }
+    }
   };
   const analysisRegion = {
     id: "compatibility-full-binary-image",
     regionType: "compatibility",
-    binaryImage
+    binaryImage,
+    coordinateRelationship: {
+      type: "identity",
+      localToBinaryImage: {
+        offsetX: 0,
+        offsetY: 0,
+        scaleX: 1,
+        scaleY: 1
+      }
+    }
   };
   const localGeometry = createGeometry();
   const normalizedGeometry = {
@@ -80,6 +98,31 @@ test("sequences every production stage exactly once with exact references", asyn
   expect(analyzeGrid).toHaveBeenCalledTimes(1);
   expect(normalizeGeometry).toHaveBeenCalledTimes(1);
   expect(result.context.gridGeometry).toEqual(normalizedGeometry);
+  expect(result.context.coordinateProvenance).toEqual({
+    type: "digitization-coordinate-provenance",
+    version: 1,
+    spaces: {
+      local: "analysis-region-local",
+      binaryImage: "binary-image-pixels",
+      document: "document"
+    },
+    analysisRegion: {
+      id: "compatibility-full-binary-image",
+      regionType: "compatibility",
+      relationshipType: "identity",
+      localToBinaryImage:
+        analysisRegion.coordinateRelationship.localToBinaryImage,
+      owner: "analysis-region"
+    },
+    documentAnalysis: {
+      type: "document-analysis",
+      version: 1,
+      relationshipType: "axis-aligned-scale",
+      binaryImageToDocument:
+        documentAnalysis.coordinateRelationship.binaryImageToDocument,
+      owner: "document-analysis"
+    }
+  });
   expect(result.gridDetection).toEqual({
     geometry: normalizedGeometry,
     confidence: "detected",
@@ -94,6 +137,43 @@ test("sequences every production stage exactly once with exact references", asyn
     }
   ]);
   expect(result.diagnostics).toEqual(gridAnalysis.diagnostics);
+});
+
+test("does not fabricate coordinate transforms when owners omit them", async () => {
+  const imageData = createImageData(1, 1);
+  const binaryImage = {
+    width: 1,
+    height: 1,
+    data: new Uint8Array([0])
+  };
+  const run = createImageGridDetectionOrchestrator({
+    analyzeDocument: () => ({ imageData, binaryImage }),
+    createProductionRegion: () => ({
+      id: "compatibility-full-binary-image",
+      regionType: "compatibility",
+      binaryImage
+    }),
+    analyzeGrid: async () => createGridAnalysisResult(null),
+    normalizeGeometry: () => null
+  });
+
+  const result = await run({
+    source: { id: "missing-coordinate-transforms" },
+    readImageData: async () => imageData
+  });
+
+  expect(result.context.coordinateProvenance).toMatchObject({
+    analysisRegion: {
+      relationshipType: null,
+      localToBinaryImage: null,
+      owner: "analysis-region"
+    },
+    documentAnalysis: {
+      relationshipType: null,
+      binaryImageToDocument: null,
+      owner: "document-analysis"
+    }
+  });
 });
 
 test("uses only the compatibility AnalysisRegion in production", async () => {

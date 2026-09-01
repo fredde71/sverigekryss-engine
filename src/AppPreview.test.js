@@ -151,6 +151,35 @@ test("editor preview renders read-only digitization suggestion overlay", () => {
   expect(overlaySection).not.toContain("setCropArea");
 });
 
+test("routes an available GridLattice proposal through EditorWorkspace ownership", () => {
+  const proposalSection = getSourceBetween(
+    appSource,
+    "const gridLatticeEditorProposal = React.useMemo(() => {",
+    "}, [gridLatticeReconstructionResult]);"
+  );
+  const editorWorkspaceSection = getSourceBetween(
+    appSource,
+    "<EditorWorkspace",
+    ">"
+  );
+
+  expect(appSource).toContain(
+    "import {\n  createGridLatticeEditorProposal\n} from \"./digitization/analysis/reconstruction/GridLatticeEditorProposal\";"
+  );
+  expect(appSource).toContain(
+    "function App({ gridLatticeReconstructionResult = null })"
+  );
+  expect(proposalSection).toContain(
+    "createGridLatticeEditorProposal(\n      gridLatticeReconstructionResult.lattice"
+  );
+  expect(proposalSection).not.toMatch(
+    /setRows|setCols|setGridArea|setCellTypes|setCompetitionCells/
+  );
+  expect(editorWorkspaceSection).toContain(
+    "gridProposal={gridLatticeEditorProposal}"
+  );
+});
+
 function getSourceBetween(source, start, end) {
   const startIndex = source.indexOf(start);
   const endIndex = source.indexOf(end, startIndex + start.length);

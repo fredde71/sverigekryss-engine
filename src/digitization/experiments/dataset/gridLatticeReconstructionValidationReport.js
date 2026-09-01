@@ -11,7 +11,17 @@ import {
 import {
   createGridLatticeBoundsEvidenceProjection
 } from "../../analysis/reconstruction/GridLatticeBoundsEvidenceProjection";
+import {
+  createGridLatticeReconstructionPipeline
+} from "../../analysis/reconstruction/GridLatticeReconstructionPipeline";
+import {
+  createGridLatticeReconstructionResult
+} from "../../analysis/reconstruction/GridLatticeReconstructionResult";
 import { compareLinePositions } from "./shadowGridValidationReport";
+
+export {
+  createGridLatticeReconstructionResult as createFactoredValidationReconstructionResult
+} from "../../analysis/reconstruction/GridLatticeReconstructionResult";
 
 const REPORT_VERSION = 1;
 const GRID_ANALYSIS_EXPERIMENT_ID = "shadow-grid-analysis-diagnostics";
@@ -29,7 +39,8 @@ export function createGridLatticeReconstructionValidationReportFactory({
   generateCandidates = generateGridLatticeCandidates,
   fuseEvidence = fuseGridLatticeCandidateEvidence,
   selectCandidate = selectGridLatticeCandidate,
-  createReconstruction = createFactoredValidationReconstructionResult,
+  createReconstruction = createGridLatticeReconstructionResult,
+  runReconstruction = null,
   projectBounds = createGridLatticeBoundsEvidenceProjection
 } = {}) {
   [
@@ -37,13 +48,23 @@ export function createGridLatticeReconstructionValidationReportFactory({
     [generateCandidates, "generateCandidates"],
     [fuseEvidence, "fuseEvidence"],
     [selectCandidate, "selectCandidate"],
-    [createReconstruction, "createReconstruction"],
     [projectBounds, "projectBounds"]
   ].forEach(([dependency, name]) => {
     if (typeof dependency !== "function") {
       throw new Error(`${name} must be a function`);
     }
   });
+  if (runReconstruction !== null && typeof runReconstruction !== "function") {
+    throw new Error("runReconstruction must be a function");
+  }
+  const reconstruct = runReconstruction
+    ?? createGridLatticeReconstructionPipeline({
+      createEvidence,
+      generateCandidates,
+      fuseEvidence,
+      selectCandidate,
+      createReconstructionResult: createReconstruction
+    });
 
   return function createReport({ datasetReport, groundTruth } = {}) {
     validateDatasetReport(datasetReport);
@@ -51,11 +72,7 @@ export function createGridLatticeReconstructionValidationReportFactory({
     // Reconstruction is intentionally complete before Ground Truth is read.
     const reconstructionItems = datasetReport.items.map(item => (
       reconstructDatasetItem(item, {
-        createEvidence,
-        generateCandidates,
-        fuseEvidence,
-        selectCandidate,
-        createReconstruction,
+        runReconstruction: reconstruct,
         projectBounds
       })
     ));
@@ -317,173 +334,6 @@ function createSourceBoundsSpace(boundsRegion) {
   });
 }
 
-export function createFactoredValidationReconstructionResult({
-  candidateGeneration,
-  evidenceFusion,
-  candidateSelection
-} = {}) {
-  validateFactoredReconstructionInputs({
-    candidateGeneration,
-    evidenceFusion,
-    candidateSelection
-  });
-  const selectedReference = candidateSelection.selectedCandidateReference;
-  const horizontal = selectedReference
-    ? findAxisCandidate(
-      candidateGeneration.axisCandidates.horizontal,
-      selectedReference.horizontalAxisCandidateId
-    )
-    : null;
-  const vertical = selectedReference
-    ? findAxisCandidate(
-      candidateGeneration.axisCandidates.vertical,
-      selectedReference.verticalAxisCandidateId
-    )
-    : null;
-  const status = candidateSelection.status === "selected"
-    ? "available"
-    : candidateSelection.status;
-  const lattice = selectedReference
-    ? {
-      gridDimensions: {
-        rows: horizontal.intervalCount,
-        cols: vertical.intervalCount
-      },
-      axes: {
-        horizontal: materializeSelectedAxis(horizontal),
-        vertical: materializeSelectedAxis(vertical)
-      },
-      coordinateSystem: cloneValue(candidateGeneration.coordinateSystem)
-    }
-    : null;
-
-  return {
-    status,
-    lattice,
-    sourceCandidateId: selectedReference?.candidateId ?? null,
-    sourceCandidateReference: cloneValue(selectedReference),
-    reconstructionProvenance: {
-      materializer: "grid-lattice-reconstruction-result-v1",
-      candidateGeneration: {
-        type: candidateGeneration.type,
-        version: candidateGeneration.version,
-        status: candidateGeneration.status,
-        evidenceId: candidateGeneration.evidenceId,
-        primitivePeriodEvidenceId:
-          candidateGeneration.primitivePeriodEvidenceId,
-        provenance: cloneValue(candidateGeneration.provenance),
-        candidateSpace: cloneValue(candidateGeneration.candidateSpace)
-      },
-      evidenceFusion: {
-        type: evidenceFusion.type,
-        version: evidenceFusion.version,
-        status: evidenceFusion.status,
-        provenance: cloneValue(evidenceFusion.provenance),
-        confidenceSpace: cloneValue(evidenceFusion.confidenceSpace)
-      },
-      candidateDecision: {
-        status: candidateSelection.status,
-        selectedCandidateId: candidateSelection.selectedCandidateId,
-        selectedCandidateReference: cloneValue(selectedReference),
-        decisionPolicy: cloneValue(candidateSelection.decisionPolicy),
-        decisionProvenance: compactDecisionProvenance(
-          candidateSelection.decisionProvenance
-        )
-      }
-    },
-    reasons: candidateSelection.reasons.slice()
-  };
-}
-
-function validateFactoredReconstructionInputs({
-  candidateGeneration,
-  evidenceFusion,
-  candidateSelection
-}) {
-  if (
-    candidateGeneration?.type !== "grid-lattice-candidate-generation"
-    || candidateGeneration?.candidateSpace?.representation
-      !== "cartesian-product-by-reference"
-    || evidenceFusion?.type !== "grid-lattice-evidence-fusion"
-    || evidenceFusion?.confidenceSpace?.representation
-      !== "cartesian-product-by-reference"
-    || candidateSelection?.type !== "grid-lattice-candidate-selection"
-  ) {
-    throw new Error("factored reconstruction inputs are required");
-  }
-  if (
-    candidateGeneration.evidenceId !== evidenceFusion.evidenceId
-    || candidateGeneration.primitivePeriodEvidenceId
-      !== evidenceFusion.primitivePeriodEvidenceId
-    || candidateGeneration.candidateSpace.exactCandidateCount
-      !== evidenceFusion.confidenceSpace.exactConfidenceCount
-  ) {
-    throw new Error("factored reconstruction sources must match");
-  }
-  if (candidateSelection.status === "selected") {
-    const reference = candidateSelection.selectedCandidateReference;
-    const verticalCandidateCount =
-      candidateGeneration.axisCandidates.vertical.length;
-    const horizontalIndex = Math.floor(
-      reference?.candidateIndex / verticalCandidateCount
-    );
-    const verticalIndex = reference?.candidateIndex % verticalCandidateCount;
-    const horizontal = findAxisCandidate(
-      candidateGeneration.axisCandidates.horizontal,
-      reference?.horizontalAxisCandidateId
-    );
-    const vertical = findAxisCandidate(
-      candidateGeneration.axisCandidates.vertical,
-      reference?.verticalAxisCandidateId
-    );
-    if (
-      !reference
-      || reference.candidateId !== candidateSelection.selectedCandidateId
-      || !horizontal
-      || !vertical
-      || evidenceFusion.axisEvidence.horizontal[horizontalIndex]
-        ?.axisCandidateId !== horizontal.id
-      || evidenceFusion.axisEvidence.vertical[verticalIndex]
-        ?.axisCandidateId !== vertical.id
-    ) {
-      throw new Error("selected factored candidate reference is invalid");
-    }
-  } else if (candidateSelection.selectedCandidateReference !== null) {
-    throw new Error("non-selected factored result cannot reference a candidate");
-  }
-}
-
-function findAxisCandidate(candidates, id) {
-  return Array.isArray(candidates)
-    ? candidates.find(candidate => candidate.id === id) ?? null
-    : null;
-}
-
-function materializeSelectedAxis(axisCandidate) {
-  return {
-    origin: axisCandidate.origin,
-    period: axisCandidate.period,
-    intervalCount: axisCandidate.intervalCount,
-    lineCount: axisCandidate.lineCount,
-    positions: Array.from(
-      { length: axisCandidate.lineCount },
-      (_value, index) => axisCandidate.origin + index * axisCandidate.period
-    )
-  };
-}
-
-function compactDecisionProvenance(provenance) {
-  if (!provenance) {
-    return null;
-  }
-  return cloneValue({
-    candidateGeneration: provenance.candidateGeneration,
-    evidenceFusion: provenance.evidenceFusion,
-    confidenceSpace: provenance.confidenceSpace,
-    referenceLookup: provenance.referenceLookup
-  });
-}
-
 function runReconstructionChain({
   providerId,
   regionId,
@@ -508,7 +358,7 @@ function runReconstructionChain({
       reconstructionRegion,
       transform
     });
-    const evidence = dependencies.createEvidence({
+    const evidence = {
       id: `grid-lattice-evidence:${providerId}:${regionId}:${observationIndex}`,
       status: "available",
       coordinateSystem: renderedCoordinateSystem(),
@@ -529,29 +379,15 @@ function runReconstructionChain({
       ],
       diagnostics: [],
       reasons: []
-    });
-    const generationInput = {
+    };
+    const reconstructionInput = {
       evidence,
       primitivePeriodEvidence
     };
     if (factoredBounds) {
-      generationInput.factoredBounds = factoredBounds;
+      reconstructionInput.factoredBounds = factoredBounds;
     }
-    const generation = dependencies.generateCandidates(generationInput);
-    const fusion = dependencies.fuseEvidence({
-      candidateGeneration: generation,
-      evidence,
-      primitivePeriodEvidence
-    });
-    const selection = dependencies.selectCandidate({
-      candidateGeneration: generation,
-      evidenceFusion: fusion
-    });
-    const result = dependencies.createReconstruction({
-      candidateGeneration: generation,
-      evidenceFusion: fusion,
-      candidateSelection: selection
-    });
+    const result = dependencies.runReconstruction(reconstructionInput);
 
     return compactReconstruction({
       providerId,
@@ -560,9 +396,6 @@ function runReconstructionChain({
       boundsObservation,
       boundsEvidenceRegion,
       primitivePeriodEvidence,
-      generation,
-      fusion,
-      selection,
       result
     });
   } catch (error) {
@@ -584,12 +417,12 @@ function compactReconstruction({
   boundsObservation,
   boundsEvidenceRegion,
   primitivePeriodEvidence,
-  generation,
-  fusion,
-  selection,
   result
 }) {
   const lattice = result.lattice;
+  const generation = result.reconstructionProvenance.candidateGeneration;
+  const fusion = result.reconstructionProvenance.evidenceFusion;
+  const selection = result.reconstructionProvenance.candidateDecision;
   return {
     providerId,
     regionId,

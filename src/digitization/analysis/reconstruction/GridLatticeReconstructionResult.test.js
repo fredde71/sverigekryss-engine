@@ -34,8 +34,10 @@ test("materializes a selected candidate as an immutable GridLattice", () => {
     sourceCandidateId: "grid-lattice-candidate-001",
     gridDimensions: { rows: 2, cols: 3 }
   });
-  expect(result.sourceCandidate).toBe(pipeline.selection.selectedCandidate);
-  expect(result.sourceCandidate).toBe(pipeline.generation.candidates[0]);
+  expect(result.sourceCandidate).toBeNull();
+  expect(result.sourceCandidateReference).toEqual(
+    pipeline.selection.selectedCandidateReference
+  );
 });
 
 test("preserves origins, periods, dimensions, positions and coordinate space", () => {
@@ -105,8 +107,10 @@ test("returns ambiguous without inventing a GridLattice", () => {
     candidateSelectionStatus: "ambiguous",
     reasons: ["multiple-candidates-have-identical-evidence-observations"]
   });
-  expect(result.competingCandidates).toBe(pipeline.selection.competingCandidates);
-  expect(result.competingCandidates).toEqual(pipeline.generation.candidates);
+  expect(result.competingCandidates).toBeNull();
+  expect(result.competingCandidateSpace).toEqual(
+    pipeline.selection.competingCandidateSpace
+  );
 });
 
 test("returns unavailable without inventing a GridLattice", () => {
@@ -122,35 +126,37 @@ test("returns unavailable without inventing a GridLattice", () => {
     lattice: null,
     sourceCandidateId: null,
     sourceCandidate: null,
-    competingCandidates: [],
+    competingCandidates: null,
     candidateSelectionStatus: "unavailable",
     reasons: ["grid-lattice-candidates-unavailable"]
   });
 });
 
-test("preserves every non-selected candidate by exact reference and order", () => {
+test("preserves every non-selected candidate in the factored reference space", () => {
   const pipeline = createPipeline({ height: 24 });
   const result = createResult(pipeline);
 
-  expect(result.competingCandidates).toBe(pipeline.selection.competingCandidates);
-  expect(result.competingCandidates).toHaveLength(1);
-  expect(result.competingCandidates[0]).toBe(pipeline.generation.candidates[1]);
+  expect(result.competingCandidates).toBeNull();
+  expect(result.competingCandidateSpace).toEqual(
+    pipeline.selection.competingCandidateSpace
+  );
+  expect(result.competingCandidateSpace.exactCandidateCount).toBe(1);
+  expect(result.competingCandidateSpace.eagerlyMaterializedCandidateCount).toBe(0);
 });
 
 test("preserves complete reconstruction and selected-candidate provenance", () => {
   const pipeline = createPipeline({ height: 24 });
   const result = createResult(pipeline);
-  const selectedConfidence = pipeline.fusion.confidences.find(value => (
-    value.candidateId === pipeline.selection.selectedCandidateId
-  ));
-
   expect(result.lattice.provenance).toEqual({
     materializer: "grid-lattice-reconstruction-result-v1",
-    sourceCandidate: pipeline.selection.selectedCandidate.provenance,
+    selectedCandidateReference: pipeline.selection.selectedCandidateReference,
+    horizontalAxisCandidate:
+      pipeline.generation.axisCandidates.horizontal[0].provenance,
+    verticalAxisCandidate:
+      pipeline.generation.axisCandidates.vertical[0].provenance,
     candidateGeneration: pipeline.generation.provenance,
     evidenceFusion: pipeline.fusion.provenance,
-    candidateDecisionPolicy: pipeline.selection.decisionPolicy,
-    confidenceArtifactId: selectedConfidence.id
+    candidateDecisionPolicy: pipeline.selection.decisionPolicy
   });
   expect(result.reconstructionProvenance).toMatchObject({
     materializer: "grid-lattice-reconstruction-result-v1",
@@ -199,31 +205,25 @@ test.each([
     ...pipeline,
     selection: { ...pipeline.selection, type: "other-selection" }
   })],
-  ["selected candidate identity", pipeline => ({
+  ["selected candidate reference", pipeline => ({
     ...pipeline,
     selection: {
       ...pipeline.selection,
-      selectedCandidate: clone(pipeline.selection.selectedCandidate)
+      selectedCandidateReference: {
+        ...pipeline.selection.selectedCandidateReference,
+        horizontalAxisCandidateId: "missing-horizontal-candidate"
+      }
     }
   })],
-  ["missing selected dimensions", pipeline => {
-    const selectedWithoutDimensions = deepFreeze({
-      ...pipeline.selection.selectedCandidate,
-      gridDimensions: null
-    });
+  ["missing selected axis candidate", pipeline => {
     return {
       ...pipeline,
       generation: {
         ...pipeline.generation,
-        candidates: [
-          selectedWithoutDimensions,
-          ...pipeline.generation.candidates.slice(1)
-        ]
-      },
-      selection: {
-        ...pipeline.selection,
-        selectedCandidate: selectedWithoutDimensions,
-        competingCandidates: pipeline.selection.competingCandidates
+        axisCandidates: {
+          ...pipeline.generation.axisCandidates,
+          horizontal: []
+        }
       }
     };
   }]
@@ -369,16 +369,4 @@ function createPeriodAxis(axis, period) {
     }],
     reasons: []
   };
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
-    return value;
-  }
-  Object.values(value).forEach(deepFreeze);
-  return Object.freeze(value);
 }

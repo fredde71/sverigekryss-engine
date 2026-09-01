@@ -23,7 +23,8 @@ const cropArea = {
 
 function EditorWorkspaceHarness({
   initialCellTypes = Array(4).fill("empty"),
-  initialCompetitionCells = []
+  initialCompetitionCells = [],
+  gridProposal = null
 }) {
   const [rows, setRows] = useState(2);
   const [cols, setCols] = useState(2);
@@ -39,6 +40,15 @@ function EditorWorkspaceHarness({
       <div data-testid="competition-state">
         {JSON.stringify(competitionCells)}
       </div>
+      <div data-testid="editor-grid-state">
+        {JSON.stringify({
+          rows,
+          cols,
+          gridArea: currentGridArea,
+          cellTypes,
+          competitionCells
+        })}
+      </div>
       <EditorWorkspace
         rows={rows}
         cols={cols}
@@ -53,6 +63,7 @@ function EditorWorkspaceHarness({
         setCropArea={setCropArea}
         setCompetitionCells={setCompetitionCells}
         setCellTypes={setCellTypes}
+        gridProposal={gridProposal}
         isPublicRuntime={false}
       >
         {({ toolbar, competitionMenu, editor }) => (
@@ -66,6 +77,30 @@ function EditorWorkspaceHarness({
     </>
   );
 }
+
+test("atomically applies a complete grid proposal through EditorWorkspace", async () => {
+  const proposal = {
+    rows: 3,
+    cols: 2,
+    gridArea: { top: 25, left: 30, width: 240, height: 360 },
+    cellTypes: Array(6).fill("empty"),
+    competitionCells: []
+  };
+
+  render(
+    <EditorWorkspaceHarness
+      initialCellTypes={["write", "blocked", "empty", "empty"]}
+      initialCompetitionCells={[{ index: 0, position: 1 }]}
+      gridProposal={proposal}
+    />
+  );
+
+  await waitFor(() => {
+    expect(JSON.parse(screen.getByTestId("editor-grid-state").textContent))
+      .toEqual(proposal);
+  });
+  expect(screen.queryAllByRole("button", { name: /Position/ })).toHaveLength(0);
+});
 
 test("assigns a competition position to a writable cell", async () => {
   render(

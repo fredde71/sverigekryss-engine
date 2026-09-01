@@ -12,6 +12,9 @@ import {
   createGridLatticeBoundsEvidenceProjection
 } from "../../analysis/reconstruction/GridLatticeBoundsEvidenceProjection";
 import {
+  runGridLatticeReconstruction
+} from "../../analysis/reconstruction/GridLatticeReconstructionPipeline";
+import {
   createGridLatticeReconstructionValidationReport,
   createGridLatticeReconstructionValidationReportFactory,
   createFactoredValidationReconstructionResult
@@ -78,6 +81,43 @@ test("runs the complete reconstruction chain before exact Ground Truth validatio
     maximumAbsoluteError: 0,
     rmsError: 0
   });
+});
+
+test("delegates normalized reconstruction evidence to the domain pipeline", () => {
+  const runReconstruction = jest.fn(runGridLatticeReconstruction);
+  const createReport = createGridLatticeReconstructionValidationReportFactory({
+    runReconstruction
+  });
+
+  createReport({
+    datasetReport: createDatasetReport(),
+    groundTruth: createGroundTruth()
+  });
+
+  expect(runReconstruction).toHaveBeenCalledTimes(1);
+  expect(runReconstruction).toHaveBeenCalledWith({
+    evidence: expect.objectContaining({
+      id: "grid-lattice-evidence:provider-a:region-a:0",
+      status: "available",
+      axes: {
+        horizontal: expect.objectContaining({
+          positions: [100, 110, 120]
+        }),
+        vertical: expect.objectContaining({
+          positions: [50, 60, 70, 80]
+        })
+      }
+    }),
+    primitivePeriodEvidence: expect.objectContaining({
+      id: "primitive-period-evidence:provider-a:region-a"
+    })
+  });
+  expect(runReconstruction.mock.calls[0][0]).not.toHaveProperty(
+    "groundTruth"
+  );
+  expect(runReconstruction.mock.calls[0][0]).not.toHaveProperty(
+    "datasetReport"
+  );
 });
 
 test("preserves the singular bounds pipeline without factored adaptation", () => {

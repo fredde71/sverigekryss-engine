@@ -33,6 +33,9 @@ import { detectGridFromImageSource } from "./digitization/detection/imageGridDet
 import DigitizationDiagnosticPanel from "./digitization/DigitizationDiagnosticPanel";
 import DigitizationSuggestionOverlay from "./digitization/DigitizationSuggestionOverlay";
 import { runDigitizationUploadWithIdentity } from "./digitization/digitizationUploadIdentityGuard";
+import {
+  createGridLatticeEditorProposal
+} from "./digitization/analysis/reconstruction/GridLatticeEditorProposal";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -45,7 +48,7 @@ const DigitizationDatasetHarness = process.env.NODE_ENV !== "production"
   ))
   : null;
 
-function App() {
+function App({ gridLatticeReconstructionResult = null }) {
   
   const { id } = useParams();
   const isSharedView = window.location.search.includes("data=");
@@ -139,6 +142,18 @@ useEffect(() => {
   const [digitizationResult, setDigitizationResult] = useState(null);
   const [digitizationExperimentComparison, setDigitizationExperimentComparison] = useState(null);
   const digitizationUploadIdRef = useRef(0);
+  const gridLatticeEditorProposal = React.useMemo(() => {
+    if (
+      gridLatticeReconstructionResult?.status !== "available"
+      || gridLatticeReconstructionResult.lattice?.status !== "available"
+    ) {
+      return null;
+    }
+
+    return createGridLatticeEditorProposal(
+      gridLatticeReconstructionResult.lattice
+    );
+  }, [gridLatticeReconstructionResult]);
 
   const refreshPublications = React.useCallback(async (targetCrosswordId) => {
     const normalizedCrosswordId = targetCrosswordId.trim();
@@ -504,6 +519,7 @@ const handleTemplateImport = async (e) => {
       setCropArea={setCropArea}
       setCompetitionCells={setCompetitionCells}
       setCellTypes={setCellTypes}
+      gridProposal={gridLatticeEditorProposal}
       isPublicRuntime={isPublicRuntime}
     >
       {({ toolbar, competitionMenu, editor }) => (
