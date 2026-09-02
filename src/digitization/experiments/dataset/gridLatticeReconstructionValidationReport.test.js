@@ -9,11 +9,14 @@ import {
   selectGridLatticeCandidate
 } from "../../analysis/reconstruction/GridLatticeCandidateSelection";
 import {
-  createGridLatticeBoundsEvidenceProjection
-} from "../../analysis/reconstruction/GridLatticeBoundsEvidenceProjection";
+  createGridLatticeFactoredBoundsEvidence
+} from "../../analysis/reconstruction/GridLatticeFactoredBoundsEvidence";
 import {
   runGridLatticeReconstruction
 } from "../../analysis/reconstruction/GridLatticeReconstructionPipeline";
+import {
+  createGridLatticePrimitivePeriodEvidence
+} from "../../analysis/reconstruction/GridLatticePrimitivePeriodEvidence";
 import {
   createGridLatticeReconstructionValidationReport,
   createGridLatticeReconstructionValidationReportFactory,
@@ -117,6 +120,46 @@ test("delegates normalized reconstruction evidence to the domain pipeline", () =
   );
   expect(runReconstruction.mock.calls[0][0]).not.toHaveProperty(
     "datasetReport"
+  );
+});
+
+test("delegates primitive-period conversion to the source-neutral boundary", () => {
+  const createPrimitivePeriods = jest.fn(
+    createGridLatticePrimitivePeriodEvidence
+  );
+  const createReport = createGridLatticeReconstructionValidationReportFactory({
+    createPrimitivePeriods
+  });
+
+  createReport({
+    datasetReport: createDatasetReport(),
+    groundTruth: createGroundTruth()
+  });
+
+  expect(createPrimitivePeriods).toHaveBeenCalledTimes(1);
+  expect(createPrimitivePeriods).toHaveBeenCalledWith(expect.objectContaining({
+    id: "primitive-period-evidence:provider-a:region-a",
+    interpretationDiagnostics: {
+      horizontal: expect.objectContaining({
+        interpretations: expect.any(Array)
+      }),
+      vertical: expect.objectContaining({
+        interpretations: expect.any(Array)
+      })
+    },
+    coordinateScaleByAxis: {
+      horizontal: 1,
+      vertical: 1
+    },
+    evidenceReferences: [
+      "shadow-grid-reconstruction-diagnostics:provider-a:region-a"
+    ]
+  }));
+  expect(createPrimitivePeriods.mock.calls[0][0]).not.toHaveProperty(
+    "datasetReport"
+  );
+  expect(createPrimitivePeriods.mock.calls[0][0]).not.toHaveProperty(
+    "groundTruth"
   );
 });
 
@@ -297,7 +340,7 @@ test("passes ambiguous factored bounds through the reconstruction chain once", (
   const createReconstruction = jest.fn(
     createFactoredValidationReconstructionResult
   );
-  const projectBounds = jest.fn(createGridLatticeBoundsEvidenceProjection);
+  const projectBounds = jest.fn(createGridLatticeFactoredBoundsEvidence);
   const createReport = createGridLatticeReconstructionValidationReportFactory({
     createEvidence,
     generateCandidates,
@@ -314,8 +357,22 @@ test("passes ambiguous factored bounds through the reconstruction chain once", (
 
   expect(projectBounds).toHaveBeenCalledTimes(1);
   expect(projectBounds).toHaveBeenCalledWith({
-    outerLineGeometryDiagnostics: geometry
+    source: {
+      type: geometry.type,
+      version: geometry.version,
+      status: geometry.status ?? null
+    },
+    sourceId: geometry.type,
+    coordinateSystem: expect.objectContaining({
+      space: "rendered-binary-image-pixels"
+    }),
+    providers: [expect.objectContaining({
+      id: geometry.providers[0].id,
+      regions: geometry.providers[0].geometryObservations
+    })]
   });
+  expect(projectBounds.mock.calls[0][0]).not.toHaveProperty("datasetReport");
+  expect(projectBounds.mock.calls[0][0]).not.toHaveProperty("groundTruth");
   const factoredBounds = projectBounds.mock.results[0].value
     .providers[0].regions[0];
   expect(createEvidence).toHaveBeenCalledTimes(1);

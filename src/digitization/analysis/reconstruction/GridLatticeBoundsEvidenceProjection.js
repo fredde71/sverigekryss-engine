@@ -69,7 +69,58 @@ export function createGridLatticeBoundsEvidenceProjection({
     });
   }
 
-  const providers = outerLineGeometryDiagnostics.providers.map(projectProvider);
+  return createGridLatticeFactoredBoundsEvidence({
+    source: {
+      type: outerLineGeometryDiagnostics.type,
+      version: outerLineGeometryDiagnostics.version,
+      status: outerLineGeometryDiagnostics.status ?? null
+    },
+    sourceId: outerLineGeometryDiagnostics.type,
+    coordinateSystem: renderedCoordinateSystem(),
+    providers: outerLineGeometryDiagnostics.providers.map(provider => ({
+      id: provider?.id ?? null,
+      description: provider?.description ?? null,
+      status: provider?.status ?? null,
+      reason: provider?.reason ?? null,
+      regions: Array.isArray(provider?.geometryObservations)
+        ? provider.geometryObservations
+        : []
+    }))
+  });
+}
+
+export function createGridLatticeFactoredBoundsEvidence({
+  source,
+  sourceId,
+  coordinateSystem,
+  providers: sourceProviders
+} = {}) {
+  if (
+    !source
+    || typeof source !== "object"
+    || typeof sourceId !== "string"
+    || sourceId.length === 0
+    || !coordinateSystem
+    || typeof coordinateSystem !== "object"
+    || !Array.isArray(sourceProviders)
+  ) {
+    return deepFreeze({
+      type: "grid-lattice-reconstruction-bounds-evidence",
+      version: VERSION,
+      status: "unavailable",
+      source: cloneDeterministicValue(source ?? null),
+      providerCount: 0,
+      boundsCandidateCount: 0,
+      providers: [],
+      reasons: ["outer-line-geometry-evidence-unavailable"]
+    });
+  }
+
+  const providers = sourceProviders.map(provider => projectProvider({
+    provider,
+    sourceId,
+    coordinateSystem
+  }));
   const regions = providers.flatMap(provider => provider.regions);
   const boundsCandidateCount = regions.reduce(
     (count, region) => (
@@ -86,11 +137,7 @@ export function createGridLatticeBoundsEvidenceProjection({
     type: "grid-lattice-reconstruction-bounds-evidence",
     version: VERSION,
     status,
-    source: {
-      type: outerLineGeometryDiagnostics.type,
-      version: outerLineGeometryDiagnostics.version,
-      status: outerLineGeometryDiagnostics.status ?? null
-    },
+    source: cloneDeterministicValue(source),
     providerCount: providers.length,
     boundsCandidateCount,
     providers,
@@ -103,11 +150,16 @@ export function createGridLatticeBoundsEvidenceProjection({
   return deepFreeze(result);
 }
 
-function projectProvider(provider) {
-  const sourceRegions = Array.isArray(provider?.geometryObservations)
-    ? provider.geometryObservations
+function projectProvider({ provider, sourceId, coordinateSystem }) {
+  const sourceRegions = Array.isArray(provider?.regions)
+    ? provider.regions
     : [];
-  const regions = sourceRegions.map(region => projectRegion(provider, region));
+  const regions = sourceRegions.map(region => projectRegion({
+    provider,
+    region,
+    sourceId,
+    coordinateSystem
+  }));
   const candidateCount = regions.reduce(
     (count, region) => (
       count + region.combinationInventory.validBoundsCandidateCount
@@ -127,7 +179,7 @@ function projectProvider(provider) {
     regionCount: regions.length,
     boundsCandidateCount: candidateCount,
     provenance: {
-      source: SOURCE_TYPE,
+      source: sourceId,
       providerId: provider?.id ?? null
     },
     regions,
@@ -137,16 +189,21 @@ function projectProvider(provider) {
   };
 }
 
-function projectRegion(provider, region) {
+function projectRegion({ provider, region, sourceId, coordinateSystem }) {
   const observation = region?.observation;
   const base = {
     providerId: provider?.id ?? region?.providerId ?? null,
     regionId: region?.regionId ?? null,
     sourceStatus: region?.status ?? null,
     status: "unavailable",
-    coordinateSystem: renderedCoordinateSystem(),
+    coordinateSystem: cloneDeterministicValue(coordinateSystem),
     sourceCoordinateSystem: cloneDeterministicValue(
       observation?.coordinateSystem ?? null
+    ),
+    sourceAcceptedCandidateEnvelope: cloneDeterministicValue(
+      region?.sourceAcceptedCandidateEnvelope
+        ?? observation?.sourceAcceptedCandidateEnvelope
+        ?? null
     ),
     interpretationOrder: INTERPRETATIONS.map(value => value.id),
     interpretationInventory: [],
@@ -170,7 +227,7 @@ function projectRegion(provider, region) {
       materializedCombinationCount: 0
     },
     provenance: {
-      source: SOURCE_TYPE,
+      source: sourceId,
       providerId: provider?.id ?? region?.providerId ?? null,
       regionId: region?.regionId ?? null,
       sourceObservationType: observation?.type ?? null,
@@ -240,7 +297,9 @@ function projectRegion(provider, region) {
       endAlternatives: edgeAlternatives.bottom,
       providerId: base.providerId,
       regionId: base.regionId,
-      observation
+      observation,
+      sourceId,
+      coordinateSystem
     })
     : [];
   base.axisBounds.vertical = hasEveryEdge
@@ -252,7 +311,9 @@ function projectRegion(provider, region) {
       endAlternatives: edgeAlternatives.right,
       providerId: base.providerId,
       regionId: base.regionId,
-      observation
+      observation,
+      sourceId,
+      coordinateSystem
     })
     : [];
 
@@ -294,7 +355,9 @@ function createAxisBoundsCandidates({
   endAlternatives,
   providerId,
   regionId,
-  observation
+  observation,
+  sourceId,
+  coordinateSystem
 }) {
   const candidates = [];
   for (const startAlternative of startAlternatives) {
@@ -304,7 +367,7 @@ function createAxisBoundsCandidates({
       }
       const candidateIndex = candidates.length;
       const evidenceReference = [
-        SOURCE_TYPE,
+        sourceId,
         safeId(providerId),
         safeId(regionId),
         axis,
@@ -326,9 +389,9 @@ function createAxisBoundsCandidates({
         span: endAlternative.position - startAlternative.position,
         startAlternative: cloneDeterministicValue(startAlternative),
         endAlternative: cloneDeterministicValue(endAlternative),
-        coordinateSystem: renderedCoordinateSystem(),
+        coordinateSystem: cloneDeterministicValue(coordinateSystem),
         provenance: {
-          source: SOURCE_TYPE,
+          source: sourceId,
           providerId,
           regionId,
           axis,

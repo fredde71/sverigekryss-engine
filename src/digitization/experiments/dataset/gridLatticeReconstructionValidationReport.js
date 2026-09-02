@@ -9,14 +9,17 @@ import {
   selectGridLatticeCandidate
 } from "../../analysis/reconstruction/GridLatticeCandidateSelection";
 import {
-  createGridLatticeBoundsEvidenceProjection
-} from "../../analysis/reconstruction/GridLatticeBoundsEvidenceProjection";
+  createGridLatticeFactoredBoundsEvidence
+} from "../../analysis/reconstruction/GridLatticeFactoredBoundsEvidence";
 import {
   createGridLatticeReconstructionPipeline
 } from "../../analysis/reconstruction/GridLatticeReconstructionPipeline";
 import {
   createGridLatticeReconstructionResult
 } from "../../analysis/reconstruction/GridLatticeReconstructionResult";
+import {
+  createGridLatticePrimitivePeriodEvidence
+} from "../../analysis/reconstruction/GridLatticePrimitivePeriodEvidence";
 import { compareLinePositions } from "./shadowGridValidationReport";
 
 export {
@@ -40,14 +43,16 @@ export function createGridLatticeReconstructionValidationReportFactory({
   fuseEvidence = fuseGridLatticeCandidateEvidence,
   selectCandidate = selectGridLatticeCandidate,
   createReconstruction = createGridLatticeReconstructionResult,
+  createPrimitivePeriods = createGridLatticePrimitivePeriodEvidence,
   runReconstruction = null,
-  projectBounds = createGridLatticeBoundsEvidenceProjection
+  projectBounds = createGridLatticeFactoredBoundsEvidence
 } = {}) {
   [
     [createEvidence, "createEvidence"],
     [generateCandidates, "generateCandidates"],
     [fuseEvidence, "fuseEvidence"],
     [selectCandidate, "selectCandidate"],
+    [createPrimitivePeriods, "createPrimitivePeriods"],
     [projectBounds, "projectBounds"]
   ].forEach(([dependency, name]) => {
     if (typeof dependency !== "function") {
@@ -73,6 +78,7 @@ export function createGridLatticeReconstructionValidationReportFactory({
     const reconstructionItems = datasetReport.items.map(item => (
       reconstructDatasetItem(item, {
         runReconstruction: reconstruct,
+        createPrimitivePeriods,
         projectBounds
       })
     ));
@@ -151,9 +157,9 @@ function reconstructDatasetItem(item, dependencies) {
     OUTER_GEOMETRY_EXPERIMENT_ID
   );
   const boundsEvidence = geometryDiagnostics
-    ? dependencies.projectBounds({
-      outerLineGeometryDiagnostics: geometryDiagnostics
-    })
+    ? dependencies.projectBounds(createFactoredBoundsEvidenceInput(
+      geometryDiagnostics
+    ))
     : null;
   const regions = [];
 
@@ -230,6 +236,27 @@ function reconstructDatasetItem(item, dependencies) {
       outerBoundsDiagnostics: geometryDiagnostics ? "available" : "unavailable"
     },
     reconstructions: regions
+  };
+}
+
+function createFactoredBoundsEvidenceInput(geometryDiagnostics) {
+  return {
+    source: {
+      type: geometryDiagnostics.type,
+      version: geometryDiagnostics.version,
+      status: geometryDiagnostics.status ?? null
+    },
+    sourceId: geometryDiagnostics.type,
+    coordinateSystem: renderedCoordinateSystem(),
+    providers: (geometryDiagnostics.providers ?? []).map(provider => ({
+      id: provider?.id ?? null,
+      description: provider?.description ?? null,
+      status: provider?.status ?? null,
+      reason: provider?.reason ?? null,
+      regions: Array.isArray(provider?.geometryObservations)
+        ? provider.geometryObservations
+        : []
+    }))
   };
 }
 
@@ -352,11 +379,33 @@ function runReconstructionChain({
       boundsEvidenceRegion
     );
     const positions = normalizeCandidatePositions(gridRegion, transform);
-    const primitivePeriodEvidence = createPrimitivePeriodEvidence({
-      providerId,
-      regionId,
-      reconstructionRegion,
-      transform
+    const primitivePeriodEvidence = dependencies.createPrimitivePeriods({
+      id: `primitive-period-evidence:${providerId}:${regionId}`,
+      interpretationDiagnostics: readInterpretationDiagnostics(
+        reconstructionRegion
+      ),
+      coordinateScaleByAxis: {
+        horizontal: transform.scaleY,
+        vertical: transform.scaleX
+      },
+      evidenceReferences: [
+        `${RECONSTRUCTION_EXPERIMENT_ID}:${providerId}:${regionId}`
+      ],
+      interpretationEvidenceReferences:
+        createInterpretationEvidenceReferences({
+          providerId,
+          regionId,
+          reconstructionRegion
+        }),
+      interpretationProvenance: createInterpretationProvenance({
+        providerId,
+        regionId,
+        reconstructionRegion
+      }),
+      provenance: {
+        source: RECONSTRUCTION_EXPERIMENT_ID,
+        evidence: "pre-admission-axis-interpretation-derived-spacing"
+      }
     });
     const evidence = {
       id: `grid-lattice-evidence:${providerId}:${regionId}:${observationIndex}`,
@@ -663,92 +712,50 @@ function compareCount(expected, reconstructed) {
   };
 }
 
-function createPrimitivePeriodEvidence({
-  providerId,
-  regionId,
-  reconstructionRegion,
-  transform
-}) {
+function readInterpretationDiagnostics(reconstructionRegion) {
   const strategy = reconstructionRegion?.reconstruction?.diagnostics?.find(
     diagnostic => diagnostic?.type === STRATEGY_DIAGNOSTIC_TYPE
   );
-  const axes = {
-    horizontal: createPeriodAxis(
-      "horizontal",
-      strategy?.axes?.horizontal,
-      transform.scaleY,
-      providerId,
-      regionId
-    ),
-    vertical: createPeriodAxis(
-      "vertical",
-      strategy?.axes?.vertical,
-      transform.scaleX,
-      providerId,
-      regionId
-    )
-  };
-
   return {
-    id: `primitive-period-evidence:${providerId}:${regionId}`,
-    status: axes.horizontal.status === "unavailable"
-      || axes.vertical.status === "unavailable"
-      ? "unavailable"
-      : axes.horizontal.status === "ambiguous"
-        || axes.vertical.status === "ambiguous"
-        ? "ambiguous"
-        : "available",
-    axes,
-    evidenceReferences: [
-      `${RECONSTRUCTION_EXPERIMENT_ID}:${providerId}:${regionId}`
-    ],
-    provenance: {
-      source: RECONSTRUCTION_EXPERIMENT_ID,
-      evidence: "pre-admission-axis-interpretation-derived-spacing"
-    }
+    horizontal: strategy?.axes?.horizontal ?? null,
+    vertical: strategy?.axes?.vertical ?? null
   };
 }
 
-function createPeriodAxis(axis, diagnostic, scale, providerId, regionId) {
-  const candidates = [];
-  const seen = new Set();
-  for (const [interpretationIndex, interpretation] of (
-    diagnostic?.interpretations ?? []
-  ).entries()) {
-    const period = interpretation?.derivedSpacing * scale;
-    if (!Number.isFinite(period) || period <= 0 || seen.has(String(period))) {
-      continue;
-    }
-    seen.add(String(period));
-    candidates.push({
-      id: `${axis}-period-${String(candidates.length + 1).padStart(3, "0")}`,
-      period,
-      evidenceReferences: [
+function createInterpretationEvidenceReferences({
+  providerId,
+  regionId,
+  reconstructionRegion
+}) {
+  const diagnostics = readInterpretationDiagnostics(reconstructionRegion);
+  return Object.fromEntries(["horizontal", "vertical"].map(axis => [
+    axis,
+    (diagnostics[axis]?.interpretations ?? []).map(
+      (_interpretation, interpretationIndex) => [
         `${RECONSTRUCTION_EXPERIMENT_ID}:${providerId}:${regionId}:${axis}:${interpretationIndex}`
-      ],
-      provenance: {
+      ]
+    )
+  ]));
+}
+
+function createInterpretationProvenance({
+  providerId,
+  regionId,
+  reconstructionRegion
+}) {
+  const diagnostics = readInterpretationDiagnostics(reconstructionRegion);
+  return Object.fromEntries(["horizontal", "vertical"].map(axis => [
+    axis,
+    (diagnostics[axis]?.interpretations ?? []).map(
+      (_interpretation, interpretationIndex) => ({
         source: RECONSTRUCTION_EXPERIMENT_ID,
         providerId,
         regionId,
         axis,
-        interpretationIndex,
-        interpretationStatus: interpretation?.status ?? "rejected",
-        rejectionReasons: cloneValue(interpretation?.rejectionReasons ?? [])
-      }
-    });
-  }
-  return {
-    axis,
-    status: candidates.length === 0
-      ? "unavailable"
-      : candidates.length === 1
-        ? "available"
-        : "ambiguous",
-    candidates,
-    reasons: candidates.length === 0
-      ? ["primitive-period-evidence-unavailable"]
-      : []
-  };
+        interpretationIndex
+      })
+    )
+  ]));
 }
 
 function createAxisEvidence(axis, positions) {
