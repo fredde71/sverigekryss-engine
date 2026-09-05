@@ -1,5 +1,5 @@
 const ANALYSIS_REGION_VERSION = 1;
-const COMPATIBILITY_REGION_ID = "compatibility-full-binary-image";
+export const COMPATIBILITY_REGION_ID = "compatibility-full-binary-image";
 
 export function createCompatibilityAnalysisRegion(documentAnalysis) {
   validateDocumentAnalysis(documentAnalysis);
@@ -54,18 +54,57 @@ export function createCompatibilityAnalysisRegion(documentAnalysis) {
 export function mapAnalysisRegionPointToBinaryImage(analysisRegion, point) {
   validateAnalysisRegion(analysisRegion);
 
+  const transform = analysisRegion.coordinateRelationship?.localToBinaryImage;
+
   return {
-    x: point.x,
-    y: point.y
+    x: transformCoordinate(point.x, transform?.scaleX, transform?.offsetX),
+    y: transformCoordinate(point.y, transform?.scaleY, transform?.offsetY)
   };
 }
 
 export function mapBinaryImagePointToAnalysisRegion(analysisRegion, point) {
   validateAnalysisRegion(analysisRegion);
 
+  const transform = analysisRegion.coordinateRelationship?.binaryImageToLocal;
+
   return {
-    x: point.x,
-    y: point.y
+    x: transformCoordinate(point.x, transform?.scaleX, transform?.offsetX),
+    y: transformCoordinate(point.y, transform?.scaleY, transform?.offsetY)
+  };
+}
+
+export function mapAnalysisRegionGeometryToBinaryImage(
+  analysisRegion,
+  gridGeometry
+) {
+  validateAnalysisRegion(analysisRegion);
+
+  if (!gridGeometry) {
+    return null;
+  }
+
+  const transform = analysisRegion.coordinateRelationship?.localToBinaryImage;
+  const scaleX = transform?.scaleX ?? 1;
+  const scaleY = transform?.scaleY ?? 1;
+  const topLeft = mapAnalysisRegionPointToBinaryImage(analysisRegion, {
+    x: gridGeometry.bounds.left,
+    y: gridGeometry.bounds.top
+  });
+
+  return {
+    ...gridGeometry,
+    bounds: {
+      top: topLeft.y,
+      left: topLeft.x,
+      width: gridGeometry.bounds.width * scaleX,
+      height: gridGeometry.bounds.height * scaleY
+    },
+    horizontalLines: gridGeometry.horizontalLines.map(position => (
+      transformCoordinate(position, scaleY, transform?.offsetY)
+    )),
+    verticalLines: gridGeometry.verticalLines.map(position => (
+      transformCoordinate(position, scaleX, transform?.offsetX)
+    ))
   };
 }
 
@@ -101,4 +140,8 @@ function freezeValue(value) {
 
   Object.values(value).forEach(freezeValue);
   return Object.freeze(value);
+}
+
+function transformCoordinate(value, scale = 1, offset = 0) {
+  return (value * scale) + offset;
 }

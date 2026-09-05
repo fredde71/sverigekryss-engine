@@ -6,6 +6,15 @@ import Play from "./Play";
 import reportWebVitals from "./reportWebVitals";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+const isDigitizationLabEnvironment = ["development", "test"].includes(
+  process.env.NODE_ENV
+);
+const DigitizationLabPage = isDigitizationLabEnvironment
+  ? React.lazy(() => import(
+    "./digitization/experiments/DigitizationLabPage"
+  ))
+  : null;
+
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 root.render(
@@ -13,6 +22,16 @@ root.render(
     <Routes>
       <Route path="/" element={<App />} />
       <Route path="/play/:id" element={<Play />} />
+      {DigitizationLabPage && (
+        <Route
+          path="/digitization-lab"
+          element={(
+            <React.Suspense fallback={null}>
+              <DigitizationLabPage />
+            </React.Suspense>
+          )}
+        />
+      )}
     </Routes>
   </BrowserRouter>
 );

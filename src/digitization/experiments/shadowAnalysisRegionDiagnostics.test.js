@@ -41,7 +41,7 @@ test("runs through the existing benchmark path without changing its contract", a
   });
 });
 
-test("keeps shadow-region modules independent of production orchestration, UI and persistence", () => {
+test("keeps shadow experiments isolated from production-owned region orchestration", () => {
   const moduleSources = [
     "./shadowAnalysisRegionDiagnostics",
     "./analysisRegions/shadowAnalysisRegionRunner",
@@ -58,7 +58,18 @@ test("keeps shadow-region modules independent of production orchestration, UI an
     expect(source).not.toMatch(/App|VisualizationRenderer|DevelopmentDatasetAnalysisView/);
     expect(source).not.toMatch(/createGridAnalysis|runImageGridDetection|detectGridFromImageSource/);
   }
-  expect(productionSource).not.toMatch(/shadow|horizontalOuterSpan/i);
+  expect(productionSource).toContain(
+    "from \"../analysis/HorizontalOuterSpanAnalysisRegion\""
+  );
+  expect(productionSource).not.toMatch(
+    /from\s+["'][^"']*\/experiments(?:\/|["'])/
+  );
+  expect(productionSource).not.toMatch(
+    /from\s+["'][^"']*\/(?:dataset|validation|reports?)(?:\/|["'])/i
+  );
+  expect(productionSource).not.toMatch(
+    /shadow(?:AnalysisRegion|Grid|OuterLine).*Diagnostics/
+  );
 });
 
 function createBinaryImage() {

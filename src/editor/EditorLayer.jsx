@@ -13,6 +13,7 @@ export default function EditorLayer({
   activeTool,
   documentSize,
   gridArea,
+  gridLineProposal,
   cropArea,
   setCropMode
 }) {
@@ -152,6 +153,8 @@ export default function EditorLayer({
           cols={cols}
           cellTypes={cellTypes}
           competitionCells={competitionCells}
+          gridArea={gridArea}
+          gridLineProposal={gridLineProposal}
         />
       </div>
     </div>

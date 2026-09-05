@@ -102,6 +102,41 @@ test("atomically applies a complete grid proposal through EditorWorkspace", asyn
   expect(screen.queryAllByRole("button", { name: /Position/ })).toHaveLength(0);
 });
 
+test("owns and atomically renders optional reconstructed line positions", async () => {
+  const proposal = deepFreeze({
+    rows: 2,
+    cols: 2,
+    gridArea: { top: 10, left: 20, width: 120, height: 100 },
+    horizontalLinePositions: [11.5, 60, 108.5],
+    verticalLinePositions: [21.5, 80, 138.5],
+    linePositionCoordinateSpace: "document",
+    cellTypes: Array(4).fill("empty"),
+    competitionCells: [],
+    provenance: { source: "grid-lattice-editor-proposal" }
+  });
+  const before = JSON.stringify(proposal);
+
+  render(<EditorWorkspaceHarness gridProposal={proposal} />);
+
+  await waitFor(() => {
+    expect(screen.getByTestId("editor-grid-explicit")).toBeInTheDocument();
+  });
+  expect(screen.getByTestId("editor-grid-line-horizontal-0"))
+    .toHaveAttribute("data-line-position", "1.5");
+  expect(screen.getByTestId("editor-grid-line-horizontal-2"))
+    .toHaveAttribute("data-line-position", "98.5");
+  expect(screen.getByTestId("editor-grid-line-vertical-0"))
+    .toHaveAttribute("data-line-position", "1.5");
+  expect(screen.getByTestId("editor-grid-line-vertical-2"))
+    .toHaveAttribute("data-line-position", "118.5");
+  expect(JSON.stringify(proposal)).toBe(before);
+
+  fireEvent.click(screen.getByRole("button", { name: "Skapa rutnät" }));
+  await waitFor(() => {
+    expect(screen.getByTestId("editor-grid-uniform")).toBeInTheDocument();
+  });
+});
+
 test("assigns a competition position to a writable cell", async () => {
   render(
     <EditorWorkspaceHarness
@@ -316,4 +351,12 @@ function clickTopEdgeCell(index) {
 
 function readCompetitionState() {
   return JSON.parse(screen.getByTestId("competition-state").textContent);
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+    return value;
+  }
+  Object.values(value).forEach(deepFreeze);
+  return Object.freeze(value);
 }

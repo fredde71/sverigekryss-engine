@@ -60,6 +60,12 @@ Aktuellt implementerat digitization-steg:
   - LineCandidate
   - GridGeometry
   - GridDetection
+- AnalysisRegion-scoped GridAnalysis
+- produktionsägd evidens för GridLattice-rekonstruktion
+- primitive-period-evidens och source-neutral factored bounds
+- GridLatticeReconstructionPipeline
+- separata domänresultat för GridLattice och OuterVisualExtent
+- GridLatticeEditorProposal som gräns till Editor
 
 Projection validerar BinaryImage-dimensioner, datalängd och binära pixelvärden innan rad- eller kolumnprojektion skapas.
 
@@ -99,6 +105,8 @@ DigitizationEngine:
 
 - orkestrerar ett DigitizationJob genom imageGridDetectionEngine
 - bevarar diagnostics, GridDetection och DigitizationSuggestion-lista från analysflödet
+- bygger normaliserad produktionsägd rekonstruktionsevidens utan experiment-, dataset-, validerings- eller Ground Truth-beroenden
+- kör GridLatticeReconstructionPipeline och exponerar resultatet till applikationsorkestreringen
 - returnerar ett deterministiskt, immutabelt körresultat
 
 DigitizationRunner:
@@ -107,7 +115,23 @@ DigitizationRunner:
 - kör flera jobb i angiven ordning
 - äger inte analyslogik
 
-OCR, Template-koppling, UI-koppling, API/backend/persistence-koppling och 25x25-antaganden är inte implementerade i detta steg.
+Verifierad produktionskedja:
+
+```text
+DigitizationEngine
+  → GridLatticeReconstructionPipeline
+  → selected GridLattice
+  → OuterVisualExtent
+  → GridLatticeEditorProposal
+  → EditorWorkspace
+  → EditorGrid
+```
+
+`GridLattice.extent` representerar modellerad yttre linjecentrumgeometri. `OuterVisualExtent` representerar separat det observerade synliga yttre avtrycket. Editor-förslaget kombinerar rader/kolumner och explicita linjepositioner från `GridLattice` med `gridArea` från `OuterVisualExtent`; koordinatproveniens bevaras genom gränsen.
+
+Den verifierade Wordex-källan rekonstrueras som 25 × 25 och når Editor som ett redigerbart förslag. Digitization Lab är development-only och separat från produktionskedjan. Ground Truth, valideringsrapporter, dataset och experiment är inte produktionsberoenden.
+
+OCR, API/backend/persistence-koppling samt avancerad automatisk cell- och ledtrådsklassificering är inte implementerade i detta steg.
 
 ## Editor
 
@@ -130,6 +154,7 @@ EditorWorkspace äger editor composition:
 - pendingCols state
 - crop movement mode
 - crop resize mode
+- atomisk applicering och fortsatt ägarskap av GridLattice-baserade Editor-förslag
 
 Editor interaction/UI ownership är slutförd.
 
@@ -161,17 +186,18 @@ EditorLayer äger:
 - crop movement start från crop move affordance
 - crop resize start från crop resize affordance
 
+EditorGrid renderar explicita rekonstruerade horisontella och vertikala linjepositioner när de finns i Editor-state. När sådana positioner saknas bevaras befintlig manuell och uniform grid-rendering.
+
 App.js renderar inte längre EditorGrid direkt.
 
 Duplicerad EditorGrid-rendering har tagits bort utan visuell stylingändring.
 
 App.js äger fortsatt:
 
-- gridArea state
-- cellTypes state
 - workflow
 - template state
 - application workflow
+- tunn orkestrering från Digitization-resultat via GridLatticeEditorProposal till EditorWorkspace
 
 Template state ligger kvar i App.js tills Template Lifecycle-subsystemet tar över.
 

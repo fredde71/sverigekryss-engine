@@ -13,6 +13,7 @@ import {
 test("createAnalysisContext creates the expected empty technical workspace", () => {
   expect(createAnalysisContext()).toEqual({
     imageData: null,
+    documentBinaryImage: null,
     binaryImage: null,
     projections: null,
     lineCandidates: null,

@@ -1,6 +1,7 @@
 export function createAnalysisContext(initialState = {}) {
   return freezeAnalysisValue({
     imageData: null,
+    documentBinaryImage: null,
     binaryImage: null,
     projections: null,
     lineCandidates: null,
@@ -18,6 +19,10 @@ export function withImageData(context, imageData) {
 
 export function withBinaryImage(context, binaryImage) {
   return withContextValue(context, "binaryImage", binaryImage);
+}
+
+export function withDocumentBinaryImage(context, binaryImage) {
+  return withContextValue(context, "documentBinaryImage", binaryImage);
 }
 
 export function withProjections(context, projections) {

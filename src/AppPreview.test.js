@@ -60,7 +60,7 @@ test("editor loads Publications for the current crosswordId", () => {
   expect(appSource).toContain("refreshPublications(crosswordId);");
 });
 
-test("upload flow runs digitization through the browser ImageData adapter without applying suggestions", () => {
+test("upload flow runs production digitization through the browser ImageData adapter", () => {
   const uploadSection = getSourceBetween(
     appSource,
     "const handleImageUpload = async (e) => {",
@@ -87,10 +87,7 @@ test("upload flow runs digitization through the browser ImageData adapter withou
   expect(uploadSection).toContain("const uploadId = ++digitizationUploadIdRef.current;");
   expect(appSource).toContain("import { runDigitizationUploadWithIdentity } from \"./digitization/digitizationUploadIdentityGuard\";");
   expect(appSource).toContain("import { readBrowserImageData } from \"./digitization/adapters/browserImageDataReader\";");
-  expect(appSource).toContain("import { detectGridFromImageSource } from \"./digitization/detection/imageGridDetectionEngine\";");
-  expect(digitizationSection).toContain("await import(\"./digitization/experiments/uploadDigitizationExperimentComparison\")");
-  expect(appSource).toContain("import DigitizationDiagnosticPanel from \"./digitization/DigitizationDiagnosticPanel\";");
-  expect(appSource).toContain("experimentComparison={digitizationExperimentComparison}");
+  expect(appSource).toContain("import { runDigitizationJob } from \"./digitization/engine/DigitizationEngine\";");
   expect(pdfStateUpdateSection).toContain("setDocumentSize(documentSize);");
   expect(pdfStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
   expect(pdfStateUpdateSection).toContain("setCompetitionCells([]);");
@@ -106,12 +103,10 @@ test("upload flow runs digitization through the browser ImageData adapter withou
   expect(digitizationSection).toContain("status: \"pending\"");
   expect(digitizationSection).toContain("status: \"completed\"");
   expect(digitizationSection).toContain("status: \"failed\"");
-  expect(digitizationSection).toContain("detectGridFromImageSource");
+  expect(digitizationSection).toContain("runDigitizationJob({");
   expect(digitizationSection).toContain("runDigitizationUploadWithIdentity({");
   expect(digitizationSection).toContain("result: productionResult");
-  expect(digitizationSection).toContain("runUploadDigitizationExperimentComparison(");
   expect(digitizationSection).toContain("productionResult");
-  expect(digitizationSection).toContain("process.env.NODE_ENV !== \"production\"");
   expect(digitizationSection).toContain("documentSize: targetDocumentSize");
   expect(digitizationSection).toContain("readImageData: readBrowserImageData");
   expect(digitizationSection).toContain("candidateUploadId === digitizationUploadIdRef.current");
@@ -121,6 +116,15 @@ test("upload flow runs digitization through the browser ImageData adapter withou
   expect(digitizationSection).not.toContain("setCols");
   expect(digitizationSection).not.toContain("setCropArea");
   expect(digitizationSection).not.toContain("setSuggestions");
+});
+
+test("normal App contains no Digitization Lab diagnostics or controls", () => {
+  expect(appSource).not.toContain("DigitizationDiagnosticPanel");
+  expect(appSource).not.toContain("DigitizationDatasetHarness");
+  expect(appSource).not.toContain("digitizationExperimentComparison");
+  expect(appSource).not.toContain("runUploadDigitizationExperimentComparison");
+  expect(appSource).not.toContain("Utvecklardetaljer");
+  expect(appSource).not.toContain("Digitization Lab");
 });
 
 test("editor preview renders read-only digitization suggestion overlay", () => {
@@ -155,7 +159,7 @@ test("routes an available GridLattice proposal through EditorWorkspace ownership
   const proposalSection = getSourceBetween(
     appSource,
     "const gridLatticeEditorProposal = React.useMemo(() => {",
-    "}, [gridLatticeReconstructionResult]);"
+    "}, [gridLatticeReconstructionResult, outerVisualExtent]);"
   );
   const editorWorkspaceSection = getSourceBetween(
     appSource,
@@ -167,16 +171,34 @@ test("routes an available GridLattice proposal through EditorWorkspace ownership
     "import {\n  createGridLatticeEditorProposal\n} from \"./digitization/analysis/reconstruction/GridLatticeEditorProposal\";"
   );
   expect(appSource).toContain(
-    "function App({ gridLatticeReconstructionResult = null })"
+    "function App()"
+  );
+  expect(appSource).toContain(
+    "digitizationResult.result?.gridLatticeReconstructionResult ?? null"
+  );
+  expect(appSource).toContain(
+    "digitizationResult.result?.outerVisualExtent ?? null"
   );
   expect(proposalSection).toContain(
-    "createGridLatticeEditorProposal(\n      gridLatticeReconstructionResult.lattice"
+    "createGridLatticeEditorProposal({\n      gridLattice: gridLatticeReconstructionResult.lattice,\n      outerVisualExtent"
   );
   expect(proposalSection).not.toMatch(
     /setRows|setCols|setGridArea|setCellTypes|setCompetitionCells/
   );
   expect(editorWorkspaceSection).toContain(
     "gridProposal={gridLatticeEditorProposal}"
+  );
+  expect(appSource).not.toContain(
+    "useState(gridLatticeReconstructionResult"
+  );
+  expect(proposalSection).toContain(
+    "gridLatticeReconstructionResult?.status !== \"available\""
+  );
+  expect(proposalSection).toContain(
+    "gridLatticeReconstructionResult.lattice?.status !== \"available\""
+  );
+  expect(proposalSection).toContain(
+    "return proposal.status === \"available\" ? proposal : null"
   );
 });
 

@@ -6,7 +6,7 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter slutförd Epic 1 runtime ownership-migrering, första Epic 2 TemplateCanvas-steg, slutförd Epic 3 Editor interaction/UI ownership och första Template Lifecycle-steg.
+Efter verifierad produktionsintegration från Grid Reconstruction till Editor.
 
 ---
 
@@ -45,17 +45,51 @@ Följande är färdigt i återställd digitization foundation:
 - DigitizationRunner som tunn körningsadapter för ett eller flera jobb
 - diagnostics och suggestions bevaras genom engine/runner-flödet
 
+Verifierad Grid Reconstruction → Editor-pipeline:
+
+```text
+PDF/file upload
+  → production Digitization
+  → AnalysisRegion-scoped GridAnalysis
+  → production GridLattice evidence
+  → primitive-period evidence
+  → source-neutral factored bounds
+  → GridLatticeReconstructionPipeline
+  → selected GridLattice
+  → OuterVisualExtent
+  → GridLatticeEditorProposal
+  → EditorWorkspace
+  → EditorGrid
+```
+
+- produktion rekonstruerar `GridLattice` enbart från produktionsägd evidens
+- verifierad Wordex-källa rekonstrueras som 25 × 25 och når Editor som ett redigerbart förslag
+- `GridLattice.extent` är modellerad geometri för yttre linjecentrum
+- `OuterVisualExtent` är ett separat domänbegrepp för rutnätets synliga yttre avtryck
+- Editor-förslaget använder rader/kolumner och explicita linjepositioner från `GridLattice`, samt `gridArea` från `OuterVisualExtent`
+- `EditorWorkspace` äger och applicerar redigerbart Editor-state atomiskt
+- `EditorGrid` renderar explicita rekonstruerade linjepositioner när de finns; befintligt manuellt, uniformt rutnät är fortsatt fallback när de saknas
+- `App.js` orkestrerar endast överlämningen mellan Digitization och Editor
+- Digitization Lab är fortsatt separat och development-only
+- Ground Truth, validering, dataset och experiment är inte produktionsberoenden
+
 Inte implementerat i detta steg:
 
 - OCR
-- Template-koppling
-- UI-koppling
 - API/backend/persistence-koppling
-- 25x25-antaganden
+- avancerad automatisk cell- och ledtrådsklassificering
 
 ---
 
 # Senaste verifierade milstolpe
+
+Grid Reconstruction → Editor är produktionsintegrerad och verifierad.
+
+Den verifierade Wordex-källan ger ett redigerbart 25 × 25-förslag med explicit linjerendering utan kumulativ drift från uniform indelning. Lattice-geometri och synligt yttre avtryck förblir separata observationer med bevarad koordinatproveniens.
+
+Produktens aktiva fokus är Product Readiness / V1. Avancerad automatisk klassificering av celler och ledtrådar är senarelagt bortom V1.
+
+Tidigare verifierade arkitekturmilstolpar följer nedan.
 
 Epic 1 – Build Runtime är slutförd.
 

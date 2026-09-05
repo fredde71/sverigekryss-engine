@@ -18,6 +18,22 @@ Generationerna beskriver den långsiktiga produktordningen.
 
 De detaljerade faserna längre ned beskriver aktuell implementation och verifierad status.
 
+## Aktivt fokus: Product Readiness / V1
+
+Grid Reconstruction → Editor är slutförd och verifierad:
+
+- production Digitization rekonstruerar `GridLattice` från produktionsägd evidens
+- verifierad Wordex-källa rekonstrueras som 25 × 25
+- `GridLattice.extent` behåller semantiken modellerad yttre linjecentrumgeometri
+- `OuterVisualExtent` är separat synligt yttre avtryck
+- Editor-förslaget kombinerar rader/kolumner och explicita linjepositioner från `GridLattice` med `gridArea` från `OuterVisualExtent`
+- `EditorWorkspace` äger redigerbart state och `EditorGrid` renderar explicita linjepositioner när de finns
+- manuellt/uniformt grid-beteende finns kvar när explicita linjepositioner saknas
+- `App.js` är fortsatt en tunn orkestrator
+- Digitization Lab, Ground Truth, dataset, experiment och validering är inte produktionsberoenden
+
+Aktivt fokus är nu Product Readiness / V1. Avancerad automatisk cell- och ledtrådsklassificering är senarelagt bortom V1.
+
 ## Generation 1
 
 Mål:

@@ -29,8 +29,7 @@ import {
 } from "./publication/publicationApi";
 import { createPublicationFromTemplate } from "./publication/publicationModel";
 import { readBrowserImageData } from "./digitization/adapters/browserImageDataReader";
-import { detectGridFromImageSource } from "./digitization/detection/imageGridDetectionEngine";
-import DigitizationDiagnosticPanel from "./digitization/DigitizationDiagnosticPanel";
+import { runDigitizationJob } from "./digitization/engine/DigitizationEngine";
 import DigitizationSuggestionOverlay from "./digitization/DigitizationSuggestionOverlay";
 import { runDigitizationUploadWithIdentity } from "./digitization/digitizationUploadIdentityGuard";
 import {
@@ -42,13 +41,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-const DigitizationDatasetHarness = process.env.NODE_ENV !== "production"
-  ? React.lazy(() => import(
-    "./digitization/experiments/dataset/DigitizationDatasetHarness"
-  ))
-  : null;
-
-function App({ gridLatticeReconstructionResult = null }) {
+function App() {
   
   const { id } = useParams();
   const isSharedView = window.location.search.includes("data=");
@@ -140,20 +133,30 @@ useEffect(() => {
   const [publicationsStatus, setPublicationsStatus] = useState("idle");
   const [publicationsError, setPublicationsError] = useState("");
   const [digitizationResult, setDigitizationResult] = useState(null);
-  const [digitizationExperimentComparison, setDigitizationExperimentComparison] = useState(null);
   const digitizationUploadIdRef = useRef(0);
+  const gridLatticeReconstructionResult =
+    digitizationResult?.status === "completed"
+      ? digitizationResult.result?.gridLatticeReconstructionResult ?? null
+      : null;
+  const outerVisualExtent = digitizationResult?.status === "completed"
+    ? digitizationResult.result?.outerVisualExtent ?? null
+    : null;
   const gridLatticeEditorProposal = React.useMemo(() => {
     if (
       gridLatticeReconstructionResult?.status !== "available"
       || gridLatticeReconstructionResult.lattice?.status !== "available"
+      || !outerVisualExtent
     ) {
       return null;
     }
 
-    return createGridLatticeEditorProposal(
-      gridLatticeReconstructionResult.lattice
-    );
-  }, [gridLatticeReconstructionResult]);
+    const proposal = createGridLatticeEditorProposal({
+      gridLattice: gridLatticeReconstructionResult.lattice,
+      outerVisualExtent
+    });
+
+    return proposal.status === "available" ? proposal : null;
+  }, [gridLatticeReconstructionResult, outerVisualExtent]);
 
   const refreshPublications = React.useCallback(async (targetCrosswordId) => {
     const normalizedCrosswordId = targetCrosswordId.trim();
@@ -197,7 +200,6 @@ useEffect(() => {
   setDigitizationResult({
     status: "pending"
   });
-  setDigitizationExperimentComparison(null);
 
   setImageFileName(file.name);
 
@@ -273,27 +275,20 @@ return;
       isCurrentUpload: (candidateUploadId) => (
         candidateUploadId === digitizationUploadIdRef.current
       ),
-      runProduction: () => detectGridFromImageSource({
-        source,
-        options: {
-          documentSize: targetDocumentSize
+      runProduction: () => runDigitizationJob({
+        job: {
+          jobId: `upload-${uploadId}`,
+          source,
+          options: {
+            documentSize: targetDocumentSize
+          }
         },
         readImageData: readBrowserImageData
       }),
-      runComparison: process.env.NODE_ENV !== "production"
-        ? async (productionResult) => {
-          const {
-            runUploadDigitizationExperimentComparison
-          } = await import("./digitization/experiments/uploadDigitizationExperimentComparison");
-
-          return runUploadDigitizationExperimentComparison(productionResult);
-        }
-        : null,
       onPending: () => {
         setDigitizationResult({
           status: "pending"
         });
-        setDigitizationExperimentComparison(null);
       },
       onProductionCompleted: (productionResult) => {
         setDigitizationResult({
@@ -308,16 +303,6 @@ return;
         });
         console.warn("Digitization failed during upload", err);
       },
-      onComparisonCompleted: (comparisonState) => {
-        setDigitizationExperimentComparison(comparisonState);
-      },
-      onComparisonFailed: (err) => {
-        setDigitizationExperimentComparison({
-          status: "failed",
-          error: err
-        });
-        console.warn("Digitization experiment comparison failed during upload", err);
-      }
     });
   };
 const handleTemplateImport = async (e) => {
@@ -575,19 +560,6 @@ const handleTemplateImport = async (e) => {
 	        {toolbar}
 	        {competitionMenu}
 
-	        <section style={sidebarSectionStyle}>
-	          <h5 style={sidebarTitleStyle}>Digitisering</h5>
-	          <DigitizationDiagnosticPanel
-	            digitizationResult={digitizationResult}
-	            experimentComparison={digitizationExperimentComparison}
-	          />
-	          {DigitizationDatasetHarness && (
-	            <React.Suspense fallback={null}>
-	              <DigitizationDatasetHarness />
-	            </React.Suspense>
-	          )}
-	        </section>
-	
 	        <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Läge</h5>
           <button

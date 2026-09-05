@@ -26,6 +26,7 @@ export default function EditorWorkspace({
   const [pendingCols, setPendingCols] = useState(25);
   const [cropMode, setCropMode] = useState(null);
   const [competitionMenuCellIndex, setCompetitionMenuCellIndex] = useState(null);
+  const [gridLineProposal, setGridLineProposal] = useState(null);
 
   const activeCompetitionCell = (
     activeTool === "competition" &&
@@ -39,6 +40,7 @@ export default function EditorWorkspace({
     setGridArea(proposal.gridArea);
     setCellTypes(proposal.cellTypes);
     setCompetitionCells?.(proposal.competitionCells);
+    setGridLineProposal(createGridLineProposal(proposal));
     setCompetitionMenuCellIndex(null);
   }, [
     setRows,
@@ -66,6 +68,7 @@ export default function EditorWorkspace({
 
     setCellTypes(Array(pendingRows * pendingCols).fill("empty"));
     setCompetitionCells?.([]);
+    setGridLineProposal(null);
     setCompetitionMenuCellIndex(null);
   };
 
@@ -193,6 +196,7 @@ export default function EditorWorkspace({
             activeTool={activeTool}
             documentSize={documentSize}
             gridArea={gridArea}
+            gridLineProposal={gridLineProposal}
             cropArea={cropArea}
             setCropMode={setCropMode}
           />
@@ -213,4 +217,21 @@ export default function EditorWorkspace({
   }
 
   return editor;
+}
+
+function createGridLineProposal(proposal) {
+  if (
+    !Array.isArray(proposal.horizontalLinePositions)
+    || !Array.isArray(proposal.verticalLinePositions)
+  ) {
+    return null;
+  }
+
+  return {
+    horizontalLinePositions: proposal.horizontalLinePositions.slice(),
+    verticalLinePositions: proposal.verticalLinePositions.slice(),
+    referenceGridArea: { ...proposal.gridArea },
+    coordinateSpace: proposal.linePositionCoordinateSpace ?? "document",
+    provenance: proposal.provenance ?? null
+  };
 }

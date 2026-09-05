@@ -10,7 +10,10 @@ const EDGE_ORDER = Object.freeze(["top", "bottom", "left", "right"]);
 const INTERPRETATIONS = Object.freeze([
   Object.freeze({
     id: "accepted-candidate-center",
-    read: edge => finiteValues([edge?.acceptedCenterInParentBinaryImage])
+    read: edge => finiteValues([
+      edge?.acceptedCenterInObservationSpace
+        ?? edge?.acceptedCenterInParentBinaryImage
+    ])
   }),
   Object.freeze({
     id: "strong-or-full-run-midpoint",
@@ -64,6 +67,7 @@ export function createGridLatticeBoundsEvidenceProjection({
       },
       providerCount: 0,
       boundsCandidateCount: 0,
+      rawBoundsCandidateCount: 0,
       providers: [],
       reasons: ["outer-line-center-geometry-diagnostics-unavailable"]
     });
@@ -111,6 +115,7 @@ export function createGridLatticeFactoredBoundsEvidence({
       source: cloneDeterministicValue(source ?? null),
       providerCount: 0,
       boundsCandidateCount: 0,
+      rawBoundsCandidateCount: 0,
       providers: [],
       reasons: ["outer-line-geometry-evidence-unavailable"]
     });
@@ -123,6 +128,12 @@ export function createGridLatticeFactoredBoundsEvidence({
   }));
   const regions = providers.flatMap(provider => provider.regions);
   const boundsCandidateCount = regions.reduce(
+    (count, region) => (
+      count + region.combinationInventory.canonicalBoundsCandidateCount
+    ),
+    0
+  );
+  const rawBoundsCandidateCount = regions.reduce(
     (count, region) => (
       count + region.combinationInventory.validBoundsCandidateCount
     ),
@@ -140,6 +151,7 @@ export function createGridLatticeFactoredBoundsEvidence({
     source: cloneDeterministicValue(source),
     providerCount: providers.length,
     boundsCandidateCount,
+    rawBoundsCandidateCount,
     providers,
     reasons: status === "unavailable"
       ? ["complete-outer-line-center-interpretation-unavailable"]
@@ -162,6 +174,12 @@ function projectProvider({ provider, sourceId, coordinateSystem }) {
   }));
   const candidateCount = regions.reduce(
     (count, region) => (
+      count + region.combinationInventory.canonicalBoundsCandidateCount
+    ),
+    0
+  );
+  const rawCandidateCount = regions.reduce(
+    (count, region) => (
       count + region.combinationInventory.validBoundsCandidateCount
     ),
     0
@@ -178,6 +196,7 @@ function projectProvider({ provider, sourceId, coordinateSystem }) {
         : "available",
     regionCount: regions.length,
     boundsCandidateCount: candidateCount,
+    rawBoundsCandidateCount: rawCandidateCount,
     provenance: {
       source: sourceId,
       providerId: provider?.id ?? null
@@ -211,8 +230,21 @@ function projectRegion({ provider, region, sourceId, coordinateSystem }) {
     combinationInventory: {
       totalCombinationCount: 0,
       validBoundsCandidateCount: 0,
+      canonicalBoundsCandidateCount: 0,
       rejectedCombinationCount: 0,
       representation: "factored-axis-product"
+    },
+    axisCombinationInventory: {
+      horizontal: {
+        totalCombinationCount: 0,
+        validCombinationCount: 0,
+        canonicalGeometryCount: 0
+      },
+      vertical: {
+        totalCombinationCount: 0,
+        validCombinationCount: 0,
+        canonicalGeometryCount: 0
+      }
     },
     axisBounds: {
       horizontal: [],
@@ -224,6 +256,7 @@ function projectRegion({ provider, region, sourceId, coordinateSystem }) {
       horizontalAxisBoundsIds: [],
       verticalAxisBoundsIds: [],
       exactCombinationCount: 0,
+      rawExactCombinationCount: 0,
       materializedCombinationCount: 0
     },
     provenance: {
@@ -288,7 +321,7 @@ function projectRegion({ provider, region, sourceId, coordinateSystem }) {
   const rawVerticalCount = hasEveryEdge
     ? edgeAlternatives.left.length * edgeAlternatives.right.length
     : 0;
-  base.axisBounds.horizontal = hasEveryEdge
+  const horizontalProjection = hasEveryEdge
     ? createAxisBoundsCandidates({
       axis: "horizontal",
       startEdge: "top",
@@ -301,8 +334,8 @@ function projectRegion({ provider, region, sourceId, coordinateSystem }) {
       sourceId,
       coordinateSystem
     })
-    : [];
-  base.axisBounds.vertical = hasEveryEdge
+    : emptyAxisBoundsProjection();
+  const verticalProjection = hasEveryEdge
     ? createAxisBoundsCandidates({
       axis: "vertical",
       startEdge: "left",
@@ -315,16 +348,37 @@ function projectRegion({ provider, region, sourceId, coordinateSystem }) {
       sourceId,
       coordinateSystem
     })
-    : [];
+    : emptyAxisBoundsProjection();
+  base.axisBounds.horizontal = horizontalProjection.candidates;
+  base.axisBounds.vertical = verticalProjection.candidates;
+  base.axisCombinationInventory.horizontal = {
+    totalCombinationCount: rawHorizontalCount,
+    validCombinationCount: horizontalProjection.rawValidCombinationCount,
+    canonicalGeometryCount: horizontalProjection.candidates.length
+  };
+  base.axisCombinationInventory.vertical = {
+    totalCombinationCount: rawVerticalCount,
+    validCombinationCount: verticalProjection.rawValidCombinationCount,
+    canonicalGeometryCount: verticalProjection.candidates.length
+  };
 
   const totalCombinationCount = rawHorizontalCount * rawVerticalCount;
-  const validBoundsCandidateCount = (
+  const rawValidBoundsCandidateCount = (
+    horizontalProjection.rawValidCombinationCount
+    * verticalProjection.rawValidCombinationCount
+  );
+  const canonicalBoundsCandidateCount = (
     base.axisBounds.horizontal.length * base.axisBounds.vertical.length
   );
   base.combinationInventory.totalCombinationCount = totalCombinationCount;
-  base.combinationInventory.validBoundsCandidateCount = validBoundsCandidateCount;
+  base.combinationInventory.validBoundsCandidateCount = (
+    rawValidBoundsCandidateCount
+  );
+  base.combinationInventory.canonicalBoundsCandidateCount = (
+    canonicalBoundsCandidateCount
+  );
   base.combinationInventory.rejectedCombinationCount = (
-    totalCombinationCount - validBoundsCandidateCount
+    totalCombinationCount - rawValidBoundsCandidateCount
   );
   base.rectangularCombinationSpace.horizontalAxisBoundsIds = (
     base.axisBounds.horizontal.map(value => value.id)
@@ -333,12 +387,15 @@ function projectRegion({ provider, region, sourceId, coordinateSystem }) {
     base.axisBounds.vertical.map(value => value.id)
   );
   base.rectangularCombinationSpace.exactCombinationCount = (
-    validBoundsCandidateCount
+    canonicalBoundsCandidateCount
+  );
+  base.rectangularCombinationSpace.rawExactCombinationCount = (
+    rawValidBoundsCandidateCount
   );
 
-  base.status = validBoundsCandidateCount === 0
+  base.status = canonicalBoundsCandidateCount === 0
     ? "unavailable"
-    : validBoundsCandidateCount === 1
+    : canonicalBoundsCandidateCount === 1
       ? "available"
       : "ambiguous";
   base.reasons = base.status === "unavailable"
@@ -360,26 +417,48 @@ function createAxisBoundsCandidates({
   coordinateSystem
 }) {
   const candidates = [];
+  const candidatesByStart = new Map();
+  let rawValidCombinationCount = 0;
   for (const startAlternative of startAlternatives) {
     for (const endAlternative of endAlternatives) {
       if (endAlternative.position <= startAlternative.position) {
         continue;
       }
-      const candidateIndex = candidates.length;
+      const rawCandidateIndex = rawValidCombinationCount;
+      rawValidCombinationCount += 1;
       const evidenceReference = [
         sourceId,
         safeId(providerId),
         safeId(regionId),
         axis,
-        String(candidateIndex)
+        String(rawCandidateIndex)
       ].join(":");
-      candidates.push({
+      const contribution = {
+        startAlternative: cloneDeterministicValue(startAlternative),
+        endAlternative: cloneDeterministicValue(endAlternative),
+        evidenceReference
+      };
+      const existing = findCanonicalAxisBounds(
+        candidatesByStart,
+        startAlternative.position,
+        endAlternative.position
+      );
+
+      if (existing) {
+        existing.rawCombinationCount += 1;
+        existing.contributingInterpretations.push(contribution);
+        existing.evidenceReferences.push(evidenceReference);
+        existing.provenance.canonicalization.rawCombinationCount += 1;
+        continue;
+      }
+
+      const candidate = {
         id: [
           "grid-lattice-axis-bounds",
           safeId(providerId),
           safeId(regionId),
           axis,
-          String(candidateIndex + 1).padStart(3, "0")
+          String(rawCandidateIndex + 1).padStart(3, "0")
         ].join(":"),
         axis,
         startEdge,
@@ -389,6 +468,8 @@ function createAxisBoundsCandidates({
         span: endAlternative.position - startAlternative.position,
         startAlternative: cloneDeterministicValue(startAlternative),
         endAlternative: cloneDeterministicValue(endAlternative),
+        rawCombinationCount: 1,
+        contributingInterpretations: [contribution],
         coordinateSystem: cloneDeterministicValue(coordinateSystem),
         provenance: {
           source: sourceId,
@@ -406,13 +487,43 @@ function createAxisBoundsCandidates({
             [endEdge]: cloneDeterministicValue(
               observation?.edges?.[endEdge]?.provenance ?? null
             )
+          },
+          canonicalization: {
+            equality: "exact-numeric-axis-bounds",
+            start: startAlternative.position,
+            end: endAlternative.position,
+            rawCombinationCount: 1
           }
         },
         evidenceReferences: [evidenceReference]
-      });
+      };
+      candidates.push(candidate);
+      storeCanonicalAxisBounds(
+        candidatesByStart,
+        startAlternative.position,
+        endAlternative.position,
+        candidate
+      );
     }
   }
-  return candidates;
+  return { candidates, rawValidCombinationCount };
+}
+
+function emptyAxisBoundsProjection() {
+  return { candidates: [], rawValidCombinationCount: 0 };
+}
+
+function findCanonicalAxisBounds(index, start, end) {
+  return index.get(start)?.get(end) ?? null;
+}
+
+function storeCanonicalAxisBounds(index, start, end, candidate) {
+  let byEnd = index.get(start);
+  if (!byEnd) {
+    byEnd = new Map();
+    index.set(start, byEnd);
+  }
+  byEnd.set(end, candidate);
 }
 
 function readDerivedPositions(values, field) {

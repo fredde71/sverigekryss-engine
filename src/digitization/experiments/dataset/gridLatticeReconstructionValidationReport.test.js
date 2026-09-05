@@ -795,7 +795,21 @@ function interpretation(derivedSpacing) {
     status: "rejected",
     intervalCount: 2,
     derivedSpacing,
-    rejectionReasons: ["candidate-alignment-failed"]
+    rejectionReasons: ["candidate-alignment-failed"],
+    admission: {
+      status: "rejected",
+      reasons: ["candidate-alignment-failed"]
+    },
+    oneXSupport: { status: "available", count: 1 },
+    alignmentQualifiedOneXSupport: { status: "available", count: 1 },
+    assignedCandidateCount: 2,
+    rejectedCandidateCount: 1,
+    maximumAbsoluteResidual: 1.5,
+    RMSResidual: 1,
+    inferredLineCount: 0,
+    longestInferredRun: 0,
+    inferredLineFraction: 0,
+    skippedIntervalCounts: [1]
   };
 }
 

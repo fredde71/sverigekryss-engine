@@ -27,6 +27,8 @@ Development-only observations must remain separate from:
 
 Shadow or experimental output must never enter production assembly through fallback, automatic selection, or shared mutable state.
 
+Verified behavior may be promoted into source-neutral, production-owned Digitization boundaries only through an explicit Promotion Gate. After promotion, production must consume those domain boundaries directly; it must not depend on Lab experiments, datasets, validation reports, or Ground Truth. The Digitization Lab remains a development-only surface separate from the normal Editor workflow.
+
 ## Artifact Roles
 
 ### Observation

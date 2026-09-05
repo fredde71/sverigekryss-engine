@@ -1,6 +1,7 @@
 import {
   createAnalysisContext,
   withBinaryImage,
+  withDocumentBinaryImage,
   withGridGeometry,
   withImageData,
   withLineCandidates,
@@ -10,7 +11,14 @@ import {
   createDocumentAnalysis,
   mapBinaryImageGeometryToDocument
 } from "../analysis/DocumentAnalysis";
-import { createCompatibilityAnalysisRegion } from "../analysis/AnalysisRegion";
+import {
+  COMPATIBILITY_REGION_ID,
+  mapAnalysisRegionGeometryToBinaryImage
+} from "../analysis/AnalysisRegion";
+import {
+  createProductionAnalysisRegion,
+  PRODUCTION_HORIZONTAL_OUTER_SPAN_REGION_ID
+} from "../analysis/HorizontalOuterSpanAnalysisRegion";
 import { createGridAnalysis } from "../analysis/GridAnalysis";
 import { createGridDetection } from "./GridDetection";
 import {
@@ -18,13 +26,11 @@ import {
   detectGridFromAnalysisContext
 } from "./gridDetectionEngine";
 
-const COMPATIBILITY_REGION_ID = "compatibility-full-binary-image";
-
 export function createImageGridDetectionOrchestrator({
   analyzeDocument = createDocumentAnalysis,
-  createProductionRegion = createCompatibilityAnalysisRegion,
+  createProductionRegion = createProductionAnalysisRegion,
   analyzeGrid = createGridAnalysis,
-  normalizeGeometry = mapBinaryImageGeometryToDocument
+  normalizeGeometry = normalizeAnalysisRegionGeometryToDocument
 } = {}) {
   validateDependency(analyzeDocument, "analyzeDocument");
   validateDependency(createProductionRegion, "createProductionRegion");
@@ -47,7 +53,7 @@ export function createImageGridDetectionOrchestrator({
     });
     const analysisRegion = createProductionRegion(documentAnalysis);
 
-    assertCompatibilityRegion(analysisRegion);
+    assertProductionRegion(analysisRegion);
 
     const gridAnalysis = await analyzeGrid({
       analysisRegion,
@@ -55,7 +61,8 @@ export function createImageGridDetectionOrchestrator({
     });
     const gridGeometry = normalizeGeometry(
       documentAnalysis,
-      gridAnalysis.gridGeometry
+      gridAnalysis.gridGeometry,
+      analysisRegion
     );
     const detectedContext = createDetectedContext({
       documentAnalysis,
@@ -110,13 +117,18 @@ function createDetectedContext({
     gridGeometry
   );
 
-  return detectGridFromAnalysisContext(analysisContext, {
+  const detectedContext = detectGridFromAnalysisContext(analysisContext, {
     detectGrid: context => createGridDetection({
       geometry: context.gridGeometry,
       confidence: context.gridGeometry ? "detected" : "missing-grid-geometry",
       diagnostics: gridAnalysis.diagnostics
     })
   });
+
+  return withDocumentBinaryImage(
+    detectedContext,
+    documentAnalysis.binaryImage
+  );
 }
 
 function createCoordinateProvenance({ documentAnalysis, analysisRegion }) {
@@ -150,13 +162,30 @@ function createCoordinateProvenance({ documentAnalysis, analysisRegion }) {
   };
 }
 
-function assertCompatibilityRegion(analysisRegion) {
-  if (
-    analysisRegion?.id !== COMPATIBILITY_REGION_ID
-    || analysisRegion?.regionType !== "compatibility"
-  ) {
-    throw new Error("Production requires the compatibility AnalysisRegion");
+function assertProductionRegion(analysisRegion) {
+  const isCompatibilityRegion = (
+    analysisRegion?.id === COMPATIBILITY_REGION_ID
+    && analysisRegion?.regionType === "compatibility"
+  );
+  const isObservedProductionRegion = (
+    analysisRegion?.id === PRODUCTION_HORIZONTAL_OUTER_SPAN_REGION_ID
+    && analysisRegion?.regionType === "production-analysis-region"
+  );
+
+  if (!isCompatibilityRegion && !isObservedProductionRegion) {
+    throw new Error("Production requires a production-owned AnalysisRegion");
   }
+}
+
+function normalizeAnalysisRegionGeometryToDocument(
+  documentAnalysis,
+  gridGeometry,
+  analysisRegion
+) {
+  return mapBinaryImageGeometryToDocument(
+    documentAnalysis,
+    mapAnalysisRegionGeometryToBinaryImage(analysisRegion, gridGeometry)
+  );
 }
 
 function validateDependency(dependency, name) {

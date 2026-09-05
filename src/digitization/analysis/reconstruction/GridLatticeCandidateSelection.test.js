@@ -145,6 +145,172 @@ test("returns unavailable rather than selecting from partial confidence", () => 
   });
 });
 
+test("does not interpret null selection observations as numeric zero", () => {
+  const pipeline = createPipeline({ height: 25 });
+  const fusion = clone(pipeline.fusion);
+  fusion.axisEvidence.horizontal[0].assessments[
+    "primitive-period-consistency"
+  ].observation.periodDelta = null;
+
+  const result = selectGridLatticeCandidate({
+    candidateGeneration: pipeline.generation,
+    evidenceFusion: fusion
+  });
+
+  expect(result.status).toBe("selected");
+  expect(result.selectedCandidateReference.horizontalAxisCandidateId).toBe(
+    pipeline.generation.axisCandidates.horizontal[1].id
+  );
+  expect(result.candidateEvaluations[0]).toMatchObject({
+    status: "unavailable",
+    unavailableAssessmentIds: ["primitive-period-consistency"],
+    comparisonVector: null
+  });
+});
+
+test("preserves an unassessed spacing rejection without letting it compete", () => {
+  const periods = createPrimitivePeriodEvidence();
+  periods.status = "ambiguous";
+  periods.axes.horizontal = createPeriodAxis("horizontal", [10, 5]);
+  periods.axes.horizontal.candidates[1].provenance.sourceInterpretation = {
+    status: "rejected",
+    admission: { status: "not-assessed" },
+    oneXSupport: { status: "not-assessed" },
+    alignmentQualifiedOneXSupport: { status: "not-assessed" },
+    assignedCandidateCount: 0,
+    rejectedCandidateCount: 0,
+    maximumAbsoluteResidual: null,
+    RMSResidual: null,
+    inferredLineCount: null,
+    longestInferredRun: null,
+    inferredLineFraction: null,
+    skippedIntervalCounts: [],
+    rejectionReasons: [{ code: "spacing-out-of-range" }]
+  };
+  const pipeline = createPipeline({ periods, height: 20 });
+  const rejectedCandidate = pipeline.generation.axisCandidates.horizontal.find(
+    candidate => candidate.provenance.primitivePeriodCandidateId
+      === "horizontal-period-002"
+      && candidate.intervalCount === 4
+  );
+
+  const result = selectGridLatticeCandidate({
+    candidateGeneration: pipeline.generation,
+    evidenceFusion: pipeline.fusion
+  });
+
+  expect(rejectedCandidate).toBeDefined();
+  expect(rejectedCandidate.provenance.source.sourceInterpretation).toMatchObject({
+    status: "rejected",
+    rejectionReasons: [{ code: "spacing-out-of-range" }]
+  });
+  expect(result.status).toBe("selected");
+  expect(result.selectedCandidateReference.horizontalAxisCandidateId).not.toBe(
+    rejectedCandidate.id
+  );
+  const rejectedEvidence = pipeline.fusion.axisEvidence.horizontal.find(
+    value => value.axisCandidateId === rejectedCandidate.id
+  );
+  const rejectedEvaluation = result.candidateEvaluations.find(value => (
+    value.candidateReference.horizontalAxisEvidenceId === rejectedEvidence.id
+  ));
+  expect(rejectedEvaluation).toMatchObject({
+    status: "unavailable",
+    unavailableAssessmentIds: ["primitive-period-consistency"],
+    comparisonVector: null
+  });
+});
+
+test("retains lexicographic behavior for fully assessed candidates", () => {
+  const pipeline = createPipeline({ height: 24 });
+  const first = selectGridLatticeCandidate({
+    candidateGeneration: pipeline.generation,
+    evidenceFusion: pipeline.fusion
+  });
+  const second = selectGridLatticeCandidate({
+    candidateGeneration: pipeline.generation,
+    evidenceFusion: pipeline.fusion
+  });
+
+  expect(first.status).toBe("selected");
+  expect(first.selectedCandidateId).toBe("grid-lattice-candidate-001");
+  expect(second).toEqual(first);
+});
+
+test("keeps the existing eight fields ahead of qualified 1x support", () => {
+  const pipeline = createPipeline({ height: 24 });
+  const fusion = clone(pipeline.fusion);
+  setQualifiedOneXSupport(fusion.axisEvidence.horizontal[0], 0);
+  setQualifiedOneXSupport(fusion.axisEvidence.horizontal[1], 1);
+
+  const result = selectGridLatticeCandidate({
+    candidateGeneration: pipeline.generation,
+    evidenceFusion: fusion
+  });
+
+  expect(result.status).toBe("selected");
+  expect(result.selectedCandidateReference.horizontalAxisCandidateId).toBe(
+    pipeline.generation.axisCandidates.horizontal[0].id
+  );
+  expect(result.candidateEvaluations.map(value => (
+    value.comparisonVector.alignmentQualifiedOneXSupportMissing
+  ))).toEqual([1, 0]);
+});
+
+test("qualified 1x presence resolves only an otherwise exact tie", () => {
+  const pipeline = createPipeline({ height: 25 });
+  const fusion = clone(pipeline.fusion);
+  setQualifiedOneXSupport(fusion.axisEvidence.horizontal[0], 1);
+  setQualifiedOneXSupport(fusion.axisEvidence.horizontal[1], 0);
+
+  const first = selectGridLatticeCandidate({
+    candidateGeneration: pipeline.generation,
+    evidenceFusion: fusion
+  });
+  const second = selectGridLatticeCandidate({
+    candidateGeneration: pipeline.generation,
+    evidenceFusion: fusion
+  });
+
+  expect(first.status).toBe("selected");
+  expect(first.selectedCandidateReference.horizontalAxisCandidateId).toBe(
+    pipeline.generation.axisCandidates.horizontal[0].id
+  );
+  expect(second).toEqual(first);
+});
+
+test("multiple qualified 1x candidates remain ambiguous", () => {
+  const pipeline = createPipeline({ height: 25 });
+  const fusion = clone(pipeline.fusion);
+  fusion.axisEvidence.horizontal.forEach(value => (
+    setQualifiedOneXSupport(value, 1)
+  ));
+
+  const result = selectGridLatticeCandidate({
+    candidateGeneration: pipeline.generation,
+    evidenceFusion: fusion
+  });
+
+  expect(result.status).toBe("ambiguous");
+  expect(result.globallyTiedCandidateSpace.exactCandidateCount).toBe(2);
+});
+
+test("zero qualified 1x support preserves ambiguity", () => {
+  const pipeline = createPipeline({ height: 25 });
+  const fusion = clone(pipeline.fusion);
+  fusion.axisEvidence.horizontal.forEach(value => (
+    setQualifiedOneXSupport(value, 0)
+  ));
+
+  const result = selectGridLatticeCandidate({
+    candidateGeneration: pipeline.generation,
+    evidenceFusion: fusion
+  });
+
+  expect(result.status).toBe("ambiguous");
+  expect(result.globallyTiedCandidateSpace.exactCandidateCount).toBe(2);
+});
+
 test("uses the documented factual comparison fields in deterministic order", () => {
   const pipeline = createPipeline({ height: 24 });
   const result = selectGridLatticeCandidate({
@@ -164,7 +330,8 @@ test("uses the documented factual comparison fields in deterministic order", () 
       "anchorRmsResidual",
       "primitivePeriodTotalAbsoluteDelta",
       "intervalMaximumAbsoluteResidual",
-      "intervalRmsResidual"
+      "intervalRmsResidual",
+      "alignmentQualifiedOneXSupportMissing"
     ],
     tieBehavior: "ambiguous",
     candidateOrderTieBreaker: "none",
@@ -565,7 +732,11 @@ function createPeriodAxis(axis, periods) {
       evidenceReferences: [`periodicity:${axis}:${index + 1}`],
       provenance: {
         source: "primitive-period-observation",
-        sourceOrder: index
+        sourceOrder: index,
+        alignmentQualifiedOneXSupport: {
+          status: "available",
+          count: 1
+        }
       }
     })),
     reasons: []
@@ -610,7 +781,8 @@ function compareReferenceVectors(left, right) {
     "anchorRmsResidual",
     "primitivePeriodTotalAbsoluteDelta",
     "intervalMaximumAbsoluteResidual",
-    "intervalRmsResidual"
+    "intervalRmsResidual",
+    "alignmentQualifiedOneXSupportMissing"
   ]) {
     if (left[field] < right[field]) {
       return -1;
@@ -620,6 +792,15 @@ function compareReferenceVectors(left, right) {
     }
   }
   return 0;
+}
+
+function setQualifiedOneXSupport(axisEvidence, count) {
+  axisEvidence.assessments[
+    "primitive-period-consistency"
+  ].observation.provenance.alignmentQualifiedOneXSupport = {
+    status: "available",
+    count
+  };
 }
 
 function createRepeatedAxisCandidates(source, axis, count) {

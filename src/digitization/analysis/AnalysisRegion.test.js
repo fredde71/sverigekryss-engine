@@ -2,6 +2,7 @@ import fs from "fs";
 import { createDocumentAnalysis } from "./DocumentAnalysis";
 import {
   createCompatibilityAnalysisRegion,
+  mapAnalysisRegionGeometryToBinaryImage,
   mapAnalysisRegionPointToBinaryImage,
   mapBinaryImagePointToAnalysisRegion
 } from "./AnalysisRegion";
@@ -79,6 +80,50 @@ test("keeps local and BinaryImage coordinate mapping identical", () => {
     region,
     mapAnalysisRegionPointToBinaryImage(region, point)
   )).toEqual(point);
+});
+
+test("maps a translated region geometry back to BinaryImage coordinates", () => {
+  const region = {
+    ...createCompatibilityAnalysisRegion(createDocumentAnalysis({
+      imageData: createImageData(8, 12)
+    })),
+    id: "translated-region",
+    regionType: "production-analysis-region",
+    coordinateRelationship: {
+      type: "translation",
+      localToBinaryImage: {
+        offsetX: 2,
+        offsetY: 5,
+        scaleX: 1,
+        scaleY: 1
+      },
+      binaryImageToLocal: {
+        offsetX: -2,
+        offsetY: -5,
+        scaleX: 1,
+        scaleY: 1
+      }
+    }
+  };
+  const localGeometry = {
+    bounds: { top: 0, left: 1, width: 4, height: 6 },
+    horizontalLines: [0, 3, 6],
+    verticalLines: [1, 3, 5],
+    rows: 2,
+    cols: 2
+  };
+
+  expect(mapAnalysisRegionPointToBinaryImage(region, { x: 1.5, y: 2 }))
+    .toEqual({ x: 3.5, y: 7 });
+  expect(mapBinaryImagePointToAnalysisRegion(region, { x: 3.5, y: 7 }))
+    .toEqual({ x: 1.5, y: 2 });
+  expect(mapAnalysisRegionGeometryToBinaryImage(region, localGeometry)).toEqual({
+    bounds: { top: 5, left: 3, width: 4, height: 6 },
+    horizontalLines: [5, 8, 11],
+    verticalLines: [3, 5, 7],
+    rows: 2,
+    cols: 2
+  });
 });
 
 test("introduces no discovery, crop, grid or candidate responsibility", () => {

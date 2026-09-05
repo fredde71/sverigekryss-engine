@@ -176,7 +176,7 @@ test("does not fabricate coordinate transforms when owners omit them", async () 
   });
 });
 
-test("uses only the compatibility AnalysisRegion in production", async () => {
+test("rejects an AnalysisRegion that is not owned by production", async () => {
   const alternativeRegion = {
     id: "experimental-region",
     regionType: "experimental",
@@ -201,9 +201,79 @@ test("uses only the compatibility AnalysisRegion in production", async () => {
   await expect(run({
     source: { id: "source" },
     readImageData: async () => createImageData(1, 1)
-  })).rejects.toThrow("Production requires the compatibility AnalysisRegion");
+  })).rejects.toThrow("Production requires a production-owned AnalysisRegion");
   expect(analyzeGrid).not.toHaveBeenCalled();
   expect(normalizeGeometry).not.toHaveBeenCalled();
+});
+
+test("uses the horizontal outer-span region for the Wordex regression fixture", async () => {
+  const imageData = createWordexRegressionImage();
+  const result = await detectGridFromImageSource({
+    source: { id: "wordex-production-regression" },
+    options: {
+      documentSize: { width: 20, height: 42 }
+    },
+    readImageData: async () => imageData
+  });
+
+  expect(result.context.coordinateProvenance.analysisRegion).toEqual({
+    id: "production-horizontal-outer-span-001",
+    regionType: "production-analysis-region",
+    relationshipType: "translation",
+    localToBinaryImage: {
+      offsetX: 0,
+      offsetY: 5,
+      scaleX: 1,
+      scaleY: 1
+    },
+    owner: "analysis-region"
+  });
+  expect(result.context.binaryImage).toMatchObject({
+    width: 10,
+    height: 11
+  });
+  expect(result.context.documentBinaryImage).toMatchObject({
+    width: 10,
+    height: 21
+  });
+  expect(result.context.documentBinaryImage).not.toBe(
+    result.context.binaryImage
+  );
+  expect(Array.from(result.context.projections.vertical)).toEqual([
+    3, 3, 11, 3, 3, 11, 3, 3, 11, 3
+  ]);
+  expect(result.context.lineCandidates.vertical.map(candidate => (
+    candidate.position
+  ))).toEqual([2, 5, 8]);
+  expect(result.gridDetection.geometry).toEqual({
+    bounds: { top: 10, left: 4, width: 12, height: 20 },
+    horizontalLines: [10, 20, 30],
+    verticalLines: [4, 10, 16],
+    rows: 2,
+    cols: 2
+  });
+});
+
+test("falls back to unchanged full-page analysis without a restricted region", async () => {
+  const imageData = createImageData(6, 9);
+  const result = await detectGridFromImageSource({
+    source: { id: "no-horizontal-span" },
+    readImageData: async () => imageData
+  });
+
+  expect(result.context.coordinateProvenance.analysisRegion).toMatchObject({
+    id: "compatibility-full-binary-image",
+    regionType: "compatibility",
+    relationshipType: "identity",
+    localToBinaryImage: {
+      offsetX: 0,
+      offsetY: 0,
+      scaleX: 1,
+      scaleY: 1
+    }
+  });
+  expect(result.context.binaryImage).toMatchObject({ width: 6, height: 9 });
+  expect(result.gridDetection.geometry).toBeNull();
 });
 
 test("does not read or accept experiment, benchmark or comparison results", async () => {
@@ -401,6 +471,31 @@ function createGridImage() {
     for (let x = 0; x < width; x++) {
       const offset = ((y * width) + x) * 4;
       const value = [0, 2, 4].includes(y) || [0, 2, 4].includes(x)
+        ? 0
+        : 255;
+
+      data[offset] = value;
+      data[offset + 1] = value;
+      data[offset + 2] = value;
+      data[offset + 3] = 255;
+    }
+  }
+
+  return { width, height, data };
+}
+
+function createWordexRegressionImage() {
+  const width = 10;
+  const height = 21;
+  const data = new Uint8ClampedArray(width * height * 4);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const offset = ((y * width) + x) * 4;
+      const insideVerticalLine = y >= 5
+        && y <= 15
+        && [2, 5, 8].includes(x);
+      const value = [5, 10, 15].includes(y) || insideVerticalLine
         ? 0
         : 255;
 

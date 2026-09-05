@@ -36,6 +36,7 @@ test("projects one factual geometry interpretation as available bounds evidence"
     horizontalAxisBoundsIds: [horizontal.id],
     verticalAxisBoundsIds: [vertical.id],
     exactCombinationCount: 1,
+    rawExactCombinationCount: 1,
     materializedCombinationCount: 0
   });
   expect(region).not.toHaveProperty("boundsCandidates");
@@ -84,17 +85,19 @@ test("preserves alternative definitions and ambiguous runs in deterministic orde
   expect(region.combinationInventory).toEqual({
     totalCombinationCount: 108,
     validBoundsCandidateCount: 108,
+    canonicalBoundsCandidateCount: 24,
     rejectedCombinationCount: 0,
     representation: "factored-axis-product"
   });
-  expect(region.axisBounds.horizontal).toHaveLength(12);
-  expect(region.axisBounds.vertical).toHaveLength(9);
+  expect(region.axisBounds.horizontal).toHaveLength(6);
+  expect(region.axisBounds.vertical).toHaveLength(4);
   expect(region.rectangularCombinationSpace).toEqual({
     representation: "cartesian-product-by-reference",
     combinationOrder: "horizontal-major-vertical-minor",
     horizontalAxisBoundsIds: region.axisBounds.horizontal.map(value => value.id),
     verticalAxisBoundsIds: region.axisBounds.vertical.map(value => value.id),
-    exactCombinationCount: 108,
+    exactCombinationCount: 24,
+    rawExactCombinationCount: 108,
     materializedCombinationCount: 0
   });
   expect(region.interpretationInventory[1]).toMatchObject({
@@ -173,6 +176,7 @@ test("records invalid edge ordering without creating a bounds candidate", () => 
   expect(inventory).toEqual({
     totalCombinationCount: 1,
     validBoundsCandidateCount: 0,
+    canonicalBoundsCandidateCount: 0,
     rejectedCombinationCount: 1,
     representation: "factored-axis-product"
   });
@@ -192,6 +196,7 @@ test("preserves the unique rectangular search space by axis reference", () => {
     horizontalAxisBoundsIds: [region.axisBounds.horizontal[0].id],
     verticalAxisBoundsIds: [region.axisBounds.vertical[0].id],
     exactCombinationCount: 1,
+    rawExactCombinationCount: 1,
     materializedCombinationCount: 0
   });
   expect(region).not.toHaveProperty("boundsCandidates");
@@ -237,10 +242,12 @@ test("reports realistic four-edge cardinality without materializing rectangles",
   expect(Object.fromEntries(Object.entries(region.edgeAlternativeInventory).map(
     ([edge, inventory]) => [edge, inventory.alternativeCount]
   ))).toEqual({ top: 6, bottom: 6, left: 6, right: 6 });
-  expect(region.axisBounds.horizontal).toHaveLength(36);
-  expect(region.axisBounds.vertical).toHaveLength(36);
+  expect(region.axisBounds.horizontal).toHaveLength(25);
+  expect(region.axisBounds.vertical).toHaveLength(25);
   expect(region.combinationInventory.validBoundsCandidateCount).toBe(1296);
-  expect(region.rectangularCombinationSpace.exactCombinationCount).toBe(1296);
+  expect(region.combinationInventory.canonicalBoundsCandidateCount).toBe(625);
+  expect(region.rectangularCombinationSpace.exactCombinationCount).toBe(625);
+  expect(region.rectangularCombinationSpace.rawExactCombinationCount).toBe(1296);
   expect(region.rectangularCombinationSpace.materializedCombinationCount).toBe(0);
   expect(region).not.toHaveProperty("boundsCandidates");
 });
@@ -282,6 +289,7 @@ test("returns explicit unavailable output for missing source diagnostics", () =>
     },
     providerCount: 0,
     boundsCandidateCount: 0,
+    rawBoundsCandidateCount: 0,
     providers: [],
     reasons: ["outer-line-center-geometry-diagnostics-unavailable"]
   });

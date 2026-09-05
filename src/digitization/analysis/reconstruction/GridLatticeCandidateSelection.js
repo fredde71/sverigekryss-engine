@@ -19,7 +19,8 @@ const COMPARISON_FIELDS = [
   "anchorRmsResidual",
   "primitivePeriodTotalAbsoluteDelta",
   "intervalMaximumAbsoluteResidual",
-  "intervalRmsResidual"
+  "intervalRmsResidual",
+  "alignmentQualifiedOneXSupportMissing"
 ];
 
 export function selectGridLatticeCandidate({
@@ -203,9 +204,7 @@ function findMinimumFactoredCandidate(axisEvidence) {
 
 function createAxisSelectionRecords(values) {
   return values.flatMap((value, index) => {
-    if (REQUIRED_ASSESSMENT_IDS.some(id => (
-      value.assessments[id]?.status !== "available"
-    ))) {
+    if (findUnavailableAssessmentIds(value).length > 0) {
       return [];
     }
     const anchors = value.assessments[
@@ -245,7 +244,9 @@ function createAxisSelectionRecords(values) {
         anchorSquaredResidualTotal: squaredTotal(anchorResiduals),
         primitivePeriodTotalAbsoluteDelta: Math.abs(period.periodDelta),
         intervalMaximumAbsoluteResidual: maximumAbsolute(intervalResiduals),
-        intervalSquaredResidualTotal: squaredTotal(intervalResiduals)
+        intervalSquaredResidualTotal: squaredTotal(intervalResiduals),
+        alignmentQualifiedOneXSupportMissing:
+          readAlignmentQualifiedOneXSupport(period) > 0 ? 0 : 1
       }
     }];
   });
@@ -306,7 +307,8 @@ function createRemainingFieldDescriptors() {
     rmsDescriptor("anchorSquaredResidualTotal", "anchorCount"),
     sumDescriptor("primitivePeriodTotalAbsoluteDelta"),
     maximumDescriptor("intervalMaximumAbsoluteResidual"),
-    rmsDescriptor("intervalSquaredResidualTotal", "intervalCount")
+    rmsDescriptor("intervalSquaredResidualTotal", "intervalCount"),
+    sumDescriptor("alignmentQualifiedOneXSupportMissing")
   ];
 }
 
@@ -462,10 +464,10 @@ function createFactoredCandidateEvaluation({
   candidateIndex
 }) {
   const candidateId = createCandidateId(candidateIndex);
-  const unavailableAssessmentIds = REQUIRED_ASSESSMENT_IDS.filter(id => (
-    horizontal.assessments[id]?.status !== "available"
-    || vertical.assessments[id]?.status !== "available"
-  ));
+  const unavailableAssessmentIds = Array.from(new Set([
+    ...findUnavailableAssessmentIds(horizontal),
+    ...findUnavailableAssessmentIds(vertical)
+  ]));
   const candidateReference = createCandidateReference({
     horizontal,
     vertical,
@@ -492,6 +494,94 @@ function createFactoredCandidateEvaluation({
     unavailableAssessmentIds: [],
     comparisonVector: createComparisonVector(horizontal, vertical)
   };
+}
+
+function findUnavailableAssessmentIds(axisEvidence) {
+  return REQUIRED_ASSESSMENT_IDS.filter(id => (
+    !isCompleteAssessment(axisEvidence.assessments[id], id)
+  ));
+}
+
+function isCompleteAssessment(assessment, id) {
+  if (
+    assessment?.status !== "available"
+    || !assessment.observation
+    || typeof assessment.observation !== "object"
+  ) {
+    return false;
+  }
+
+  const observation = assessment.observation;
+  if (id === "outer-bounds-consistency") {
+    return allFinite([
+      observation.expectedStart,
+      observation.expectedEnd,
+      observation.candidateStart,
+      observation.candidateModeledEnd,
+      observation.startDelta,
+      observation.endDelta
+    ]) && typeof observation.exactMatch === "boolean";
+  }
+  if (id === "observed-line-anchor-residuals") {
+    return Array.isArray(observation.assignments)
+      && observation.assignments.length > 0
+      && observation.assignments.every(assignment => (
+        Number.isFinite(assignment.residual)
+        && typeof assignment.withinCandidateExtent === "boolean"
+      ));
+  }
+  if (id === "primitive-period-consistency") {
+    return allFinite([
+      observation.candidatePeriod,
+      observation.evidencePeriod,
+      observation.periodDelta
+    ])
+      && typeof observation.exactMatch === "boolean"
+      && isPrimitiveInterpretationAssessed(observation.provenance)
+      && readAlignmentQualifiedOneXSupport(observation) !== null;
+  }
+  return Array.isArray(observation.intervals)
+    && observation.intervals.length > 0
+    && observation.intervals.every(interval => Number.isFinite(interval.residual));
+}
+
+function readAlignmentQualifiedOneXSupport(observation) {
+  const provenance = observation?.provenance;
+  const source = provenance?.sourceInterpretation
+    ? provenance.sourceInterpretation.alignmentQualifiedOneXSupport
+    : provenance?.alignmentQualifiedOneXSupport;
+
+  return source?.status === "available"
+    && Number.isInteger(source.count)
+    && source.count >= 0
+    ? source.count
+    : null;
+}
+
+function isPrimitiveInterpretationAssessed(provenance) {
+  const interpretation = provenance?.sourceInterpretation;
+
+  if (!interpretation) {
+    return true;
+  }
+
+  return ["admitted", "rejected"].includes(
+    interpretation.admission?.status
+  )
+    && interpretation.oneXSupport?.status === "available"
+    && interpretation.alignmentQualifiedOneXSupport?.status === "available"
+    && Number.isFinite(interpretation.assignedCandidateCount)
+    && Number.isFinite(interpretation.rejectedCandidateCount)
+    && Number.isFinite(interpretation.maximumAbsoluteResidual)
+    && Number.isFinite(interpretation.RMSResidual)
+    && Number.isFinite(interpretation.inferredLineCount)
+    && Number.isFinite(interpretation.longestInferredRun)
+    && Number.isFinite(interpretation.inferredLineFraction)
+    && Array.isArray(interpretation.skippedIntervalCounts);
+}
+
+function allFinite(values) {
+  return values.every(Number.isFinite);
 }
 
 function createCandidateReference({ horizontal, vertical, candidateIndex }) {
@@ -544,7 +634,13 @@ function createComparisonVector(horizontal, vertical) {
       Math.abs(axis.periodDelta)
     ]).reduce((total, value) => total + value, 0),
     intervalMaximumAbsoluteResidual: maximumAbsolute(intervalResiduals),
-    intervalRmsResidual: rms(intervalResiduals)
+    intervalRmsResidual: rms(intervalResiduals),
+    alignmentQualifiedOneXSupportMissing: periods.reduce(
+      (total, period) => (
+        total + (readAlignmentQualifiedOneXSupport(period) > 0 ? 0 : 1)
+      ),
+      0
+    )
   };
 }
 

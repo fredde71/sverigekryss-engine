@@ -91,6 +91,28 @@ test("renders grid frame in source coordinate space", () => {
   });
 });
 
+test("forwards explicit document-space grid lines into the grid frame", () => {
+  render(
+    <EditorLayer
+      {...baseProps}
+      gridLineProposal={{
+        horizontalLinePositions: [21, 170, 319],
+        verticalLinePositions: [31, 230, 429],
+        referenceGridArea: baseProps.gridArea
+      }}
+    />
+  );
+
+  expect(screen.getByTestId("editor-grid-line-horizontal-0"))
+    .toHaveAttribute("data-line-position", "1");
+  expect(screen.getByTestId("editor-grid-line-horizontal-2"))
+    .toHaveAttribute("data-line-position", "299");
+  expect(screen.getByTestId("editor-grid-line-vertical-0"))
+    .toHaveAttribute("data-line-position", "1");
+  expect(screen.getByTestId("editor-grid-line-vertical-2"))
+    .toHaveAttribute("data-line-position", "399");
+});
+
 test("crop overlay no longer depends on grid position", () => {
   const { rerender } = render(<EditorLayer {...baseProps} />);
 

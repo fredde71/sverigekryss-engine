@@ -59,6 +59,83 @@ test("preserves ambiguous edge alternatives as independent factored axes", () =>
   });
 });
 
+test("canonicalizes identical numeric bounds while retaining every interpretation reference", () => {
+  const input = createInput();
+  for (const edge of ["top", "bottom", "left", "right"]) {
+    const observation = input.providers[0].regions[0].observation.edges[edge];
+    const position = observation.acceptedCenterInParentBinaryImage;
+    observation.geometry.contiguousStrongOrFullLineRuns = [{
+      midpoint: { position }
+    }];
+    observation.geometry.maximumProjectionPlateaus = [{
+      midpoint: { position }
+    }];
+  }
+
+  const result = createGridLatticeFactoredBoundsEvidence(input);
+  const region = result.providers[0].regions[0];
+  const horizontal = region.axisBounds.horizontal[0];
+  const vertical = region.axisBounds.vertical[0];
+
+  expect(region.edgeAlternativeInventory.top.alternativeCount).toBe(3);
+  expect(region.edgeAlternativeInventory.bottom.alternativeCount).toBe(3);
+  expect(region.axisBounds.horizontal).toHaveLength(1);
+  expect(region.axisBounds.vertical).toHaveLength(1);
+  expect(horizontal).toMatchObject({
+    start: 10,
+    end: 110,
+    rawCombinationCount: 9
+  });
+  expect(vertical).toMatchObject({
+    start: 20,
+    end: 220,
+    rawCombinationCount: 9
+  });
+  expect(horizontal.contributingInterpretations).toHaveLength(9);
+  expect(horizontal.evidenceReferences).toHaveLength(9);
+  expect(horizontal.contributingInterpretations.map(value => [
+    value.startAlternative.interpretationId,
+    value.endAlternative.interpretationId
+  ])).toEqual([
+    ["accepted-candidate-center", "accepted-candidate-center"],
+    ["accepted-candidate-center", "strong-or-full-run-midpoint"],
+    ["accepted-candidate-center", "maximum-projection-plateau-midpoint"],
+    ["strong-or-full-run-midpoint", "accepted-candidate-center"],
+    ["strong-or-full-run-midpoint", "strong-or-full-run-midpoint"],
+    ["strong-or-full-run-midpoint", "maximum-projection-plateau-midpoint"],
+    ["maximum-projection-plateau-midpoint", "accepted-candidate-center"],
+    ["maximum-projection-plateau-midpoint", "strong-or-full-run-midpoint"],
+    ["maximum-projection-plateau-midpoint", "maximum-projection-plateau-midpoint"]
+  ]);
+  expect(region.combinationInventory).toMatchObject({
+    totalCombinationCount: 81,
+    validBoundsCandidateCount: 81,
+    canonicalBoundsCandidateCount: 1,
+    rejectedCombinationCount: 0
+  });
+  expect(region.axisCombinationInventory).toEqual({
+    horizontal: {
+      totalCombinationCount: 9,
+      validCombinationCount: 9,
+      canonicalGeometryCount: 1
+    },
+    vertical: {
+      totalCombinationCount: 9,
+      validCombinationCount: 9,
+      canonicalGeometryCount: 1
+    }
+  });
+  expect(region.rectangularCombinationSpace).toMatchObject({
+    exactCombinationCount: 1,
+    rawExactCombinationCount: 81,
+    materializedCombinationCount: 0
+  });
+  expect(result).toMatchObject({
+    boundsCandidateCount: 1,
+    rawBoundsCandidateCount: 81
+  });
+});
+
 test("preserves coordinate provenance, transforms and candidate envelope separately", () => {
   const input = createInput();
   const result = createGridLatticeFactoredBoundsEvidence(input);

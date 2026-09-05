@@ -365,7 +365,14 @@ function createPeriodAxis(axis, period) {
       id: `${axis}-period-001`,
       period,
       evidenceReferences: [`periodicity:${axis}:1`],
-      provenance: { source: "primitive-period-observation", sourceOrder: 0 }
+      provenance: {
+        source: "primitive-period-observation",
+        sourceOrder: 0,
+        alignmentQualifiedOneXSupport: {
+          status: "available",
+          count: 1
+        }
+      }
     }],
     reasons: []
   };
