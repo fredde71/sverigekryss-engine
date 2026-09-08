@@ -65,6 +65,26 @@ test("composes local-to-binary-image and binary-image-to-document exactly once",
   expect(result.verticalLinePositions).toEqual([35.25, 85.25, 135.25, 185.25]);
 });
 
+test("partial image-aligned research evidence cannot block the modeled lattice proposal", () => {
+  const result = createGridLatticeEditorProposal({
+    gridLattice: createLattice(),
+    outerVisualExtent: createVisualExtent(),
+    imageAlignedGridLineGeometry: createImageAlignedGeometry({
+      status: "partial",
+      horizontal: [null, 110.5, 210.5]
+    })
+  });
+
+  expect(result.status).toBe("available");
+  expect(result.horizontalLinePositions).toEqual([10.5, 110.5, 210.5]);
+  expect(result.verticalLinePositions).toEqual([20.5, 120.5, 220.5, 320.5]);
+  expect(result.provenance.gridLattice.linePositionSemantics)
+    .toBe("modeled-grid-line-centers");
+  expect(result.provenance).not.toHaveProperty(
+    "imageAlignedGridLineGeometry"
+  );
+});
+
 test("applies the document transform to rendered BinaryImage visual bounds", () => {
   const result = createGridLatticeEditorProposal({
     gridLattice: createLattice(),
@@ -143,16 +163,20 @@ test("missing required transforms do not fabricate document coordinates", () => 
 test("retains provenance and does not mutate either input", () => {
   const gridLattice = deepFreeze(createLattice());
   const outerVisualExtent = deepFreeze(createVisualExtent());
+  const imageAlignedGridLineGeometry = deepFreeze(createImageAlignedGeometry());
   const latticeBefore = JSON.stringify(gridLattice);
   const extentBefore = JSON.stringify(outerVisualExtent);
+  const geometryBefore = JSON.stringify(imageAlignedGridLineGeometry);
 
   const first = createGridLatticeEditorProposal({
     gridLattice,
-    outerVisualExtent
+    outerVisualExtent,
+    imageAlignedGridLineGeometry
   });
   const second = createGridLatticeEditorProposal({
     gridLattice,
-    outerVisualExtent
+    outerVisualExtent,
+    imageAlignedGridLineGeometry
   });
 
   expect(second).toEqual(first);
@@ -166,6 +190,7 @@ test("retains provenance and does not mutate either input", () => {
   expect(Object.isFrozen(first.gridArea)).toBe(true);
   expect(JSON.stringify(gridLattice)).toBe(latticeBefore);
   expect(JSON.stringify(outerVisualExtent)).toBe(extentBefore);
+  expect(JSON.stringify(imageAlignedGridLineGeometry)).toBe(geometryBefore);
 });
 
 test("still requires an available GridLattice", () => {
@@ -232,6 +257,42 @@ function createVisualExtent({
     bounds,
     evidenceReferences: [{ artifactType: "outer-line-geometry" }],
     provenance: { source: "factual-continuity-observations" }
+  };
+}
+
+function createImageAlignedGeometry({
+  status = "available",
+  coordinateSystem = {
+    space: "rendered-binary-image-pixels",
+    binaryImageToDocument: { scaleX: 1, scaleY: 1 }
+  },
+  horizontal = [10.5, 110.5, 210.5],
+  vertical = [20.5, 120.5, 220.5, 320.5]
+} = {}) {
+  return {
+    type: "image-aligned-grid-line-geometry",
+    version: 1,
+    id: "image-aligned-a",
+    status,
+    coordinateSystem,
+    selectedCandidateReference: { candidateId: "candidate-a" },
+    axes: {
+      horizontal: createImageAlignedAxis("horizontal", horizontal, status),
+      vertical: createImageAlignedAxis("vertical", vertical, status)
+    },
+    provenance: { source: "selected-axis-candidate-assignments" }
+  };
+}
+
+function createImageAlignedAxis(axis, positions, status) {
+  return {
+    axis,
+    status,
+    linePositions: positions.map((position, latticeIndex) => ({
+      latticeIndex,
+      position,
+      status: position === null ? "unavailable" : "observed"
+    }))
   };
 }
 

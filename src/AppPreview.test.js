@@ -182,6 +182,7 @@ test("routes an available GridLattice proposal through EditorWorkspace ownership
   expect(proposalSection).toContain(
     "createGridLatticeEditorProposal({\n      gridLattice: gridLatticeReconstructionResult.lattice,\n      outerVisualExtent"
   );
+  expect(proposalSection).not.toContain("imageAlignedGridLineGeometry");
   expect(proposalSection).not.toMatch(
     /setRows|setCols|setGridArea|setCellTypes|setCompetitionCells/
   );

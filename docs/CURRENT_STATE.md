@@ -69,6 +69,8 @@ PDF/file upload
 - Editor-förslaget använder rader/kolumner och explicita linjepositioner från `GridLattice`, samt `gridArea` från `OuterVisualExtent`
 - `EditorWorkspace` äger och applicerar redigerbart Editor-state atomiskt
 - `EditorGrid` renderar explicita rekonstruerade linjepositioner när de finns; befintligt manuellt, uniformt rutnät är fortsatt fallback när de saknas
+- Grid V1 använder den valda globala matematiska `GridLattice`-geometrin som stabilt Editor-förslag
+- pixelperfekt sammanfall med varje tryckt intern linje är inte ett V1-krav; manuell finjustering i Editor är avsiktligt V1-beteende
 - `App.js` orkestrerar endast överlämningen mellan Digitization och Editor
 - Digitization Lab är fortsatt separat och development-only
 - Ground Truth, validering, dataset och experiment är inte produktionsberoenden
@@ -83,9 +85,11 @@ Inte implementerat i detta steg:
 
 # Senaste verifierade milstolpe
 
-Grid Reconstruction → Editor är produktionsintegrerad och verifierad.
+Grid Reconstruction → Editor är produktionsintegrerad och verifierad som Grid V1.
 
-Den verifierade Wordex-källan ger ett redigerbart 25 × 25-förslag med explicit linjerendering utan kumulativ drift från uniform indelning. Lattice-geometri och synligt yttre avtryck förblir separata observationer med bevarad koordinatproveniens.
+Den verifierade Wordex-källan ger ett redigerbart 25 × 25-förslag. Explicita linjer kommer från den valda globala `GridLattice`, medan `OuterVisualExtent` fortsatt äger det synliga yttre avtrycket. Variation i tryck, raster och sparsamma accepterade ankare kan kräva mindre manuell finjustering; sådan justering är en avsiktlig del av V1-flödet.
+
+Fortsatt forskning om image-aligned linjegeometri, avbrutna linjer, projection ridges, fragment tracks och lattice-conditioned evidence är senarelagd till efter V1. Ground Truth används fortsatt endast för validering.
 
 Produktens aktiva fokus är Product Readiness / V1. Avancerad automatisk klassificering av celler och ledtrådar är senarelagt bortom V1.
 

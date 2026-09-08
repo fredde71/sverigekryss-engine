@@ -135,6 +135,8 @@ Contracts, shadow plumbing, and focused experiments are implementation steps wit
 
 Production adoption is a separate decision and implementation step. Experimental success alone does not authorize it.
 
+For Grid V1, production uses the selected global mathematical `GridLattice` as an editable Editor proposal, with manual fine-tuning as intentional product behavior. Pixel-perfect coincidence with every printed line is not a V1 requirement. Research into image-aligned geometry, interrupted-line recovery, projection ridges, fragment tracks, and lattice-conditioned evidence remains development-only and deferred until after V1. Ground Truth remains validation-only throughout that work.
+
 ## Promotion Gate
 
 Reports must be generated and analyzed before commit. Test success alone does not establish that experimental evidence supports an architectural or production change.

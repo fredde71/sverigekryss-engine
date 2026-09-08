@@ -28,11 +28,15 @@ Grid Reconstruction → Editor är slutförd och verifierad:
 - `OuterVisualExtent` är separat synligt yttre avtryck
 - Editor-förslaget kombinerar rader/kolumner och explicita linjepositioner från `GridLattice` med `gridArea` från `OuterVisualExtent`
 - `EditorWorkspace` äger redigerbart state och `EditorGrid` renderar explicita linjepositioner när de finns
+- Grid V1 använder stabil global `GridLattice`-placering; pixelperfekt sammanfall med varje tryckt linje är inte ett V1-krav
+- manuell finjustering i Editor är avsiktligt V1-beteende
 - manuellt/uniformt grid-beteende finns kvar när explicita linjepositioner saknas
 - `App.js` är fortsatt en tunn orkestrator
 - Digitization Lab, Ground Truth, dataset, experiment och validering är inte produktionsberoenden
 
 Aktivt fokus är nu Product Readiness / V1. Avancerad automatisk cell- och ledtrådsklassificering är senarelagt bortom V1.
+
+Forskning om image-aligned linjegeometri, avbrutna interna linjer, projection ridges, fragment tracks och lattice-conditioned evidence är dokumenterad men senarelagd till efter V1. Den forskningen ändrar inte Grid V1:s produktionsbeteende, och Ground Truth förblir valideringsdata.
 
 ## Generation 1
 

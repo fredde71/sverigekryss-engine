@@ -131,6 +131,8 @@ DigitizationEngine
 
 Den verifierade Wordex-källan rekonstrueras som 25 × 25 och når Editor som ett redigerbart förslag. Digitization Lab är development-only och separat från produktionskedjan. Ground Truth, valideringsrapporter, dataset och experiment är inte produktionsberoenden.
 
+Grid V1 använder den valda globala matematiska `GridLattice`-geometrin för de explicita Editor-linjerna. Pixelperfekt sammanfall med varje tryckt linje är inte ett V1-krav; `EditorWorkspace` behåller manuell flyttning, storleksändring och finjustering som avsiktligt produktbeteende. Image-aligned och avbrottstålig linjeforskning förblir isolerad i Digitization Lab efter V1.
+
 OCR, API/backend/persistence-koppling samt avancerad automatisk cell- och ledtrådsklassificering är inte implementerade i detta steg.
 
 ## Editor
