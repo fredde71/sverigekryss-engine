@@ -167,6 +167,7 @@ function createLoadHandler({
 
     const template = JSON.parse(fileData);
 
+    res.setHeader?.("Cache-Control", "no-store");
     res.json(template);
 
   } catch (err) {

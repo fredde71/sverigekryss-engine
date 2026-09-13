@@ -83,8 +83,14 @@ test("upload flow runs production digitization through the browser ImageData ada
   );
 
   expect(appSource).toContain("const [digitizationResult, setDigitizationResult] = useState(null);");
+  expect(appSource).toContain("const [imageSrc, setImageSrc] = useState(\"\");");
+  expect(appSource).toContain("const [editorDocumentLifecycleId, setEditorDocumentLifecycleId] = useState(0);");
   expect(appSource).toContain("const digitizationUploadIdRef = useRef(0);");
   expect(uploadSection).toContain("const uploadId = ++digitizationUploadIdRef.current;");
+  expect(uploadSection).toContain("setEditorDocumentLifecycleId(uploadId);");
+  expect(uploadSection).toContain("setImageSrc(\"\");");
+  expect(uploadSection).toContain("setDocumentSize(DEFAULT_DOCUMENT_SIZE);");
+  expect(uploadSection).toContain("setAnswerPaths([]);");
   expect(appSource).toContain("import { runDigitizationUploadWithIdentity } from \"./digitization/digitizationUploadIdentityGuard\";");
   expect(appSource).toContain("import { readBrowserImageData } from \"./digitization/adapters/browserImageDataReader\";");
   expect(appSource).toContain("import { runDigitizationJob } from \"./digitization/engine/DigitizationEngine\";");
@@ -116,6 +122,58 @@ test("upload flow runs production digitization through the browser ImageData ada
   expect(digitizationSection).not.toContain("setCols");
   expect(digitizationSection).not.toContain("setCropArea");
   expect(digitizationSection).not.toContain("setSuggestions");
+  expect(appSource).toContain("documentAvailable={Boolean(imageSrc)}");
+  expect(
+    appSource.match(/documentLifecycleId=\{editorDocumentLifecycleId\}/g)
+  ).toHaveLength(2);
+});
+
+test("answer paths remain Template-owned through import export publish and preview", () => {
+  const publishTemplateSection = getSourceBetween(
+    appSource,
+    "const template = {",
+    "};"
+  );
+  const exportSection = getSourceBetween(
+    appSource,
+    "const exportTemplate = () => {",
+    "};"
+  );
+  const editModeCanvas = getSourceBetween(
+    appSource,
+    "{modeView === \"edit\" ? (",
+    ") : ("
+  );
+  const localPlaySurface = getSourceBetween(
+    appSource,
+    "<PlaySurface",
+    "</PlaySurface>"
+  );
+
+  expect(appSource).toContain("const [answerPaths, setAnswerPaths] = useState([]);");
+  expect(appSource).toContain("setAnswerPaths(data.answerPaths || []);");
+  expect(appSource).toContain("answerPaths={answerPaths}");
+  expect(appSource).toContain("setAnswerPaths={setAnswerPaths}");
+  expect(appSource).toContain("answerPathMenu");
+  expect(publishTemplateSection).toContain("answerPaths");
+  expect(exportSection).toContain("answerPaths");
+  expect(editModeCanvas).toContain("answerPaths");
+  expect(localPlaySurface).toContain("answerPaths");
+});
+
+test("explicit grid-line positions remain Template-owned through Editor and Play", () => {
+  expect(appSource).toContain(
+    "const [horizontalLinePositions, setHorizontalLinePositions] = useState(null);"
+  );
+  expect(appSource).toContain(
+    "const [verticalLinePositions, setVerticalLinePositions] = useState(null);"
+  );
+  expect(appSource).toContain("setHorizontalLinePositions(data.horizontalLinePositions || null);");
+  expect(appSource).toContain("setVerticalLinePositions(data.verticalLinePositions || null);");
+  expect(appSource).toContain("horizontalLinePositions={horizontalLinePositions}");
+  expect(appSource).toContain("verticalLinePositions={verticalLinePositions}");
+  expect(appSource.match(/horizontalLinePositions/g).length).toBeGreaterThanOrEqual(7);
+  expect(appSource.match(/verticalLinePositions/g).length).toBeGreaterThanOrEqual(7);
 });
 
 test("normal App contains no Digitization Lab diagnostics or controls", () => {
@@ -159,7 +217,7 @@ test("routes an available GridLattice proposal through EditorWorkspace ownership
   const proposalSection = getSourceBetween(
     appSource,
     "const gridLatticeEditorProposal = React.useMemo(() => {",
-    "}, [gridLatticeReconstructionResult, outerVisualExtent]);"
+    "  ]);"
   );
   const editorWorkspaceSection = getSourceBetween(
     appSource,
@@ -179,8 +237,11 @@ test("routes an available GridLattice proposal through EditorWorkspace ownership
   expect(appSource).toContain(
     "digitizationResult.result?.outerVisualExtent ?? null"
   );
+  expect(appSource).toContain(
+    "digitizationResult.result?.gridFormatGeometrySelection ?? null"
+  );
   expect(proposalSection).toContain(
-    "createGridLatticeEditorProposal({\n      gridLattice: gridLatticeReconstructionResult.lattice,\n      outerVisualExtent"
+    "createGridLatticeEditorProposal({\n      gridLattice: gridLatticeReconstructionResult.lattice,\n      outerVisualExtent,\n      gridFormatGeometrySelection"
   );
   expect(proposalSection).not.toContain("imageAlignedGridLineGeometry");
   expect(proposalSection).not.toMatch(

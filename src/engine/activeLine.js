@@ -3,7 +3,8 @@ export function getActiveCells({
   direction,
   cellTypes,
   cols,
-  rows
+  rows,
+  clueSelection = null
 }) {
 
   if (activeCell === null) {
@@ -13,84 +14,37 @@ export function getActiveCells({
   const isBlocked = (index) => cellTypes[index] !== "write";
 
   const cellType = cellTypes[activeCell];
+  const isClueCell = cellType === "blocked" || cellType === "double";
+  const explicitAnswerCells = clueSelection?.answerCellIndexes;
 
-  console.log("[single-clue-debug] getActiveCells input", {
-    activeCell,
-    cellType,
-    direction
-  });
-
-  // CLUE CELL
-  if (cellType === "double") {
-    const startCell = direction === "across"
-      ? activeCell + 1
-      : activeCell + cols;
-
-    const active = getNormalActiveCells({
-      activeCell: startCell,
-      direction,
-      cellTypes,
-      cols,
-      rows,
-      isBlocked
-    });
-
-    console.log("[single-clue-debug] getActiveCells double clue result", {
-      clickedCell: activeCell,
-      startCell,
-      direction,
-      activeCells: Array.from(active)
-    });
-
-    return active;
+  if (
+    Array.isArray(explicitAnswerCells)
+    && (
+      clueSelection.clueIndex === activeCell
+      || explicitAnswerCells.includes(activeCell)
+    )
+  ) {
+    return new Set(explicitAnswerCells);
   }
 
-  if (cellType === "blocked") {
-    const startCell = getBlockedClueStartCell({
-      activeCell,
-      direction,
-      cellTypes,
-      cols,
-      rows,
-      isBlocked
-    });
+  const answerStartIndex = isClueCell
+    && clueSelection?.clueIndex === activeCell
+    && clueSelection.direction === direction
+    ? clueSelection.answerStartIndex
+    : activeCell;
 
-    const active = getNormalActiveCells({
-      activeCell: startCell,
-      direction,
-      cellTypes,
-      cols,
-      rows,
-      isBlocked
-    });
-
-    console.log("[single-clue-debug] getActiveCells blocked clue result", {
-      clickedCell: activeCell,
-      startCell,
-      startCellType: startCell === null ? null : cellTypes[startCell],
-      direction,
-      activeCells: Array.from(active)
-    });
-
-    return active;
+  if (isClueCell && answerStartIndex === activeCell) {
+    return new Set();
   }
 
-  const active = getNormalActiveCells({
-    activeCell,
+  return getNormalActiveCells({
+    activeCell: answerStartIndex,
     direction,
     cellTypes,
     cols,
     rows,
     isBlocked
   });
-
-  console.log("[single-clue-debug] getActiveCells write cell result", {
-    startCell: activeCell,
-    direction,
-    activeCells: Array.from(active)
-  });
-
-  return active;
 }
 
 function getNormalActiveCells({
@@ -160,37 +114,4 @@ function getNormalActiveCells({
   }
 
   return active;
-}
-
-function getBlockedClueStartCell({
-  activeCell,
-  direction,
-  cellTypes,
-  cols,
-  rows,
-  isBlocked
-}) {
-  const candidate = direction === "across"
-    ? activeCell + 1
-    : activeCell + cols;
-
-  const isCandidateInBounds = direction === "across"
-    ? activeCell % cols !== cols - 1
-    : candidate < rows * cols;
-
-  const bestCandidate = (
-    isCandidateInBounds &&
-    candidate >= 0 &&
-    candidate < rows * cols &&
-    !isBlocked(candidate)
-  ) ? candidate : null;
-
-  console.log("[single-clue-debug] getBlockedClueStartCell result", {
-    clickedCell: activeCell,
-    direction,
-    candidate,
-    bestCandidate
-  });
-
-  return bestCandidate;
 }

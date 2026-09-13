@@ -38,6 +38,11 @@ test("materializes a selected candidate as an immutable GridLattice", () => {
   expect(result.sourceCandidateReference).toEqual(
     pipeline.selection.selectedCandidateReference
   );
+  expect(result.selectedAxisCandidates).toEqual({
+    horizontal: pipeline.generation.axisCandidates.horizontal[0],
+    vertical: pipeline.generation.axisCandidates.vertical[0]
+  });
+  expect(Object.isFrozen(result.selectedAxisCandidates)).toBe(true);
 });
 
 test("preserves origins, periods, dimensions, positions and coordinate space", () => {
@@ -104,6 +109,7 @@ test("returns ambiguous without inventing a GridLattice", () => {
     lattice: null,
     sourceCandidateId: null,
     sourceCandidate: null,
+    selectedAxisCandidates: null,
     candidateSelectionStatus: "ambiguous",
     reasons: ["multiple-candidates-have-identical-evidence-observations"]
   });
@@ -126,6 +132,7 @@ test("returns unavailable without inventing a GridLattice", () => {
     lattice: null,
     sourceCandidateId: null,
     sourceCandidate: null,
+    selectedAxisCandidates: null,
     competingCandidates: null,
     candidateSelectionStatus: "unavailable",
     reasons: ["grid-lattice-candidates-unavailable"]

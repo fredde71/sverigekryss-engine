@@ -65,6 +65,8 @@ Aktuellt implementerat digitization-steg:
 - primitive-period-evidens och source-neutral factored bounds
 - GridLatticeReconstructionPipeline
 - separata domänresultat för GridLattice och OuterVisualExtent
+- `GridFormatGeometry` med normaliserad, dimensionsbunden och återanvändbar intern linjegeometri
+- deterministiskt formatval från accepterade indexerade ankare
 - GridLatticeEditorProposal som gräns till Editor
 
 Projection validerar BinaryImage-dimensioner, datalängd och binära pixelvärden innan rad- eller kolumnprojektion skapas.
@@ -127,13 +129,13 @@ DigitizationEngine
   → EditorGrid
 ```
 
-`GridLattice.extent` representerar modellerad yttre linjecentrumgeometri. `OuterVisualExtent` representerar separat det observerade synliga yttre avtrycket. Editor-förslaget kombinerar rader/kolumner och explicita linjepositioner från `GridLattice` med `gridArea` från `OuterVisualExtent`; koordinatproveniens bevaras genom gränsen.
+`GridLattice.extent` representerar modellerad yttre linjecentrumgeometri. `OuterVisualExtent` representerar separat det observerade synliga yttre avtrycket. När ett `GridFormatGeometry` väljs mappas dess normaliserade, icke-uniforma linjepositioner med den aktuella uppladdningens `OuterVisualExtent`. Editor-förslaget kombinerar rader/kolumner från `GridLattice`, `gridArea` från `OuterVisualExtent` och de explicita dokumentkoordinaterna; koordinatproveniens bevaras genom gränsen. Om formatval saknas eller är tvetydigt används den befintliga matematiska `GridLattice`-geometrin.
 
 Den verifierade Wordex-källan rekonstrueras som 25 × 25 och når Editor som ett redigerbart förslag. Digitization Lab är development-only och separat från produktionskedjan. Ground Truth, valideringsrapporter, dataset och experiment är inte produktionsberoenden.
 
-Grid V1 använder den valda globala matematiska `GridLattice`-geometrin för de explicita Editor-linjerna. Pixelperfekt sammanfall med varje tryckt linje är inte ett V1-krav; `EditorWorkspace` behåller manuell flyttning, storleksändring och finjustering som avsiktligt produktbeteende. Image-aligned och avbrottstålig linjeforskning förblir isolerad i Digitization Lab efter V1.
+Grid V1 använder `GridLattice` för vald topologi och som säker geometrifallback. När ett format väljs levererar `GridFormatGeometry`, mappad genom uppladdningens `OuterVisualExtent`, de aktiva explicita Editor-linjerna. Pixelperfekt sammanfall med varje tryckt linje är inte ett V1-krav; `EditorWorkspace` behåller manuell flyttning, storleksändring och finjustering som avsiktligt produktbeteende. Image-aligned och avbrottstålig linjeforskning förblir isolerad i Digitization Lab efter V1.
 
-OCR, API/backend/persistence-koppling samt avancerad automatisk cell- och ledtrådsklassificering är inte implementerade i detta steg.
+OCR samt avancerad automatisk cell- och ledtrådsklassificering är inte implementerade i detta steg.
 
 ## Editor
 
@@ -157,6 +159,8 @@ EditorWorkspace äger editor composition:
 - crop movement mode
 - crop resize mode
 - atomisk applicering och fortsatt ägarskap av GridLattice-baserade Editor-förslag
+- dokumentlivscykelreset för grid, explicita linjer, svarsvägar och tävlingsceller
+- Editor-state för författning av ordnade svarsvägar
 
 Editor interaction/UI ownership är slutförd.
 
@@ -189,6 +193,12 @@ EditorLayer äger:
 - crop resize start från crop resize affordance
 
 EditorGrid renderar explicita rekonstruerade horisontella och vertikala linjepositioner när de finns i Editor-state. När sådana positioner saknas bevaras befintlig manuell och uniform grid-rendering.
+
+Editor och Runtime konsumerar samma Template-ägda explicita linjepositioner. Manuell flyttning eller storleksändring i Editor transformerar de persistenta positionerna tillsammans med `gridArea`.
+
+Editor kan skapa ordnade `answerPaths` för enkel- och dubbelledtrådar. Cellerna behåller typen `write`; svarsvägen är separat Template-data och kan innehålla riktningsbyten. Tävlingsruta-verktyget använder fortsatt `competitionCells` som `{ index, position }`; en tom cell görs automatiskt till `write` innan position 1–6 väljs, och borttagning av tävlingsstatus ändrar inte celltypen.
+
+Vid start visas en blank vit Editor utan förladdat korsord. En ny dokumentuppladdning rensar tidigare dokument-, grid-, explicit-linje-, zoom- och viewport-state innan det nya Digitization-förslaget appliceras atomiskt.
 
 App.js renderar inte längre EditorGrid direkt.
 
@@ -225,6 +235,10 @@ Ansvarar för:
 - Lösningsupplevelsen
 
 RuntimeLayer äger runtime state, interaction/navigation, active line och runtime grid/cell-rendering.
+
+`clueSelection` är den gemensamma rena Engine-gränsen för ledtrådsval. Den löser riktning, svarstart och hela den ordnade svarsvägen tillsammans. Runtime använder Template-ägd explicit `answerPath` när den finns, inklusive svängar, och bevarar rak topologisk inferens för äldre templates.
+
+RuntimeGrid använder Template-ägda explicita horisontella och vertikala linjepositioner när båda axlarna är kompletta. Äldre templates utan dessa fält använder oförändrad uniform CSS-grid-layout.
 
 Aktiv runtime-pipeline:
 
@@ -355,6 +369,8 @@ Persistence Platform äger:
 - backend endpoints för publish och load
 - filbaserad lagring av templates och uppladdade assets
 - runtime persistence directories som repository-normaliserade mappar
+- oförändrad lagring av Template-ägda `answerPaths`, `competitionCells` och explicita linjepositioner
+- färsk template-load med `Cache-Control: no-store`/`cache: no-store`
 
 Persistence Platform äger inte:
 
@@ -482,13 +498,23 @@ Obligatoriska fält:
 - gridArea
 - imageSrc
 
+Valfria persistenta V1-fält:
+
+- competitionCells
+- answerPaths
+- horizontalLinePositions
+- verticalLinePositions
+- metadata
+
 cellTypes är en array med exakt:
 
 rows * cols
 
 poster.
 
-metadata är valfritt.
+`competitionCells` kopplar skrivbara cellindex till tävlingsposition 1–6. `answerPaths` kopplar en ledtrådscell till en eller två ordnade listor av skrivbara cellindex. Explicita linjepositioner måste förekomma som ett komplett axelpar med `rows + 1` respektive `cols + 1` strikt ökande dokumentkoordinater.
+
+Legacy templates utan `competitionCells`, `answerPaths` eller explicita linjepositioner förblir kompatibla.
 
 Template äger inte runtime state eller editor session state.
 

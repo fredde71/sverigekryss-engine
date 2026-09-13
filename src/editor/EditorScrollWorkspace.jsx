@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { normalizeDocumentSize } from "../template/documentGeometry";
 
 const EditorWorkspaceScaleContext = createContext(1);
@@ -36,9 +44,11 @@ export default function EditorScrollWorkspace({
   children,
   documentSize,
   zoomState,
-  setZoomState
+  setZoomState,
+  documentLifecycleId = 0
 }) {
   const workspaceRef = useRef(null);
+  const previousDocumentLifecycleId = useRef(documentLifecycleId);
   const safeDocumentSize = useMemo(() => (
     normalizeDocumentSize(documentSize)
   ), [documentSize]);
@@ -48,6 +58,20 @@ export default function EditorScrollWorkspace({
   const currentZoomState = zoomState || localZoomState;
   const updateZoomState = setZoomState || setLocalZoomState;
   const { scale } = currentZoomState;
+
+  useLayoutEffect(() => {
+    if (previousDocumentLifecycleId.current === documentLifecycleId) {
+      return;
+    }
+
+    previousDocumentLifecycleId.current = documentLifecycleId;
+    updateZoomState({ ...defaultZoomState });
+
+    if (workspaceRef.current) {
+      workspaceRef.current.scrollTop = 0;
+      workspaceRef.current.scrollLeft = 0;
+    }
+  }, [documentLifecycleId, updateZoomState]);
 
   useEffect(() => {
     if (!workspaceRef.current || typeof ResizeObserver === "undefined") {
@@ -80,7 +104,13 @@ export default function EditorScrollWorkspace({
     return () => {
       observer.disconnect();
     };
-  }, [documentWidth, documentHeight, safeDocumentSize, updateZoomState]);
+  }, [
+    documentWidth,
+    documentHeight,
+    safeDocumentSize,
+    updateZoomState,
+    documentLifecycleId
+  ]);
 
   const zoomOut = () => {
     updateZoomState(currentState => ({

@@ -118,10 +118,13 @@ useEffect(() => {
   });
 
   const [competitionCells, setCompetitionCells] = useState([]);
+  const [answerPaths, setAnswerPaths] = useState([]);
+  const [horizontalLinePositions, setHorizontalLinePositions] = useState(null);
+  const [verticalLinePositions, setVerticalLinePositions] = useState(null);
 
   const [documentSize, setDocumentSize] = useState(DEFAULT_DOCUMENT_SIZE);
 
-  const [imageSrc, setImageSrc] = useState("/grid.png");
+  const [imageSrc, setImageSrc] = useState("");
   const [imageFileName, setImageFileName] = useState("");
   const [templateFileName, setTemplateFileName] = useState("");
   const [editorZoomState, setEditorZoomState] = useState({
@@ -133,6 +136,7 @@ useEffect(() => {
   const [publicationsStatus, setPublicationsStatus] = useState("idle");
   const [publicationsError, setPublicationsError] = useState("");
   const [digitizationResult, setDigitizationResult] = useState(null);
+  const [editorDocumentLifecycleId, setEditorDocumentLifecycleId] = useState(0);
   const digitizationUploadIdRef = useRef(0);
   const gridLatticeReconstructionResult =
     digitizationResult?.status === "completed"
@@ -140,6 +144,9 @@ useEffect(() => {
       : null;
   const outerVisualExtent = digitizationResult?.status === "completed"
     ? digitizationResult.result?.outerVisualExtent ?? null
+    : null;
+  const gridFormatGeometrySelection = digitizationResult?.status === "completed"
+    ? digitizationResult.result?.gridFormatGeometrySelection ?? null
     : null;
   const gridLatticeEditorProposal = React.useMemo(() => {
     if (
@@ -152,11 +159,16 @@ useEffect(() => {
 
     const proposal = createGridLatticeEditorProposal({
       gridLattice: gridLatticeReconstructionResult.lattice,
-      outerVisualExtent
+      outerVisualExtent,
+      gridFormatGeometrySelection
     });
 
     return proposal.status === "available" ? proposal : null;
-  }, [gridLatticeReconstructionResult, outerVisualExtent]);
+  }, [
+    gridLatticeReconstructionResult,
+    outerVisualExtent,
+    gridFormatGeometrySelection
+  ]);
 
   const refreshPublications = React.useCallback(async (targetCrosswordId) => {
     const normalizedCrosswordId = targetCrosswordId.trim();
@@ -196,6 +208,13 @@ useEffect(() => {
   if (!file) return;
 
   const uploadId = ++digitizationUploadIdRef.current;
+
+  setEditorDocumentLifecycleId(uploadId);
+  setImageSrc("");
+  setDocumentSize(DEFAULT_DOCUMENT_SIZE);
+  setAnswerPaths([]);
+  setHorizontalLinePositions(null);
+  setVerticalLinePositions(null);
 
   setDigitizationResult({
     status: "pending"
@@ -321,6 +340,9 @@ const handleTemplateImport = async (e) => {
     gridArea,
     cropArea,
     competitionCells,
+    answerPaths,
+    horizontalLinePositions,
+    verticalLinePositions,
     imageSrc
   });
 
@@ -344,6 +366,9 @@ const handleTemplateImport = async (e) => {
   }
 
   setCompetitionCells(data.competitionCells || []);
+  setAnswerPaths(data.answerPaths || []);
+  setHorizontalLinePositions(data.horizontalLinePositions || null);
+  setVerticalLinePositions(data.verticalLinePositions || null);
 
   if (data.cellTypes) {
     setCellTypes(data.cellTypes);
@@ -363,6 +388,9 @@ const handleTemplateImport = async (e) => {
       gridArea,
       cropArea,
       competitionCells,
+      answerPaths,
+      horizontalLinePositions,
+      verticalLinePositions,
       cellTypes,
       imageSrc
     });
@@ -495,6 +523,9 @@ const handleTemplateImport = async (e) => {
       cols={cols}
       cellTypes={cellTypes}
       competitionCells={competitionCells}
+      answerPaths={answerPaths}
+      horizontalLinePositions={horizontalLinePositions}
+      verticalLinePositions={verticalLinePositions}
       gridArea={gridArea}
       setRows={setRows}
       setCols={setCols}
@@ -503,11 +534,16 @@ const handleTemplateImport = async (e) => {
       cropArea={cropArea}
       setCropArea={setCropArea}
       setCompetitionCells={setCompetitionCells}
+      setAnswerPaths={setAnswerPaths}
+      setHorizontalLinePositions={setHorizontalLinePositions}
+      setVerticalLinePositions={setVerticalLinePositions}
       setCellTypes={setCellTypes}
       gridProposal={gridLatticeEditorProposal}
+      documentLifecycleId={editorDocumentLifecycleId}
+      documentAvailable={Boolean(imageSrc)}
       isPublicRuntime={isPublicRuntime}
     >
-      {({ toolbar, competitionMenu, editor }) => (
+      {({ toolbar, competitionMenu, answerPathMenu, editor }) => (
     <div
       style={{
         display: "flex",
@@ -559,6 +595,7 @@ const handleTemplateImport = async (e) => {
 
 	        {toolbar}
 	        {competitionMenu}
+	        {answerPathMenu}
 
 	        <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Läge</h5>
@@ -627,6 +664,9 @@ const handleTemplateImport = async (e) => {
                 cellTypes,
                 imageSrc,
                 competitionCells,
+                answerPaths,
+                horizontalLinePositions,
+                verticalLinePositions,
                 rows,
                 cols
               };
@@ -707,6 +747,7 @@ const handleTemplateImport = async (e) => {
           documentSize={documentSize}
           zoomState={editorZoomState}
           setZoomState={setEditorZoomState}
+          documentLifecycleId={editorDocumentLifecycleId}
         >
           <TemplateCanvas
             template={{
@@ -718,7 +759,10 @@ const handleTemplateImport = async (e) => {
               documentSize,
               gridArea,
               cropArea,
-              competitionCells
+              competitionCells,
+              answerPaths,
+              horizontalLinePositions,
+              verticalLinePositions
 	            }}
 	          >
 	            <DigitizationSuggestionOverlay
@@ -739,7 +783,10 @@ const handleTemplateImport = async (e) => {
             documentSize,
             gridArea,
             cropArea,
-            competitionCells
+            competitionCells,
+            answerPaths,
+            horizontalLinePositions,
+            verticalLinePositions
           }}
           onSubmitAnswers={() => {}}
         />

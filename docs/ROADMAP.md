@@ -20,13 +20,21 @@ De detaljerade faserna längre ned beskriver aktuell implementation och verifier
 
 ## Aktivt fokus: Product Readiness / V1
 
+V1-arbetsflödet är browser-testat end-to-end:
+
+```text
+PDF → Digitization → Editor → svarsvägar/tävlingsceller
+    → publish → genererad länk → Browser/Play
+```
+
 Grid Reconstruction → Editor är slutförd och verifierad:
 
 - production Digitization rekonstruerar `GridLattice` från produktionsägd evidens
 - verifierad Wordex-källa rekonstrueras som 25 × 25
 - `GridLattice.extent` behåller semantiken modellerad yttre linjecentrumgeometri
 - `OuterVisualExtent` är separat synligt yttre avtryck
-- Editor-förslaget kombinerar rader/kolumner och explicita linjepositioner från `GridLattice` med `gridArea` från `OuterVisualExtent`
+- `GridFormatGeometry` tillför återanvändbar normaliserad intern linjegeometri och väljs från accepterade indexerade ankare utan filnamnslogik
+- Editor-förslaget kombinerar rader/kolumner från `GridLattice`, `gridArea` från `OuterVisualExtent` och formatets explicita linjepositioner i dokumentkoordinater
 - `EditorWorkspace` äger redigerbart state och `EditorGrid` renderar explicita linjepositioner när de finns
 - Grid V1 använder stabil global `GridLattice`-placering; pixelperfekt sammanfall med varje tryckt linje är inte ett V1-krav
 - manuell finjustering i Editor är avsiktligt V1-beteende
@@ -34,7 +42,20 @@ Grid Reconstruction → Editor är slutförd och verifierad:
 - `App.js` är fortsatt en tunn orkestrator
 - Digitization Lab, Ground Truth, dataset, experiment och validering är inte produktionsberoenden
 
-Aktivt fokus är nu Product Readiness / V1. Avancerad automatisk cell- och ledtrådsklassificering är senarelagt bortom V1.
+V1 Template/Editor/Runtime är verifierat:
+
+- blank Editor-start och konsekvent reset av dokument-, grid-, zoom- och viewport-state mellan uppladdningar
+- Template-ägda explicita grid-linjepositioner delas av Editor och Runtime; uniform legacy-fallback finns kvar
+- Template-ägda ordnade `answerPaths` stödjer enkelledtråd, två separata dubbelledtrådsvägar och svängande svar
+- gemensam `clueSelection` styr full active-line-markering och skrivnavigation; topologisk fallback finns kvar
+- Editor författar, visar, sparar, ändrar och rensar svarsvägar
+- Tävlingsruta gör vid behov en tom cell skrivbar, öppnar position 1–6 och bevarar `{ index, position }`
+- backend bevarar Template-data och template-load använder `no-store`
+- publicerad länk använder samma `PlaySurface`/`RuntimeLayer` som lokal Play
+
+V1-status är komplett end-to-end workflow proven. Aktivt fokus är produktberedskap och effektivisering av författningsflödet utan arkitekturförändring. Arbetsflödet fungerar, men författningshastigheten behöver optimeras. Avancerad automatisk cell- och ledtrådsklassificering är senarelagt bortom V1.
+
+`260727-KOPSVK-SK-0-0-webb.pdf` kvarstår som en isolerad visuell outlier. Den ska inte ensam styra generell Grid-arkitektur eller documentspecifik produktlogik.
 
 Forskning om image-aligned linjegeometri, avbrutna interna linjer, projection ridges, fragment tracks och lattice-conditioned evidence är dokumenterad men senarelagd till efter V1. Den forskningen ändrar inte Grid V1:s produktionsbeteende, och Ground Truth förblir valideringsdata.
 
@@ -651,6 +672,9 @@ Production error handling:
 - 404/error JSON normaliseras inte till Template
 - Public Play visar tydligt load error state
 - successful TemplateCanvas -> RuntimeLayer flow är oförändrat
+- optional `answerPaths`, `competitionCells` och explicita linjepositioner normaliseras och bevaras genom import, export, publish och backend reload
+- legacy templates utan de valfria fälten förblir kompatibla
+- Browser/Play använder färsk backend-data genom explicit `no-store`
 
 ---
 

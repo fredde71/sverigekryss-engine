@@ -10,7 +10,11 @@ Runtime ansvarar för att rendera och köra ett färdigt korsord.
 
 # Aktiv Runtime Pipeline
 
-App.js
+App.js (lokal Play) / Play.jsx (publicerad Browser)
+
+↓
+
+PlaySurface
 
 ↓
 
@@ -31,6 +35,8 @@ RuntimeCell
 ↓
 
 PlayCell
+
+Public Browser använder samma kedja genom `Play.jsx` och `PlaySurface`; det finns ingen separat clue- eller grid-runtime för publicerade länkar.
 
 ---
 
@@ -80,6 +86,8 @@ Ansvarar för:
 - focus movement
 - active line
 - runtime grid/cell-rendering
+- gemensam clue selection för enkel- och dubbelledtrådar
+- användning av explicit Template-ägd answer path när den finns
 
 RuntimeLayer äger RuntimeSession-beteende internt.
 
@@ -121,6 +129,8 @@ Ansvarar för:
 
 - grid-layout i Runtime
 - placering av RuntimeCell i rader och kolumner
+
+När Template innehåller ett komplett par `horizontalLinePositions` och `verticalLinePositions` placerar RuntimeGrid cellerna från dessa explicita dokumentkoordinater. Editor och Runtime använder därmed samma persistenta geometri. Templates utan explicita positioner behåller den uniforma grid-fallbacken.
 
 ---
 
@@ -193,6 +203,21 @@ Ansvar:
 
 # Viktiga arkitekturfynd
 
+## Clue selection och answer paths
+
+`clueSelection` i Engine löser riktning, svarstart och hela svarscellssekvensen som en gemensam ren operation.
+
+- enkelledtråd väljer sin enda explicita eller topologiskt härledda svarsväg
+- dubbelledtråd växlar deterministiskt mellan två vägar
+- explicit `answerPath` kan svänga och styr både markering och skrivnavigation
+- äldre Templates utan `answerPaths` använder fortsatt rak topologisk inferens
+
+RuntimeLayer äger valt clue/runtime-state. Template äger endast den beständiga ordnade sökvägen.
+
+## Competition submission
+
+`competitionCells` är Template-data med formen `{ index, position }`. Runtime ändrar inte denna metadata. `PlaySurface` och `buildCompetitionSolution` använder positionerna 1–6 för att skapa lösningen som skickas genom submission-flödet.
+
 ## Geometriproblem
 
 Tidigare renderades image-celler som:
@@ -241,6 +266,10 @@ Fungerar:
 - riktningshantering
 - active line
 - editor/runtime-synk
+- explicita gemensamma grid-linjepositioner med uniform legacy-fallback
+- enkel- och dubbelledtrådar med full active-line-markering
+- Template-ägda svängande answer paths
+- publicerad Browser/Play genom samma RuntimeLayer-pipeline
 
 Epic 1 runtime ownership är slutförd:
 

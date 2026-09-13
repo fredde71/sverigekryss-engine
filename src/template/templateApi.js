@@ -3,7 +3,10 @@ import { DEFAULT_DOCUMENT_SIZE } from "./documentGeometry";
 import { BACKEND_BASE_URL } from "./persistenceConfig";
 
 export async function loadBackendTemplate(id) {
-  const response = await fetch(`${BACKEND_BASE_URL}/api/crossword/${id}`);
+  const response = await fetch(
+    `${BACKEND_BASE_URL}/api/crossword/${id}`,
+    { cache: "no-store" }
+  );
   const template = await response.json();
 
   if (!response.ok) {

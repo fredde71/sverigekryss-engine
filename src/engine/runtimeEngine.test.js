@@ -1,4 +1,5 @@
 import { getActiveCells } from "./activeLine";
+import { resolveClueSelection } from "./clueSelection";
 import {
   getDirection,
   getArrowNextIndex,
@@ -33,22 +34,31 @@ describe("getDirection", () => {
     })).toBe("toggle");
   });
 
-  test("returns the longer direction for simple clue blocked cells when both directions are writable", () => {
+  test("single-clue direction and answer start are resolved together", () => {
     const cellTypes = [
       "blocked", "write", "write", "write",
       "write", "blocked", "blocked", "blocked",
       "blocked", "blocked", "blocked", "blocked"
     ];
 
-    expect(getDirection({
+    expect(resolveClueSelection({
       currentIndex: 0,
+      currentDirection: "across",
       cols: 4,
       rows: 3,
       cellTypes
-    })).toBe("across");
+    })).toEqual({
+      clueIndex: 0,
+      clueType: "blocked",
+      direction: "across",
+      answerStartIndex: 1,
+      answerLength: 3,
+      answerCellIndexes: [1, 2, 3]
+    });
 
-    expect(getDirection({
+    expect(resolveClueSelection({
       currentIndex: 0,
+      currentDirection: "across",
       cols: 4,
       rows: 3,
       cellTypes: [
@@ -56,7 +66,14 @@ describe("getDirection", () => {
         "write", "empty", "empty", "empty",
         "write", "empty", "empty", "empty"
       ]
-    })).toBe("down");
+    })).toEqual({
+      clueIndex: 0,
+      clueType: "blocked",
+      direction: "down",
+      answerStartIndex: 4,
+      answerLength: 2,
+      answerCellIndexes: [4, 8]
+    });
   });
 
   test("returns across when only the right cell is writable", () => {
@@ -103,6 +120,29 @@ describe("getDirection", () => {
 });
 
 describe("getNextCell", () => {
+  test("follows an explicit ordered path through a turn", () => {
+    const clueSelection = {
+      answerCellIndexes: [1, 2, 5, 8, 7]
+    };
+
+    expect(getNextCell({
+      currentIndex: 2,
+      direction: "across",
+      cols: 3,
+      rows: 3,
+      cellTypes: Array(9).fill("write"),
+      clueSelection
+    })).toBe(5);
+    expect(getNextCell({
+      currentIndex: 8,
+      direction: "across",
+      cols: 3,
+      rows: 3,
+      cellTypes: Array(9).fill("write"),
+      clueSelection
+    })).toBe(7);
+  });
+
   test("advances across into a writable cell", () => {
     expect(getNextCell({
       currentIndex: 0,
@@ -211,6 +251,37 @@ describe("getArrowNextIndex", () => {
 });
 
 describe("getActiveCells", () => {
+  test("uses the exact explicit path including direction changes", () => {
+    const cellTypes = [
+      "blocked", "write", "write",
+      "empty", "empty", "write",
+      "empty", "write", "write"
+    ];
+    const clueSelection = resolveClueSelection({
+      currentIndex: 0,
+      currentDirection: "down",
+      cellTypes,
+      cols: 3,
+      rows: 3,
+      answerPaths: [{
+        clueIndex: 0,
+        paths: [{
+          direction: "across",
+          cellIndexes: [1, 2, 5, 8, 7]
+        }]
+      }]
+    });
+
+    expect(asArray(getActiveCells({
+      activeCell: 0,
+      direction: "across",
+      cellTypes,
+      cols: 3,
+      rows: 3,
+      clueSelection
+    }))).toEqual([1, 2, 5, 7, 8]);
+  });
+
   test("excludes double clue cells and highlights only writable cells across", () => {
     const cellTypes = [
       "double", "write", "write", "blocked",
@@ -222,7 +293,14 @@ describe("getActiveCells", () => {
       direction: "across",
       cellTypes,
       cols: 4,
-      rows: 2
+      rows: 2,
+      clueSelection: resolveClueSelection({
+        currentIndex: 0,
+        currentDirection: "down",
+        cellTypes,
+        cols: 4,
+        rows: 2
+      })
     }))).toEqual([1, 2]);
   });
 
@@ -237,7 +315,14 @@ describe("getActiveCells", () => {
       direction: "across",
       cellTypes,
       cols: 4,
-      rows: 2
+      rows: 2,
+      clueSelection: resolveClueSelection({
+        currentIndex: 0,
+        currentDirection: "across",
+        cellTypes,
+        cols: 4,
+        rows: 2
+      })
     }))).toEqual([1, 2]);
   });
 
@@ -273,7 +358,14 @@ describe("getActiveCells", () => {
       direction: "across",
       cellTypes,
       cols,
-      rows
+      rows,
+      clueSelection: resolveClueSelection({
+        currentIndex: 303,
+        currentDirection: "across",
+        cellTypes,
+        cols,
+        rows
+      })
     }))).toEqual([304, 305, 306]);
   });
 
@@ -289,7 +381,14 @@ describe("getActiveCells", () => {
       direction: "down",
       cellTypes,
       cols: 3,
-      rows: 3
+      rows: 3,
+      clueSelection: resolveClueSelection({
+        currentIndex: 0,
+        currentDirection: "across",
+        cellTypes,
+        cols: 3,
+        rows: 3
+      })
     }))).toEqual([3, 6]);
   });
 

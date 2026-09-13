@@ -58,7 +58,27 @@ test("constructs normalized production evidence and exposes reconstruction uncha
   const reconstructionResult = {
     type: "grid-lattice-reconstruction-result",
     status: "available",
-    lattice: { type: "grid-lattice", status: "available" }
+    lattice: {
+      type: "grid-lattice",
+      status: "available",
+      gridDimensions: { rows: 2, cols: 3 }
+    },
+    selectedAxisCandidates: {
+      horizontal: {
+        assignments: [
+          { latticeIndex: 0, observedPosition: 10 },
+          { latticeIndex: 1, observedPosition: 20 },
+          { latticeIndex: 2, observedPosition: 30 }
+        ]
+      },
+      vertical: {
+        assignments: [
+          { latticeIndex: 0, observedPosition: 5 },
+          { latticeIndex: 1, observedPosition: 15 },
+          { latticeIndex: 3, observedPosition: 35 }
+        ]
+      }
+    }
   };
   const createEvidence = jest.fn(() => evidence);
   const createLatticeInterpretations = jest.fn(() => interpretations);
@@ -72,6 +92,11 @@ test("constructs normalized production evidence and exposes reconstruction uncha
   };
   const createVisualExtent = jest.fn(() => outerVisualExtent);
   const reconstructGridLattice = jest.fn(() => reconstructionResult);
+  const formatSelection = {
+    type: "grid-format-geometry-selection",
+    status: "unavailable"
+  };
+  const selectFormatGeometry = jest.fn(() => formatSelection);
   const run = createDigitizationEngine({
     detectGrid: jest.fn(async () => detectionResult),
     createEvidence,
@@ -79,6 +104,7 @@ test("constructs normalized production evidence and exposes reconstruction uncha
     createPrimitivePeriodEvidence,
     createFactoredBoundsEvidence,
     createVisualExtent,
+    selectFormatGeometry,
     reconstructGridLattice
   });
 
@@ -123,6 +149,22 @@ test("constructs normalized production evidence and exposes reconstruction uncha
     factoredBounds
   });
   expect(result.gridLatticeReconstructionResult).toBe(reconstructionResult);
+  expect(selectFormatGeometry).toHaveBeenCalledWith({
+    gridDimensions: { rows: 2, cols: 3 },
+    acceptedIndexedAnchors: {
+      horizontal: [
+        { latticeIndex: 0, observedPosition: 10, evidenceReferences: [] },
+        { latticeIndex: 1, observedPosition: 20, evidenceReferences: [] },
+        { latticeIndex: 2, observedPosition: 30, evidenceReferences: [] }
+      ],
+      vertical: [
+        { latticeIndex: 0, observedPosition: 5, evidenceReferences: [] },
+        { latticeIndex: 1, observedPosition: 15, evidenceReferences: [] },
+        { latticeIndex: 3, observedPosition: 35, evidenceReferences: [] }
+      ]
+    }
+  });
+  expect(result.gridFormatGeometrySelection).toBe(formatSelection);
   expect(result.outerVisualExtent).toBe(outerVisualExtent);
 });
 

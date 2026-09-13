@@ -14,6 +14,7 @@ export default function EditorLayer({
   documentSize,
   gridArea,
   gridLineProposal,
+  answerPathSelection,
   cropArea,
   setCropMode
 }) {
@@ -28,7 +29,8 @@ export default function EditorLayer({
     width: safeDocumentSize.width,
     height: safeDocumentSize.height
   };
-  const isCompetitionToolActive = activeTool === "competition";
+  const isCellSelectionToolActive = activeTool === "competition"
+    || activeTool === "answer-path";
 
   return (
     <div
@@ -64,7 +66,7 @@ export default function EditorLayer({
             setCropMode("move");
           }}
           style={{
-            pointerEvents: isCompetitionToolActive ? "none" : "auto",
+            pointerEvents: isCellSelectionToolActive ? "none" : "auto",
             position: "absolute",
             top: 0,
             left: 0,
@@ -82,7 +84,7 @@ export default function EditorLayer({
             setCropMode("resize");
           }}
           style={{
-            pointerEvents: isCompetitionToolActive ? "none" : "auto",
+            pointerEvents: isCellSelectionToolActive ? "none" : "auto",
             position: "absolute",
             right: -6,
             bottom: -6,
@@ -114,7 +116,7 @@ export default function EditorLayer({
             startGridResize(e, "top");
           }}
           style={{
-            pointerEvents: isCompetitionToolActive ? "none" : "auto",
+            pointerEvents: isCellSelectionToolActive ? "none" : "auto",
             position: "absolute",
             top: 0,
             left: 0,
@@ -136,7 +138,7 @@ export default function EditorLayer({
           }}
           onClick={(e) => e.stopPropagation()}
           style={{
-            pointerEvents: isCompetitionToolActive ? "none" : "auto",
+            pointerEvents: isCellSelectionToolActive ? "none" : "auto",
             position: "absolute",
             right: -6,
             zIndex: 20,
@@ -155,6 +157,7 @@ export default function EditorLayer({
           competitionCells={competitionCells}
           gridArea={gridArea}
           gridLineProposal={gridLineProposal}
+          answerPathSelection={answerPathSelection}
         />
       </div>
     </div>

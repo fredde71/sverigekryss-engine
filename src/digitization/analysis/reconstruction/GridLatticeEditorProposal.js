@@ -8,7 +8,8 @@ const ANALYSIS_REGION_LOCAL_SPACE = "analysis-region-local";
 
 export function createGridLatticeEditorProposal({
   gridLattice,
-  outerVisualExtent
+  outerVisualExtent,
+  gridFormatGeometrySelection = null
 } = {}) {
   validateAvailableLattice(gridLattice);
 
@@ -16,6 +17,7 @@ export function createGridLatticeEditorProposal({
     return createUnavailableProposal({
       gridLattice,
       outerVisualExtent,
+      gridFormatGeometrySelection,
       status: "unavailable",
       reason: "outer-visual-extent-unavailable"
     });
@@ -24,6 +26,7 @@ export function createGridLatticeEditorProposal({
     return createUnavailableProposal({
       gridLattice,
       outerVisualExtent,
+      gridFormatGeometrySelection,
       status: normalizeUnavailableStatus(outerVisualExtent.status),
       reason: `outer-visual-extent-${outerVisualExtent.status || "unavailable"}`
     });
@@ -34,17 +37,40 @@ export function createGridLatticeEditorProposal({
     validateCoordinateSystem(outerVisualExtent.coordinateSystem);
     const rows = gridLattice.gridDimensions.rows;
     const cols = gridLattice.gridDimensions.cols;
+    const formatGeometry = readSelectedFormatGeometry({
+      gridFormatGeometrySelection,
+      rows,
+      cols
+    });
     const horizontalLinePositions = mapAxisPositionsToEditorSpace(
-      gridLattice.axes?.horizontal?.positions,
+      formatGeometry
+        ? materializeFormatAxisPositions({
+          axis: "horizontal",
+          normalizedPositions:
+            formatGeometry.axes.horizontal.normalizedLinePositions,
+          outerVisualExtent
+        })
+        : gridLattice.axes?.horizontal?.positions,
       "horizontal",
       rows + 1,
-      gridLattice.coordinateSystem
+      formatGeometry
+        ? outerVisualExtent.coordinateSystem
+        : gridLattice.coordinateSystem
     );
     const verticalLinePositions = mapAxisPositionsToEditorSpace(
-      gridLattice.axes?.vertical?.positions,
+      formatGeometry
+        ? materializeFormatAxisPositions({
+          axis: "vertical",
+          normalizedPositions:
+            formatGeometry.axes.vertical.normalizedLinePositions,
+          outerVisualExtent
+        })
+        : gridLattice.axes?.vertical?.positions,
       "vertical",
       cols + 1,
-      gridLattice.coordinateSystem
+      formatGeometry
+        ? outerVisualExtent.coordinateSystem
+        : gridLattice.coordinateSystem
     );
 
     return deepFreeze({
@@ -62,13 +88,19 @@ export function createGridLatticeEditorProposal({
       linePositionCoordinateSpace: "document",
       cellTypes: Array(rows * cols).fill("empty"),
       competitionCells: [],
-      provenance: createProposalProvenance(gridLattice, outerVisualExtent),
+      provenance: createProposalProvenance(
+        gridLattice,
+        outerVisualExtent,
+        gridFormatGeometrySelection,
+        formatGeometry
+      ),
       reasons: []
     });
   } catch (error) {
     return createUnavailableProposal({
       gridLattice,
       outerVisualExtent,
+      gridFormatGeometrySelection,
       status: "unavailable",
       reason: "outer-visual-extent-coordinate-transform-unavailable",
       diagnostic: error.message
@@ -79,6 +111,7 @@ export function createGridLatticeEditorProposal({
 function createUnavailableProposal({
   gridLattice,
   outerVisualExtent,
+  gridFormatGeometrySelection = null,
   status,
   reason,
   diagnostic = null
@@ -95,13 +128,23 @@ function createUnavailableProposal({
     linePositionCoordinateSpace: null,
     cellTypes: [],
     competitionCells: [],
-    provenance: createProposalProvenance(gridLattice, outerVisualExtent),
+    provenance: createProposalProvenance(
+      gridLattice,
+      outerVisualExtent,
+      gridFormatGeometrySelection,
+      null
+    ),
     reasons: [reason],
     diagnostics: diagnostic ? [{ type: reason, message: diagnostic }] : []
   });
 }
 
-function createProposalProvenance(gridLattice, outerVisualExtent) {
+function createProposalProvenance(
+  gridLattice,
+  outerVisualExtent,
+  gridFormatGeometrySelection,
+  formatGeometry
+) {
   return {
     gridLattice: {
       id: gridLattice.id ?? null,
@@ -112,7 +155,9 @@ function createProposalProvenance(gridLattice, outerVisualExtent) {
       sourceCandidateReference: cloneDeterministicValue(
         gridLattice.sourceCandidateReference ?? null
       ),
-      linePositionSemantics: "modeled-grid-line-centers"
+      linePositionSemantics: formatGeometry
+        ? "outer-visual-extent-mapped-normalized-grid-format-line-centers"
+        : "modeled-grid-line-centers"
     },
     outerVisualExtent: outerVisualExtent
       ? {
@@ -129,8 +174,52 @@ function createProposalProvenance(gridLattice, outerVisualExtent) {
         )
       }
       : null,
+    gridFormatGeometry: gridFormatGeometrySelection
+      ? {
+        status: gridFormatGeometrySelection.status ?? null,
+        selectedFormatId:
+          gridFormatGeometrySelection.selectedFormatId ?? null,
+        coordinateSpace: formatGeometry?.coordinateSpace ?? null,
+        provenance: cloneDeterministicValue(
+          formatGeometry?.provenance ?? null
+        )
+      }
+      : null,
     composition: "grid-dimensions-with-independent-outer-visual-extent"
   };
+}
+
+function readSelectedFormatGeometry({
+  gridFormatGeometrySelection,
+  rows,
+  cols
+}) {
+  if (gridFormatGeometrySelection?.status !== "selected") {
+    return null;
+  }
+  const format = gridFormatGeometrySelection.selectedFormat;
+  if (
+    format?.type !== "grid-format-geometry"
+    || format.coordinateSpace !== "normalized-grid-format"
+    || format.gridDimensions?.rows !== rows
+    || format.gridDimensions?.cols !== cols
+  ) {
+    throw new Error("Selected GridFormatGeometry is incompatible");
+  }
+  return format;
+}
+
+function materializeFormatAxisPositions({
+  axis,
+  normalizedPositions,
+  outerVisualExtent
+}) {
+  const horizontal = axis === "horizontal";
+  const bounds = outerVisualExtent.bounds;
+  const start = horizontal ? bounds.top : bounds.left;
+  const span = horizontal ? bounds.height : bounds.width;
+
+  return normalizedPositions.map(position => start + position * span);
 }
 
 function mapAxisPositionsToEditorSpace(

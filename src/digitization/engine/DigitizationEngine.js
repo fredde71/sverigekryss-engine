@@ -4,6 +4,9 @@ import {
   createGridLatticeFactoredBoundsEvidence
 } from "../analysis/reconstruction/GridLatticeFactoredBoundsEvidence";
 import {
+  selectGridFormatGeometry
+} from "../analysis/reconstruction/GridFormatGeometrySelection";
+import {
   createGridLatticePrimitivePeriodEvidence
 } from "../analysis/reconstruction/GridLatticePrimitivePeriodEvidence";
 import {
@@ -40,6 +43,7 @@ export function createDigitizationEngine({
   createPrimitivePeriodEvidence = createGridLatticePrimitivePeriodEvidence,
   createFactoredBoundsEvidence = createGridLatticeFactoredBoundsEvidence,
   createVisualExtent = createOuterVisualExtent,
+  selectFormatGeometry = selectGridFormatGeometry,
   createLatticeInterpretations = createProductionLatticeInterpretations,
   reconstructGridLattice = runGridLatticeReconstruction
 } = {}) {
@@ -49,6 +53,7 @@ export function createDigitizationEngine({
     [createPrimitivePeriodEvidence, "createPrimitivePeriodEvidence"],
     [createFactoredBoundsEvidence, "createFactoredBoundsEvidence"],
     [createVisualExtent, "createVisualExtent"],
+    [selectFormatGeometry, "selectFormatGeometry"],
     [createLatticeInterpretations, "createLatticeInterpretations"],
     [reconstructGridLattice, "reconstructGridLattice"]
   ].forEach(([dependency, name]) => {
@@ -112,6 +117,10 @@ export function createDigitizationEngine({
       primitivePeriodEvidence,
       factoredBounds
     });
+    const gridFormatGeometrySelection = createProductionFormatSelection({
+      reconstructionResult: gridLatticeReconstructionResult,
+      selectFormatGeometry
+    });
     const productionResult = freezeAnalysisValue({
       jobId: job.jobId,
       sourceId: job.source.id,
@@ -125,9 +134,50 @@ export function createDigitizationEngine({
     return Object.freeze({
       ...productionResult,
       gridLatticeReconstructionResult,
+      gridFormatGeometrySelection,
       outerVisualExtent
     });
   };
+}
+
+function createProductionFormatSelection({
+  reconstructionResult,
+  selectFormatGeometry
+}) {
+  const lattice = reconstructionResult?.lattice;
+  const selectedAxisCandidates = reconstructionResult?.selectedAxisCandidates;
+  if (
+    reconstructionResult?.status !== "available"
+    || lattice?.status !== "available"
+    || !selectedAxisCandidates
+  ) {
+    return null;
+  }
+
+  return selectFormatGeometry({
+    gridDimensions: lattice.gridDimensions,
+    acceptedIndexedAnchors: Object.fromEntries(
+      ["horizontal", "vertical"].map(axis => [
+        axis,
+        readAcceptedIndexedAnchors(selectedAxisCandidates[axis])
+      ])
+    )
+  });
+}
+
+function readAcceptedIndexedAnchors(axisCandidate) {
+  if (!Array.isArray(axisCandidate?.assignments)) {
+    return [];
+  }
+  return axisCandidate.assignments
+    .filter(assignment => assignment.withinCandidateExtent !== false)
+    .map(assignment => ({
+      latticeIndex: assignment.latticeIndex,
+      observedPosition: assignment.observedPosition,
+      evidenceReferences: Array.isArray(assignment.evidenceReferences)
+        ? assignment.evidenceReferences.slice()
+        : []
+    }));
 }
 
 export const runDigitizationJob = createDigitizationEngine();

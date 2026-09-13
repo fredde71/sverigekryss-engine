@@ -4,6 +4,7 @@ import RuntimeGrid from "./RuntimeGrid";
 import RuntimeCell from "./RuntimeCell";
 
 import { getActiveCells } from "../engine/activeLine";
+import { resolveClueSelection } from "../engine/clueSelection";
 
 import {
   getNextCell,
@@ -16,16 +17,15 @@ import { normalizeInputValue } from "../engine/input";
 
 export default function RuntimeLayer({
   data,
-  onAnswersChange,
-  debugPublicationId = ""
+  onAnswersChange
 }) {
 
   console.log("RuntimeLayer rendered");
 
   const [answers, setAnswers] = useState({});
   const [activeCell, setActiveCell] = useState(null);
-
   const [direction, setDirection] = useState("across");
+  const [clueSelection, setClueSelection] = useState(null);
 
 React.useEffect(() => {
   console.log("RuntimeLayer activeCell changed", activeCell);
@@ -61,7 +61,8 @@ const handleCellChange = (index, rawValue) => {
       direction,
       cols,
       rows,
-      cellTypes
+      cellTypes,
+      clueSelection
     });
 
     focusNextInput({
@@ -77,46 +78,33 @@ const handleCellChange = (index, rawValue) => {
 const handleCellClick = (index) => {
 
   console.log("RuntimeLayer handleCellClick called", index);
-  console.log("[single-clue-debug] clicked cell", {
-    templateId: data?.crosswordId,
-    crosswordId: data?.crosswordId,
-    publicationId: debugPublicationId,
-    index,
-    type: cellTypes[index],
-    value: cellTypes[index],
-    cell: cellTypes[index],
-    row: Math.floor(index / cols),
-    col: index % cols,
-    right: index % cols !== cols - 1
-      ? { index: index + 1, type: cellTypes[index + 1] }
-      : null,
-    down: index + cols < rows * cols
-      ? { index: index + cols, type: cellTypes[index + cols] }
-      : null,
-    left: index % cols !== 0
-      ? { index: index - 1, type: cellTypes[index - 1] }
-      : null,
-    up: index - cols >= 0
-      ? { index: index - cols, type: cellTypes[index - cols] }
-      : null
-  });
 
   setActiveCell(index);
+
+  if (cellTypes[index] === "blocked" || cellTypes[index] === "double") {
+    const resolution = resolveClueSelection({
+      currentIndex: index,
+      currentDirection: direction,
+      cols,
+      rows,
+      cellTypes,
+      answerPaths
+    });
+
+    setClueSelection(resolution);
+    if (resolution) {
+      setDirection(resolution.direction);
+    }
+    return;
+  }
+
+  setClueSelection(null);
 
   const directionResult = getDirection({
     currentIndex: index,
     cols,
     rows,
     cellTypes
-  });
-
-  console.log("[single-clue-debug] direction selected", {
-    templateId: data?.crosswordId,
-    publicationId: debugPublicationId,
-    clickedIndex: index,
-    clickedType: cellTypes[index],
-    clickedCell: cellTypes[index],
-    directionResult
   });
 
   if (directionResult === "toggle") {
@@ -143,7 +131,8 @@ const handleCellClick = (index) => {
     cellTypes,
     rows,
     cols,
-    gridArea
+    gridArea,
+    answerPaths = []
   } = data;
 
   console.log(
@@ -156,24 +145,11 @@ const handleCellClick = (index) => {
   direction,
   cellTypes,
   cols,
-  rows
+  rows,
+  clueSelection
 });
 
   console.log("RuntimeLayer activeCells size", activeCells.size);
-  console.log("[single-clue-debug] active line sent to render", {
-    templateId: data?.crosswordId,
-    publicationId: debugPublicationId,
-    activeCell,
-    activeCellType: activeCell === null ? null : cellTypes[activeCell],
-    activeCellObject: activeCell === null ? null : cellTypes[activeCell],
-    direction,
-    activeCells: Array.from(activeCells),
-    activeCellObjects: Array.from(activeCells).map(index => ({
-      index,
-      cell: cellTypes[index],
-      type: cellTypes[index]
-    }))
-  });
 
   return (
     <div
@@ -205,6 +181,9 @@ const handleCellClick = (index) => {
         <RuntimeGrid
   rows={rows}
   cols={cols}
+  gridArea={gridArea}
+  horizontalLinePositions={data.horizontalLinePositions}
+  verticalLinePositions={data.verticalLinePositions}
 >
   {Array.from({ length: rows * cols }).map((_, i) => {
    
@@ -230,22 +209,6 @@ if (type === "blocked") {
     />
   );
 }
-
-console.log("[single-clue-debug] render runtime cell", {
-  component: "RuntimeLayer -> RuntimeCell",
-  templateId: data?.crosswordId,
-  publicationId: debugPublicationId,
-  index: i,
-  cell: cellTypes[i],
-  type,
-  isActive: activeCells.has(i),
-  props: {
-    type: cellTypes[i],
-    value: answers[i] || "",
-    dataIndex: i,
-    isActive: activeCells.has(i)
-  }
-});
 
 return (
   <RuntimeCell

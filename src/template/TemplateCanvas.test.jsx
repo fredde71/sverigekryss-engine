@@ -16,6 +16,21 @@ const baseTemplate = {
   imageSrc: "/grid.png"
 };
 
+test("renders a blank white canvas when no document image is loaded", () => {
+  render(
+    <TemplateCanvas
+      template={{
+        ...baseTemplate,
+        imageSrc: ""
+      }}
+    />
+  );
+
+  expect(screen.queryByRole("img", { name: "grid" })).not.toBeInTheDocument();
+  expect(screen.getByTestId("template-canvas-viewport"))
+    .toHaveStyle({ background: "#fff" });
+});
+
 test("renders legacy full-canvas viewport by default", () => {
   render(<TemplateCanvas template={baseTemplate} />);
 

@@ -48,6 +48,9 @@ export function createGridLatticeReconstructionResult({
     lattice,
     sourceCandidateId: sourceCandidate?.id ?? null,
     sourceCandidate,
+    selectedAxisCandidates: sourceCandidate
+      ? deepFreeze(cloneDeterministicValue(sourceCandidate.axes))
+      : null,
     competingCandidates: candidateSelection.competingCandidates,
     candidateSelectionStatus: candidateSelection.status,
     reconstructionProvenance: deepFreeze({
@@ -133,6 +136,9 @@ function createFactoredReconstructionResult({
     sourceCandidate: null,
     sourceCandidateReference: selectedReference
       ? deepFreeze(cloneDeterministicValue(selectedReference))
+      : null,
+    selectedAxisCandidates: selectedReference
+      ? deepFreeze(cloneDeterministicValue({ horizontal, vertical }))
       : null,
     competingCandidates: null,
     competingCandidateSpace: deepFreeze(cloneDeterministicValue(

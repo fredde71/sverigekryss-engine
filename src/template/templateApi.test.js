@@ -33,7 +33,46 @@ test("loadBackendTemplate uses the configured backend URL", async () => {
   await loadBackendTemplate("TT-2026-0002");
 
   expect(global.fetch).toHaveBeenCalledWith(
-    `${BACKEND_BASE_URL}/api/crossword/TT-2026-0002`
+    `${BACKEND_BASE_URL}/api/crossword/TT-2026-0002`,
+    { cache: "no-store" }
+  );
+});
+
+test("publish and reload preserve ordered multi-cell answer paths", async () => {
+  const answerPaths = [{
+    clueIndex: 0,
+    paths: [{
+      direction: "across",
+      cellIndexes: [1, 2, 6, 10, 9]
+    }]
+  }];
+  const payload = {
+    crosswordId: "TT-2026-0003",
+    rows: 3,
+    cols: 4,
+    cellTypes: [
+      "blocked", "write", "write", "empty",
+      "empty", "empty", "write", "empty",
+      "empty", "write", "write", "empty"
+    ],
+    gridArea: {},
+    imageSrc: "",
+    answerPaths
+  };
+
+  mockJsonResponse({ success: true });
+  await publishBackendTemplate(payload);
+
+  expect(JSON.parse(global.fetch.mock.calls[0][1].body).answerPaths)
+    .toEqual(answerPaths);
+
+  mockJsonResponse(payload);
+  const reloaded = await loadBackendTemplate(payload.crosswordId);
+
+  expect(reloaded.answerPaths).toEqual(answerPaths);
+  expect(global.fetch).toHaveBeenLastCalledWith(
+    `${BACKEND_BASE_URL}/api/crossword/${payload.crosswordId}`,
+    { cache: "no-store" }
   );
 });
 

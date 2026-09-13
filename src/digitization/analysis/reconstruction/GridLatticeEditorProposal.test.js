@@ -65,6 +65,86 @@ test("composes local-to-binary-image and binary-image-to-document exactly once",
   expect(result.verticalLinePositions).toEqual([35.25, 85.25, 135.25, 185.25]);
 });
 
+test("uses selected normalized format geometry with per-upload visual extent", () => {
+  const result = createGridLatticeEditorProposal({
+    gridLattice: createLattice(),
+    outerVisualExtent: createVisualExtent(),
+    gridFormatGeometrySelection: createFormatSelection()
+  });
+
+  expect(result.status).toBe("available");
+  expect(result.rows).toBe(2);
+  expect(result.cols).toBe(3);
+  expect(result.horizontalLinePositions).toEqual([
+    8,
+    89.60000000000001,
+    212
+  ]);
+  expect(result.verticalLinePositions).toEqual([
+    18,
+    78.80000000000001,
+    230.79999999999998,
+    322
+  ]);
+  expect(result.provenance.gridLattice.linePositionSemantics)
+    .toBe("outer-visual-extent-mapped-normalized-grid-format-line-centers");
+  expect(result.provenance.gridFormatGeometry).toMatchObject({
+    status: "selected",
+    selectedFormatId: "format-2x3",
+    coordinateSpace: "normalized-grid-format"
+  });
+});
+
+test("transforms selected format positions exactly once into document space", () => {
+  const coordinateSystem = {
+    space: "analysis-region-local",
+    localToBinaryImage: {
+      offsetX: 100,
+      offsetY: 250,
+      scaleX: 2,
+      scaleY: 0.5
+    },
+    binaryImageToDocument: {
+      scaleX: 0.25,
+      scaleY: 3
+    }
+  };
+  const result = createGridLatticeEditorProposal({
+    gridLattice: createLattice({ coordinateSystem }),
+    outerVisualExtent: createVisualExtent({ coordinateSystem }),
+    gridFormatGeometrySelection: createFormatSelection()
+  });
+
+  expect(result.horizontalLinePositions).toEqual([
+    762,
+    884.4000000000001,
+    1068
+  ]);
+  expect(result.verticalLinePositions).toEqual([
+    34,
+    64.4,
+    140.39999999999998,
+    186
+  ]);
+});
+
+test.each(["ambiguous", "unavailable"])(
+  "%s format selection preserves modeled GridLattice line positions",
+  status => {
+    const result = createGridLatticeEditorProposal({
+      gridLattice: createLattice(),
+      outerVisualExtent: createVisualExtent(),
+      gridFormatGeometrySelection: createFormatSelection({ status })
+    });
+
+    expect(result.status).toBe("available");
+    expect(result.horizontalLinePositions).toEqual([10.5, 110.5, 210.5]);
+    expect(result.verticalLinePositions).toEqual([20.5, 120.5, 220.5, 320.5]);
+    expect(result.provenance.gridLattice.linePositionSemantics)
+      .toBe("modeled-grid-line-centers");
+  }
+);
+
 test("partial image-aligned research evidence cannot block the modeled lattice proposal", () => {
   const result = createGridLatticeEditorProposal({
     gridLattice: createLattice(),
@@ -293,6 +373,30 @@ function createImageAlignedAxis(axis, positions, status) {
       position,
       status: position === null ? "unavailable" : "observed"
     }))
+  };
+}
+
+function createFormatSelection({ status = "selected" } = {}) {
+  const selected = status === "selected";
+  return {
+    type: "grid-format-geometry-selection",
+    version: 1,
+    status,
+    selectedFormatId: selected ? "format-2x3" : null,
+    selectedFormat: selected
+      ? {
+        type: "grid-format-geometry",
+        version: 1,
+        id: "format-2x3",
+        coordinateSpace: "normalized-grid-format",
+        gridDimensions: { rows: 2, cols: 3 },
+        axes: {
+          horizontal: { normalizedLinePositions: [0, 0.4, 1] },
+          vertical: { normalizedLinePositions: [0, 0.2, 0.7, 1] }
+        },
+        provenance: { source: "test-format" }
+      }
+      : null
   };
 }
 

@@ -11,14 +11,6 @@ export default function PlaySurface({
   responsive = false,
   onSubmitAnswers
 }) {
-  console.log("[single-clue-debug] PlaySurface context", {
-    templateId: template?.crosswordId,
-    crosswordId: template?.crosswordId,
-    publicationId,
-    rows: template?.rows,
-    cols: template?.cols
-  });
-
   const [isSubmissionDialogOpen, setIsSubmissionDialogOpen] = useState(false);
   const [runtimeAnswers, setRuntimeAnswers] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,7 +74,6 @@ export default function PlaySurface({
       <TemplateCanvas template={template} responsive={responsive} cropped>
         <RuntimeLayer
           data={template}
-          debugPublicationId={publicationId}
           onAnswersChange={setRuntimeAnswers}
         />
       </TemplateCanvas>

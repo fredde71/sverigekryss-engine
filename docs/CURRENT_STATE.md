@@ -6,7 +6,7 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter verifierad produktionsintegration från Grid Reconstruction till Editor.
+Efter browser-verifierat V1-flöde från PDF till publicerat och spelbart korsord.
 
 ---
 
@@ -21,8 +21,10 @@ Följande är färdigt i aktuell editor/play-produktion:
 - zoom-verktygsfält ovanför editorarbetsytan
 - persistent zoom i editor och player
 - typografiförbättringar i vänsterpanel och zoomrad
-- stabil frontend testsvit med cirka 149 tester
+- stabil frontend testsvit
 - fungerande production build
+- blank vit Editor vid start utan förladdat standardkorsord
+- dokumentlivscykel som rensar tidigare grid-, förslags-, zoom- och viewport-state före en ny uppladdning
 
 Följande är färdigt i återställd digitization foundation:
 
@@ -69,16 +71,43 @@ PDF/file upload
 - Editor-förslaget använder rader/kolumner och explicita linjepositioner från `GridLattice`, samt `gridArea` från `OuterVisualExtent`
 - `EditorWorkspace` äger och applicerar redigerbart Editor-state atomiskt
 - `EditorGrid` renderar explicita rekonstruerade linjepositioner när de finns; befintligt manuellt, uniformt rutnät är fortsatt fallback när de saknas
-- Grid V1 använder den valda globala matematiska `GridLattice`-geometrin som stabilt Editor-förslag
+- Grid V1 använder `GridLattice` för vald topologi och som säker geometrifallback; vald `GridFormatGeometry` mappad genom `OuterVisualExtent` levererar de aktiva explicita linjepositionerna
+- `GridFormatGeometry` bevarar återanvändbar normaliserad intern linjegeometri; format väljs deterministiskt från accepterade indexerade ankare och mappas med uppladdningens `OuterVisualExtent`
 - pixelperfekt sammanfall med varje tryckt intern linje är inte ett V1-krav; manuell finjustering i Editor är avsiktligt V1-beteende
 - `App.js` orkestrerar endast överlämningen mellan Digitization och Editor
 - Digitization Lab är fortsatt separat och development-only
 - Ground Truth, validering, dataset och experiment är inte produktionsberoenden
 
-Inte implementerat i detta steg:
+Verifierat komplett V1-flöde:
+
+```text
+PDF
+  → production Digitization
+  → Editor-förslag
+  → cell- och ledtrådsredigering
+  → svarsvägar och tävlingsceller
+  → publicering
+  → genererad länk
+  → Browser/Play
+```
+
+- explicita horisontella och vertikala linjepositioner ägs av Template och används av både Editor och Runtime/Play
+- äldre templates utan explicita linjepositioner använder fortsatt uniform grid-fallback
+- `answerPaths` är Template-ägda ordnade svarscellssekvenser; en enkelledtråd har högst en väg och en dubbelledtråd högst två
+- svarsvägar kan svänga och författas, numreras, ändras och rensas i Editor
+- `clueSelection` är den gemensamma rena engine-operationen för riktning, start och full svarsväg; Runtime använder explicit väg när den finns och rak topologisk fallback annars
+- `competitionCells` bevaras som `{ index, position }`; Tävlingsruta-verktyget gör en tom cell skrivbar och öppnar val av position 1–6
+- backend bevarar Template-fälten oförändrade och template-load använder `no-store` så publicerad Browser/Play får senaste data
+- publiceringsflödet med genererad länk är browser-testat end-to-end
+
+Känd V1-begränsning:
+
+- arbetsflödet fungerar komplett, men författningshastigheten behöver optimeras
+- `260727-KOPSVK-SK-0-0-webb.pdf` är en isolerad visuell outlier och ska inte ensam styra generell Grid-arkitektur
+
+Senarelagt bortom V1:
 
 - OCR
-- API/backend/persistence-koppling
 - avancerad automatisk cell- och ledtrådsklassificering
 
 ---
@@ -101,7 +130,11 @@ App.js äger inte längre runtime state, runtime interaction/navigation eller ru
 
 Aktiv runtime-pipeline:
 
-App.js
+App.js (lokal Play) / Play.jsx (publicerad Browser)
+↓
+PlaySurface
+↓
+TemplateCanvas
 ↓
 RuntimeLayer
 ↓
@@ -839,12 +872,9 @@ Ingen regression observerad.
 
 # Nästa steg
 
-1. Uppdatera dokumentation efter Epic 1
-2. Besluta om neutral TemplateCanvas/PuzzleCanvas
-3. Template-livscykel
-4. Persistence för templates
-5. Browser/publicering
-6. Backend/API
+V1-flödet är komplett och browser-verifierat. Aktiv produktförbättring efter checkpoint är effektivare författararbete utan att ändra de verifierade domän- och ägargränserna.
+
+Avancerad automatisk cell- och ledtrådsklassificering samt image-aligned/interrupted-line-forskning är senarelagd bortom V1.
 
 ---
 

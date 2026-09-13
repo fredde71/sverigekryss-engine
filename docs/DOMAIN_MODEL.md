@@ -125,8 +125,34 @@ No Editor, TemplateCanvas, Runtime, backend, or visual crop behavior changed whe
 
 imageSrc references the digitized printed puzzle image.
 
+Template may also persist shared grid geometry:
+
+- horizontalLinePositions
+- verticalLinePositions
+
+The fields form one optional pair. A complete pair contains `rows + 1` and `cols + 1` finite, strictly increasing positions in document coordinates. Editor and Runtime consume the same positions. Legacy Templates without them retain uniform grid subdivision.
+
+Template may persist ordered answer paths:
+
+- `answerPaths[].clueIndex`
+- `answerPaths[].paths[].direction`
+- `answerPaths[].paths[].cellIndexes`
+
+Each path is an ordered list of writable cell indexes and may change geometric direction. A `blocked` single-clue cell owns at most one path. A `double` clue cell owns at most two paths, one per direction slot. Runtime uses an explicit path when present and preserves topology-based straight-path inference for legacy Templates.
+
+Template may persist competition positions as:
+
+```text
+competitionCells[] = { index, position }
+```
+
+`index` identifies a writable cell and `position` identifies one of the competition answer positions 1–6. Competition solution assembly consumes this mapping without changing cell type semantics.
+
 ### Optional fields
 
+- competitionCells
+- answerPaths
+- horizontalLinePositions and verticalLinePositions
 - metadata
 
 metadata may contain descriptive or operational information such as title, publisher, issue date, source filename, creation time, update time, or notes.
@@ -250,6 +276,8 @@ Persistence Platform frontend owns shared backend base URL configuration.
 
 App.js delegates publish HTTP communication to templateApi.
 
+Template reloads explicitly bypass browser/proxy caches. The frontend requests `cache: no-store`, and the backend responds with `Cache-Control: no-store`, so published Browser/Play receives the latest persisted Template.
+
 Publish API rejects non-OK backend responses.
 
 Backend error text is preserved when available.
@@ -304,6 +332,25 @@ URL data load is still unchanged.
 
 ---
 
+## Grid Reconstruction Geometry
+
+`GridLattice` is the selected mathematical and topological reconstruction. It owns dimensions, lattice origins, periods, modeled line-center positions, and modeled outer line-center extent.
+
+`OuterVisualExtent` is independent observed geometry for the visible outer footprint of the printed grid.
+
+`GridFormatGeometry` is reusable normalized internal line geometry for one grid format. It is independent of a specific uploaded document. Production selects a compatible catalog entry deterministically from accepted indexed anchors; document position and scale continue to come from the current upload through `OuterVisualExtent`.
+
+`GridLatticeEditorProposal` is the Digitization-to-Editor boundary. It combines:
+
+- rows and columns from `GridLattice`
+- grid area from `OuterVisualExtent`
+- explicit line positions from selected `GridFormatGeometry`, mapped into document coordinates
+- mathematical `GridLattice` line positions as the safe fallback when format selection is unavailable or ambiguous
+
+Digitization owns reconstruction and coordinate provenance. Editor owns application and subsequent manual editing of the proposal. `App.js` only orchestrates the handoff.
+
+---
+
 ## Digitization Dataset Item
 
 A Digitization Dataset is an ordered collection of independently identified dataset items.
@@ -335,6 +382,7 @@ Destroyed when the session ends.
 - answers
 - activeCell
 - direction
+- clueSelection
 - inputRefs
 
 Future candidates
@@ -357,6 +405,9 @@ Represents the editor while building a crossword.
 - pendingCols
 - dragState
 - resizeState
+- answer-path authoring selection and draft state
+- competition-cell assignment selection
+- document lifecycle reset state
 
 Future candidates
 

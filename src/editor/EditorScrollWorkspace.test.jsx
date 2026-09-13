@@ -254,6 +254,85 @@ test("controlled zoom level is preserved after workspace remount", () => {
   expect(screen.getByTestId("editor-zoom-value")).toHaveTextContent("90 %");
 });
 
+test("fresh to 260727 starts with fresh fit zoom and viewport state", () => {
+  function LifecycleHarness({ documentLifecycleId }) {
+    const [zoomState, setZoomState] = useState({
+      fitScale: 0.5,
+      scale: 0.8,
+      zoomMode: "manual"
+    });
+
+    return (
+      <EditorScrollWorkspace
+        zoomState={zoomState}
+        setZoomState={setZoomState}
+        documentLifecycleId={documentLifecycleId}
+      >
+        <div />
+      </EditorScrollWorkspace>
+    );
+  }
+
+  const { rerender } = render(
+    <LifecycleHarness documentLifecycleId={0} />
+  );
+  const workspace = screen.getByTestId("editor-scroll-workspace");
+  workspace.scrollTop = 175;
+  workspace.scrollLeft = 90;
+
+  rerender(<LifecycleHarness documentLifecycleId={1} />);
+
+  expect(screen.getByTestId("editor-zoom-value")).toHaveTextContent("100 %");
+  expect(screen.getByTestId("editor-scroll-source-frame")).toHaveStyle({
+    transform: "scale(1)"
+  });
+  expect(workspace.scrollTop).toBe(0);
+  expect(workspace.scrollLeft).toBe(0);
+});
+
+test("260720 to 260727 resets to the same fresh fit zoom and viewport state", () => {
+  function LifecycleHarness({ documentLifecycleId }) {
+    const [zoomState, setZoomState] = useState({
+      fitScale: 1,
+      scale: 1,
+      zoomMode: "fit"
+    });
+
+    return (
+      <EditorScrollWorkspace
+        zoomState={zoomState}
+        setZoomState={setZoomState}
+        documentLifecycleId={documentLifecycleId}
+      >
+        <div />
+      </EditorScrollWorkspace>
+    );
+  }
+
+  const { rerender } = render(
+    <LifecycleHarness documentLifecycleId={1} />
+  );
+
+  act(() => {
+    resizeObserverCallback([{
+      contentRect: { width: 600, height: 900 }
+    }]);
+  });
+  fireEvent.click(screen.getByRole("button", { name: "+" }));
+  const workspace = screen.getByTestId("editor-scroll-workspace");
+  workspace.scrollTop = 240;
+  workspace.scrollLeft = 120;
+
+  rerender(<LifecycleHarness documentLifecycleId={2} />);
+
+  expect(screen.getByTestId("editor-zoom-value")).toHaveTextContent("100 %");
+  expect(screen.getByTestId("editor-scroll-source-frame")).toHaveStyle({
+    transform: "scale(1)"
+  });
+  expect(workspace.scrollTop).toBe(0);
+  expect(workspace.scrollLeft).toBe(0);
+});
+
 test("grid and crop coordinates do not change when workspace scrolls", () => {
   render(
     <EditorScrollWorkspace>

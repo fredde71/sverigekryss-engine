@@ -97,9 +97,10 @@ export default function EditorToolbar({
       <section style={groupStyle}>
         <h5 style={groupTitleStyle}>Cellverktyg</h5>
         <button aria-pressed={activeTool === "image"} onClick={() => setActiveTool("image")} style={getToolButtonStyle(activeTool === "image")}>Bild</button>
-        <button aria-pressed={activeTool === "blocked"} onClick={() => setActiveTool("blocked")} style={getToolButtonStyle(activeTool === "blocked")}>Blockerad</button>
-        <button aria-pressed={activeTool === "double"} onClick={() => setActiveTool("double")} style={getToolButtonStyle(activeTool === "double")}>Dubbelruta</button>
+        <button aria-pressed={activeTool === "blocked"} onClick={() => setActiveTool("blocked")} style={getToolButtonStyle(activeTool === "blocked")}>Enkelledtråd</button>
+        <button aria-pressed={activeTool === "double"} onClick={() => setActiveTool("double")} style={getToolButtonStyle(activeTool === "double")}>Dubbelledtråd</button>
         <button aria-pressed={activeTool === "write"} onClick={() => setActiveTool("write")} style={getToolButtonStyle(activeTool === "write")}>Skrivruta</button>
+        <button aria-pressed={activeTool === "answer-path"} onClick={() => setActiveTool("answer-path")} style={getToolButtonStyle(activeTool === "answer-path")}>Svarsvägar</button>
         <button aria-pressed={activeTool === "competition"} onClick={() => setActiveTool("competition")} style={getToolButtonStyle(activeTool === "competition")}>🏆 Tävlingsruta</button>
         <button aria-pressed={activeTool === "empty"} onClick={() => setActiveTool("empty")} style={getToolButtonStyle(activeTool === "empty")}>Tom</button>
       </section>

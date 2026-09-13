@@ -244,6 +244,144 @@ test("legacy Template without competitionCells remains unchanged", () => {
   expect(template).not.toHaveProperty("competitionCells");
 });
 
+test("Template preserves one ordered turning answer path for a single clue", () => {
+  const template = createTemplate({
+    crosswordId: "TT-2026-0003",
+    rows: 3,
+    cols: 3,
+    cellTypes: [
+      "blocked", "write", "write",
+      "empty", "empty", "write",
+      "empty", "write", "write"
+    ],
+    gridArea: {},
+    imageSrc: "",
+    answerPaths: [{
+      clueIndex: 0,
+      paths: [{
+        direction: "across",
+        cellIndexes: [1, 2, 5, 8, 7]
+      }]
+    }]
+  });
+
+  expect(template.answerPaths).toEqual([{
+    clueIndex: 0,
+    paths: [{
+      direction: "across",
+      cellIndexes: [1, 2, 5, 8, 7]
+    }]
+  }]);
+});
+
+test("Template preserves two paths for a double clue and rejects a second single path", () => {
+  const base = {
+    crosswordId: "TT-2026-0004",
+    rows: 3,
+    cols: 3,
+    gridArea: {},
+    imageSrc: ""
+  };
+  const doubleTemplate = normalizeTemplate({
+    ...base,
+    cellTypes: [
+      "double", "write", "write",
+      "write", "empty", "empty",
+      "write", "empty", "empty"
+    ],
+    answerPaths: [{
+      clueIndex: 0,
+      paths: [
+        { direction: "across", cellIndexes: [1, 2] },
+        { direction: "down", cellIndexes: [3, 6] }
+      ]
+    }]
+  });
+  const singleTemplate = normalizeTemplate({
+    ...base,
+    cellTypes: [
+      "blocked", "write", "write",
+      "write", "empty", "empty",
+      "write", "empty", "empty"
+    ],
+    answerPaths: [{
+      clueIndex: 0,
+      paths: [
+        { direction: "across", cellIndexes: [1, 2] },
+        { direction: "down", cellIndexes: [3, 6] }
+      ]
+    }]
+  });
+
+  expect(doubleTemplate.answerPaths[0].paths).toHaveLength(2);
+  expect(singleTemplate.answerPaths[0].paths).toEqual([
+    { direction: "across", cellIndexes: [1, 2] }
+  ]);
+});
+
+test("legacy Template without answerPaths remains unchanged", () => {
+  const template = normalizeTemplate({
+    crosswordId: "TT-2026-0002",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["blocked"],
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  expect(template).not.toHaveProperty("answerPaths");
+});
+
+test("Template preserves complete explicit grid-line positions", () => {
+  const horizontalLinePositions = [10, 40, 90];
+  const verticalLinePositions = [20, 55, 120];
+  const template = createTemplate({
+    crosswordId: "TT-2026-0005",
+    rows: 2,
+    cols: 2,
+    cellTypes: Array(4).fill("write"),
+    gridArea: { top: 10, left: 20, width: 100, height: 80 },
+    imageSrc: "",
+    horizontalLinePositions,
+    verticalLinePositions
+  });
+
+  expect(template.horizontalLinePositions).toEqual([10, 40, 90]);
+  expect(template.verticalLinePositions).toEqual([20, 55, 120]);
+  expect(template.horizontalLinePositions).not.toBe(horizontalLinePositions);
+  expect(template.verticalLinePositions).not.toBe(verticalLinePositions);
+});
+
+test("Template omits incomplete or invalid explicit grid-line geometry", () => {
+  const template = normalizeTemplate({
+    crosswordId: "TT-2026-0005",
+    rows: 2,
+    cols: 2,
+    cellTypes: Array(4).fill("write"),
+    gridArea: { top: 10, left: 20, width: 100, height: 80 },
+    imageSrc: "",
+    horizontalLinePositions: [10, 40, 90],
+    verticalLinePositions: [20, 20, 120]
+  });
+
+  expect(template).not.toHaveProperty("horizontalLinePositions");
+  expect(template).not.toHaveProperty("verticalLinePositions");
+});
+
+test("legacy Template without explicit grid-line positions remains unchanged", () => {
+  const template = normalizeTemplate({
+    crosswordId: "TT-2026-0005",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  expect(template).not.toHaveProperty("horizontalLinePositions");
+  expect(template).not.toHaveProperty("verticalLinePositions");
+});
+
 test("normalizeTemplate applies defaults and normalizes cellTypes", () => {
   const template = normalizeTemplate({
     cellTypes: {

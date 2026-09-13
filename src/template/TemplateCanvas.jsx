@@ -57,15 +57,17 @@ export default function TemplateCanvas({
         transformOrigin: "top left"
       }}
     >
-      <img
-        src={template.imageSrc}
-        alt="grid"
-        style={{
-          width: `${documentSize.width}px`,
-          height: `${documentSize.height}px`,
-          display: "block"
-        }}
-      />
+      {template.imageSrc ? (
+        <img
+          src={template.imageSrc}
+          alt="grid"
+          style={{
+            width: `${documentSize.width}px`,
+            height: `${documentSize.height}px`,
+            display: "block"
+          }}
+        />
+      ) : null}
 
       {children}
     </div>
@@ -111,7 +113,8 @@ export default function TemplateCanvas({
         width: `${viewportArea.width}px`,
         height: `${viewportArea.height}px`,
         overflow: "hidden",
-        margin: "0 auto"
+        margin: "0 auto",
+        background: "#fff"
       }}
     >
       {sourceSurface}

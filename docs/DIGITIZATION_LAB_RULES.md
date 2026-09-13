@@ -135,7 +135,9 @@ Contracts, shadow plumbing, and focused experiments are implementation steps wit
 
 Production adoption is a separate decision and implementation step. Experimental success alone does not authorize it.
 
-For Grid V1, production uses the selected global mathematical `GridLattice` as an editable Editor proposal, with manual fine-tuning as intentional product behavior. Pixel-perfect coincidence with every printed line is not a V1 requirement. Research into image-aligned geometry, interrupted-line recovery, projection ridges, fragment tracks, and lattice-conditioned evidence remains development-only and deferred until after V1. Ground Truth remains validation-only throughout that work.
+For Grid V1, production uses the selected mathematical `GridLattice` for topology and a selected normalized `GridFormatGeometry`, mapped through the upload's `OuterVisualExtent`, for explicit Editor line positions. When format selection is unavailable or ambiguous, the mathematical lattice positions remain the safe fallback. Manual fine-tuning is intentional product behavior. Pixel-perfect coincidence with every printed line is not a V1 requirement. Research into image-aligned geometry, interrupted-line recovery, projection ridges, fragment tracks, and lattice-conditioned evidence remains development-only and deferred until after V1. Ground Truth remains validation-only throughout that work.
+
+An isolated visual outlier, including the current `260727` case, is evidence to preserve and validate; it must not by itself introduce document identity, per-file offsets, or format-specific exceptions into the generic Grid architecture.
 
 ## Promotion Gate
 

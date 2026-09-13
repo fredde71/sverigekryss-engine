@@ -8,7 +8,8 @@ export default function EditorGrid({
   cellTypes,
   competitionCells = [],
   gridArea = null,
-  gridLineProposal = null
+  gridLineProposal = null,
+  answerPathSelection = null
 }) {
   const competitionPositionsByIndex = new Map(
     competitionCells.map(cell => [cell.index, cell.position])
@@ -35,6 +36,7 @@ export default function EditorGrid({
               data-testid={`editor-grid-cell-${index}`}
               style={{
                 ...createCellStyle(cellTypes[index], false),
+                ...createAnswerPathStyle(index, answerPathSelection),
                 position: "absolute",
                 top: explicitGeometry.horizontal[row],
                 left: explicitGeometry.vertical[col],
@@ -45,6 +47,7 @@ export default function EditorGrid({
               }}
             >
               {renderCompetitionBadge(index, cellTypes, competitionPositionsByIndex)}
+              {renderAnswerPathBadge(index, answerPathSelection)}
             </div>
           );
         })}
@@ -104,9 +107,13 @@ export default function EditorGrid({
         <div
           key={index}
           data-testid={`editor-grid-cell-${index}`}
-          style={createCellStyle(cellTypes[index], true)}
+          style={{
+            ...createCellStyle(cellTypes[index], true),
+            ...createAnswerPathStyle(index, answerPathSelection)
+          }}
         >
           {renderCompetitionBadge(index, cellTypes, competitionPositionsByIndex)}
+          {renderAnswerPathBadge(index, answerPathSelection)}
         </div>
       ))}
     </div>
@@ -194,25 +201,68 @@ function renderCompetitionBadge(index, cellTypes, positionsByIndex) {
   return cellTypes[index] === "write" && positionsByIndex.has(index) && (
     <span
       data-testid={`editor-competition-badge-${index}`}
+      aria-label={`Tävlingsposition ${positionsByIndex.get(index)}`}
+      title={`Tävlingsposition ${positionsByIndex.get(index)}`}
       style={{
         position: "absolute",
         top: "2px",
         right: "2px",
-        minWidth: "16px",
-        height: "16px",
-        borderRadius: "8px",
+        minWidth: "20px",
+        height: "20px",
+        borderRadius: "10px",
+        border: "1px solid rgb(92, 70, 0)",
         background: "rgb(255, 215, 0)",
         color: "#111",
-        fontSize: "11px",
+        fontSize: "12px",
         fontWeight: "bold",
-        lineHeight: "16px",
-        textAlign: "center"
+        lineHeight: "20px",
+        textAlign: "center",
+        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.35)"
       }}
     >
       {positionsByIndex.get(index)}
     </span>
   );
 }
+
+function createAnswerPathStyle(index, selection) {
+  if (selection?.clueIndex === index) {
+    return { boxShadow: "inset 0 0 0 3px rgb(37, 99, 235)" };
+  }
+
+  return selection?.cellIndexes?.includes(index)
+    ? { backgroundColor: "rgba(147, 51, 234, 0.42)" }
+    : {};
+}
+
+function renderAnswerPathBadge(index, selection) {
+  const position = selection?.cellIndexes?.indexOf(index) ?? -1;
+  if (position < 0) return null;
+
+  return (
+    <span
+      data-testid={`editor-answer-path-position-${position + 1}`}
+      style={answerPathBadgeStyle}
+    >
+      {position + 1}
+    </span>
+  );
+}
+
+const answerPathBadgeStyle = {
+  position: "absolute",
+  top: "2px",
+  left: "2px",
+  minWidth: "17px",
+  height: "17px",
+  borderRadius: "9px",
+  background: "rgb(126, 34, 206)",
+  color: "#fff",
+  fontSize: "11px",
+  fontWeight: "bold",
+  lineHeight: "17px",
+  textAlign: "center"
+};
 
 const gridContainerStyle = {
   position: "absolute",

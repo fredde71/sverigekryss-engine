@@ -14,6 +14,7 @@ export default function EditorViewport({
   cellTypes = [],
   activeTool,
   onCompetitionCellClick,
+  onAnswerPathCellClick,
   setCellTypes,
   children
 }) {
@@ -57,10 +58,22 @@ export default function EditorViewport({
     const index = safeRow * cols + safeCol;
 
     if (activeTool === "competition") {
-      if (cellTypes[index] === "write") {
+      if (cellTypes[index] === "empty") {
+        setCellTypes(prev => {
+          const next = [...prev];
+          next[index] = "write";
+          return next;
+        });
+        onCompetitionCellClick?.(index);
+      } else if (cellTypes[index] === "write") {
         onCompetitionCellClick?.(index);
       }
 
+      return;
+    }
+
+    if (activeTool === "answer-path") {
+      onAnswerPathCellClick?.(index);
       return;
     }
 
