@@ -132,6 +132,40 @@ test("atomically applies a complete grid proposal through EditorWorkspace", asyn
   expect(screen.queryAllByRole("button", { name: /Position/ })).toHaveLength(0);
 });
 
+test("owns writable-cell drag painting across the Editor workspace", () => {
+  render(<EditorWorkspaceHarness />);
+  selectWriteTool();
+
+  const gridFrame = screen.getByTestId("editor-grid-frame");
+  gridFrame.getBoundingClientRect = () => ({
+    top: 0,
+    left: 0,
+    right: 400,
+    bottom: 400,
+    width: 400,
+    height: 400
+  });
+
+  fireEvent.mouseDown(gridFrame, {
+    button: 0,
+    clientX: 50,
+    clientY: 50
+  });
+  fireEvent.mouseMove(gridFrame, {
+    clientX: 250,
+    clientY: 50
+  });
+  fireEvent.mouseMove(gridFrame, {
+    clientX: 250,
+    clientY: 250
+  });
+  fireEvent.mouseUp(window);
+
+  expect(
+    JSON.parse(screen.getByTestId("editor-grid-state").textContent).cellTypes
+  ).toEqual(["write", "write", "empty", "write"]);
+});
+
 test("owns and atomically renders optional reconstructed line positions", async () => {
   const proposal = deepFreeze({
     rows: 2,

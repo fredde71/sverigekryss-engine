@@ -24,7 +24,9 @@ const defaultDocumentSize = {
 function EditorViewportHarness({
   cropArea = initialCropArea,
   gridArea = initialGridArea,
-  documentSize = defaultDocumentSize
+  documentSize = defaultDocumentSize,
+  activeTool = "write",
+  onCellTypesUpdate = null
 }) {
   const [currentCropArea, setCropArea] = useState(cropArea);
   const [currentGridArea, setGridArea] = useState(gridArea);
@@ -51,14 +53,25 @@ function EditorViewportHarness({
         setCropMode={setCropMode}
         rows={2}
         cols={2}
-        activeTool="write"
-        setCellTypes={setCellTypes}
+        activeTool={activeTool}
+        setCellTypes={(update) => {
+          onCellTypesUpdate?.();
+          setCellTypes(update);
+        }}
       >
-        {({ startGridResize, setCropMode, handleGridClick }) => (
+        {({
+          startGridResize,
+          setCropMode,
+          handleGridClick,
+          handleGridMouseDown,
+          handleGridMouseMove
+        }) => (
           <>
             <div
               data-testid="grid-frame"
               onClick={handleGridClick}
+              onMouseDown={handleGridMouseDown}
+              onMouseMove={handleGridMouseMove}
             />
             <button
               data-testid="start-crop-move"
@@ -334,6 +347,86 @@ test("click without drag still edits cells", () => {
     "empty",
     "empty"
   ]);
+});
+
+test("paints each crossed cell as writable during one mouse drag", () => {
+  const onCellTypesUpdate = jest.fn();
+  render(<EditorViewportHarness onCellTypesUpdate={onCellTypesUpdate} />);
+
+  const gridFrame = screen.getByTestId("grid-frame");
+  mockGridFrameRect(gridFrame);
+
+  fireEvent.mouseDown(gridFrame, {
+    button: 0,
+    clientX: 10,
+    clientY: 10
+  });
+  fireEvent.mouseMove(gridFrame, {
+    clientX: 210,
+    clientY: 10
+  });
+  fireEvent.mouseMove(gridFrame, {
+    clientX: 210,
+    clientY: 10
+  });
+  fireEvent.mouseMove(gridFrame, {
+    clientX: 210,
+    clientY: 160
+  });
+  fireEvent.mouseUp(window);
+
+  expect(readState("cell-state")).toEqual([
+    "write",
+    "write",
+    "empty",
+    "write"
+  ]);
+  expect(onCellTypesUpdate).toHaveBeenCalledTimes(3);
+});
+
+test("mouse up ends writable-cell painting", () => {
+  render(<EditorViewportHarness />);
+
+  const gridFrame = screen.getByTestId("grid-frame");
+  mockGridFrameRect(gridFrame);
+
+  fireEvent.mouseDown(gridFrame, {
+    button: 0,
+    clientX: 10,
+    clientY: 10
+  });
+  fireEvent.mouseUp(window);
+  fireEvent.mouseMove(gridFrame, {
+    clientX: 10,
+    clientY: 160
+  });
+
+  expect(readState("cell-state")).toEqual([
+    "write",
+    "empty",
+    "empty",
+    "empty"
+  ]);
+});
+
+test("does not enable drag painting for other cell tools", () => {
+  render(<EditorViewportHarness activeTool="blocked" />);
+
+  const gridFrame = screen.getByTestId("grid-frame");
+  mockGridFrameRect(gridFrame);
+
+  fireEvent.mouseDown(gridFrame, {
+    button: 0,
+    clientX: 10,
+    clientY: 10
+  });
+  fireEvent.mouseMove(gridFrame, {
+    clientX: 210,
+    clientY: 10
+  });
+  fireEvent.mouseUp(window);
+
+  expect(readState("cell-state")).toEqual(Array(4).fill("empty"));
 });
 
 test("resizing via the bottom-right handle preserves top-left corner", () => {

@@ -9,6 +9,8 @@ export default function EditorLayer({
   competitionCells,
   startGridResize,
   handleGridClick,
+  handleGridMouseDown,
+  handleGridMouseMove,
   isPublicRuntime,
   activeTool,
   documentSize,
@@ -99,6 +101,8 @@ export default function EditorLayer({
       <div
         data-testid="editor-grid-frame"
         onClick={handleGridClick}
+        onMouseDown={handleGridMouseDown}
+        onMouseMove={handleGridMouseMove}
         style={{
           pointerEvents: "auto",
           position: "absolute",
@@ -116,7 +120,9 @@ export default function EditorLayer({
             startGridResize(e, "top");
           }}
           style={{
-            pointerEvents: isCellSelectionToolActive ? "none" : "auto",
+            pointerEvents: isCellSelectionToolActive || activeTool === "write"
+              ? "none"
+              : "auto",
             position: "absolute",
             top: 0,
             left: 0,
@@ -138,7 +144,9 @@ export default function EditorLayer({
           }}
           onClick={(e) => e.stopPropagation()}
           style={{
-            pointerEvents: isCellSelectionToolActive ? "none" : "auto",
+            pointerEvents: isCellSelectionToolActive || activeTool === "write"
+              ? "none"
+              : "auto",
             position: "absolute",
             right: -6,
             zIndex: 20,

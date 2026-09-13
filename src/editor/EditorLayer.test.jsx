@@ -187,14 +187,14 @@ test("crop affordances do not intercept cell clicks while competition tool is ac
   });
 });
 
-test("grid affordances stay active outside competition mode", () => {
+test("grid affordances do not intercept writable-cell drag painting", () => {
   render(<EditorLayer {...baseProps} activeTool="write" />);
 
   expect(screen.getByTestId("editor-grid-move-affordance")).toHaveStyle({
-    pointerEvents: "auto"
+    pointerEvents: "none"
   });
   expect(screen.getByTestId("editor-grid-resize-handle")).toHaveStyle({
-    pointerEvents: "auto"
+    pointerEvents: "none"
   });
 });
 

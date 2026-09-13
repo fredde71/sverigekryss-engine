@@ -395,7 +395,12 @@ export default function EditorWorkspace({
       onAnswerPathCellClick={selectAnswerPathCell}
       setCellTypes={setCellTypes}
     >
-      {({ startGridResize, handleGridClick }) => (
+      {({
+        startGridResize,
+        handleGridClick,
+        handleGridMouseDown,
+        handleGridMouseMove
+      }) => (
         <>
           <EditorLayer
             rows={rows}
@@ -404,6 +409,8 @@ export default function EditorWorkspace({
             competitionCells={competitionCells}
             startGridResize={startGridResize}
             handleGridClick={handleGridClick}
+            handleGridMouseDown={handleGridMouseDown}
+            handleGridMouseMove={handleGridMouseMove}
             isPublicRuntime={isPublicRuntime}
             activeTool={activeTool}
             documentSize={documentSize}

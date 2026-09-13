@@ -20,6 +20,7 @@ export default function EditorViewport({
 }) {
   const [gridDrag, setGridDrag] = useState(null);
   const gridDragMovedRef = useRef(false);
+  const cellPaintRef = useRef(null);
   const workspaceScale = useEditorWorkspaceScale();
   const pointerScale = workspaceScale || 1;
   const safeDocumentSize = normalizeDocumentSize(documentSize);
@@ -39,23 +40,71 @@ export default function EditorViewport({
     });
   };
 
+  const resolveGridCellIndex = (e, { clampToGrid = true } = {}) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (
+      !clampToGrid
+      && (x < 0 || y < 0 || x >= rect.width || y >= rect.height)
+    ) {
+      return null;
+    }
+
+    const col = Math.floor((x / rect.width) * cols);
+    const row = Math.floor((y / rect.height) * rows);
+    const safeCol = Math.max(0, Math.min(cols - 1, col));
+    const safeRow = Math.max(0, Math.min(rows - 1, row));
+
+    return safeRow * cols + safeCol;
+  };
+
+  const applyDragPaintTool = (tool, index) => {
+    if (tool !== "write") return;
+
+    setCellTypes(prev => {
+      if (prev[index] === "write") return prev;
+
+      const next = [...prev];
+      next[index] = "write";
+      return next;
+    });
+  };
+
+  const paintCellOnce = (index) => {
+    const session = cellPaintRef.current;
+    if (!session || index === null || session.visitedCellIndexes.has(index)) {
+      return;
+    }
+
+    session.visitedCellIndexes.add(index);
+    applyDragPaintTool(session.tool, index);
+  };
+
+  const handleGridMouseDown = (e) => {
+    if (e.button !== 0 || activeTool !== "write") return;
+
+    cellPaintRef.current = {
+      tool: activeTool,
+      visitedCellIndexes: new Set()
+    };
+    paintCellOnce(resolveGridCellIndex(e, { clampToGrid: false }));
+  };
+
+  const handleGridMouseMove = (e) => {
+    if (!cellPaintRef.current) return;
+
+    paintCellOnce(resolveGridCellIndex(e, { clampToGrid: false }));
+  };
+
   const handleGridClick = (e) => {
     if (gridDragMovedRef.current) {
       gridDragMovedRef.current = false;
       return;
     }
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const col = Math.floor((x / rect.width) * cols);
-    const row = Math.floor((y / rect.height) * rows);
-
-    const safeCol = Math.max(0, Math.min(cols - 1, col));
-    const safeRow = Math.max(0, Math.min(rows - 1, row));
-
-    const index = safeRow * cols + safeCol;
+    const index = resolveGridCellIndex(e);
 
     if (activeTool === "competition") {
       if (cellTypes[index] === "empty") {
@@ -78,23 +127,23 @@ export default function EditorViewport({
     }
 
     setCellTypes(prev => {
-      const next = [...prev];
-
       if (activeTool === "empty") {
+        const next = [...prev];
         next[index] = "empty";
         return next;
       }
 
       if (prev[index] === activeTool) {
         if (activeTool === "write") {
-          next[index] = "write";
-          return next;
+          return prev;
         }
 
+        const next = [...prev];
         next[index] = "empty";
         return next;
       }
 
+      const next = [...prev];
       next[index] = activeTool;
 
       return next;
@@ -150,6 +199,7 @@ export default function EditorViewport({
     const stopDrag = () => {
       setGridDrag(null);
       setCropMode(null);
+      cellPaintRef.current = null;
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -223,7 +273,9 @@ export default function EditorViewport({
       {typeof children === "function" ? children({
         startGridResize,
         setCropMode,
-        handleGridClick
+        handleGridClick,
+        handleGridMouseDown,
+        handleGridMouseMove
       }) : children}
     </div>
   );
