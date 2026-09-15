@@ -10,6 +10,7 @@ import EditorToolbar from "./EditorToolbar";
 import EditorViewport from "./EditorViewport";
 
 export default function EditorWorkspace({
+  sessionKey = "default",
   rows,
   cols,
   cellTypes,
@@ -43,7 +44,10 @@ export default function EditorWorkspace({
   const [answerPathClueIndex, setAnswerPathClueIndex] = useState(null);
   const [answerPathDirection, setAnswerPathDirection] = useState(null);
   const [answerPathDraft, setAnswerPathDraft] = useState(null);
-  const previousDocumentLifecycleId = useRef(documentLifecycleId);
+  const documentLifecycleBySession = useRef(new Map([
+    [sessionKey, documentLifecycleId]
+  ]));
+  const appliedProposalLifecycleBySession = useRef(new Map());
   const gridLineProposal = createPersistedGridLineProposal({
     horizontalLinePositions,
     verticalLinePositions,
@@ -91,11 +95,26 @@ export default function EditorWorkspace({
   ]);
 
   useLayoutEffect(() => {
-    if (previousDocumentLifecycleId.current === documentLifecycleId) {
+    const previousDocumentLifecycleId = documentLifecycleBySession.current.get(
+      sessionKey
+    );
+
+    if (previousDocumentLifecycleId === undefined) {
+      documentLifecycleBySession.current.set(sessionKey, documentLifecycleId);
+      setCompetitionMenuCellIndex(null);
+      setAnswerPathClueIndex(null);
+      setAnswerPathDirection(null);
+      setAnswerPathDraft(null);
+      setCropMode(null);
+      setActiveTool("image");
       return;
     }
 
-    previousDocumentLifecycleId.current = documentLifecycleId;
+    if (previousDocumentLifecycleId === documentLifecycleId) {
+      return;
+    }
+
+    documentLifecycleBySession.current.set(sessionKey, documentLifecycleId);
     setRows(INITIAL_GRID_DIMENSION);
     setCols(INITIAL_GRID_DIMENSION);
     setGridArea({ ...INITIAL_GRID_AREA });
@@ -116,6 +135,7 @@ export default function EditorWorkspace({
     setCropMode(null);
     setActiveTool("image");
   }, [
+    sessionKey,
     documentLifecycleId,
     setRows,
     setCols,
@@ -129,10 +149,23 @@ export default function EditorWorkspace({
   ]);
 
   useEffect(() => {
-    if (gridProposal) {
+    if (
+      gridProposal
+      && appliedProposalLifecycleBySession.current.get(sessionKey)
+        !== documentLifecycleId
+    ) {
       applyGridProposal(gridProposal);
+      appliedProposalLifecycleBySession.current.set(
+        sessionKey,
+        documentLifecycleId
+      );
     }
-  }, [gridProposal, applyGridProposal]);
+  }, [
+    gridProposal,
+    applyGridProposal,
+    sessionKey,
+    documentLifecycleId
+  ]);
 
   useEffect(() => {
     setCompetitionCells?.(prev => (

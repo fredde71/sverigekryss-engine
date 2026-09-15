@@ -254,6 +254,29 @@ test("controlled zoom level is preserved after workspace remount", () => {
   expect(screen.getByTestId("editor-zoom-value")).toHaveTextContent("90 %");
 });
 
+test("controlled scroll position is restored and reported", () => {
+  const setScrollState = jest.fn();
+
+  render(
+    <EditorScrollWorkspace
+      scrollState={{ top: 75, left: 40 }}
+      setScrollState={setScrollState}
+    >
+      <div />
+    </EditorScrollWorkspace>
+  );
+
+  const workspace = screen.getByTestId("editor-scroll-workspace");
+  expect(workspace.scrollTop).toBe(75);
+  expect(workspace.scrollLeft).toBe(40);
+
+  workspace.scrollTop = 125;
+  workspace.scrollLeft = 65;
+  fireEvent.scroll(workspace);
+
+  expect(setScrollState).toHaveBeenLastCalledWith({ top: 125, left: 65 });
+});
+
 test("fresh to 260727 starts with fresh fit zoom and viewport state", () => {
   function LifecycleHarness({ documentLifecycleId }) {
     const [zoomState, setZoomState] = useState({

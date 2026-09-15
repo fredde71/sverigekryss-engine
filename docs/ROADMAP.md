@@ -20,6 +20,20 @@ De detaljerade faserna längre ned beskriver aktuell implementation och verifier
 
 ## Aktivt fokus: Product Readiness / V1
 
+Musikkryss editor foundation är genomförd:
+
+- plattformen växlar mellan `Sverigekryss` och `Musikkryss`
+- varje korsordstyp har en självständig Editor-session för dokument, Template,
+  redigerbart state, Digitization, zoom och scroll
+- typbyte bevarar den inaktiva sessionen och en oanvänd session är blank
+- asynkrona Digitization-resultat återförs endast till ursprungssessionen
+- Musikkryss har Intro och 13 separat valbara/redigerbara ledtrådsmanus
+- infrastruktur, backend-, publicerings- och runtime-gränser är fortsatt gemensamma
+
+Nästa milstolpe är ett fast 10 × 9 Musikkryss-format med fördefinierade
+skrivbara/blockerade celler och svarsvägar 1–13. Musikkryss Play, audio och
+AI-röst ingår inte i den nuvarande milstolpen.
+
 V1-arbetsflödet är browser-testat end-to-end:
 
 ```text

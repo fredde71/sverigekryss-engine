@@ -132,6 +132,49 @@ test("atomically applies a complete grid proposal through EditorWorkspace", asyn
   expect(screen.queryAllByRole("button", { name: /Position/ })).toHaveLength(0);
 });
 
+test("does not reapply a session proposal after switching away and back", async () => {
+  const proposal = {
+    rows: 3,
+    cols: 2,
+    gridArea: { top: 25, left: 30, width: 240, height: 360 },
+    cellTypes: Array(6).fill("empty"),
+    competitionCells: []
+  };
+  const setters = {
+    setRows: jest.fn(),
+    setCols: jest.fn(),
+    setGridArea: jest.fn(),
+    setCropArea: jest.fn(),
+    setCompetitionCells: jest.fn(),
+    setAnswerPaths: jest.fn(),
+    setHorizontalLinePositions: jest.fn(),
+    setVerticalLinePositions: jest.fn(),
+    setCellTypes: jest.fn()
+  };
+  const workspace = (sessionKey, gridProposal) => (
+    <EditorWorkspace
+      sessionKey={sessionKey}
+      rows={2}
+      cols={2}
+      cellTypes={Array(4).fill("empty")}
+      gridArea={gridArea}
+      documentSize={documentSize}
+      cropArea={cropArea}
+      gridProposal={gridProposal}
+      documentLifecycleId={1}
+      documentAvailable={false}
+      {...setters}
+    />
+  );
+  const { rerender } = render(workspace("sverigekryss", proposal));
+
+  await waitFor(() => expect(setters.setGridArea).toHaveBeenCalledTimes(1));
+  rerender(workspace("musikkryss", null));
+  rerender(workspace("sverigekryss", proposal));
+
+  await waitFor(() => expect(setters.setGridArea).toHaveBeenCalledTimes(1));
+});
+
 test("owns writable-cell drag painting across the Editor workspace", () => {
   render(<EditorWorkspaceHarness />);
   selectWriteTool();

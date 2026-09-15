@@ -3,6 +3,9 @@ import { useParams } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import EditorWorkspace from "./editor/EditorWorkspace";
 import EditorScrollWorkspace from "./editor/EditorScrollWorkspace";
+import EditorModeSwitch from "./editor/EditorModeSwitch";
+import MusikkryssEditorPanel from "./editor/MusikkryssEditorPanel";
+import EditorSessionWorkspace from "./editor/EditorSessionWorkspace";
 import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import PlaySurface from "./play/PlaySurface";
@@ -35,18 +38,70 @@ import { runDigitizationUploadWithIdentity } from "./digitization/digitizationUp
 import {
   createGridLatticeEditorProposal
 } from "./digitization/analysis/reconstruction/GridLatticeEditorProposal";
+import {
+  createEmptyMusikkryssContent,
+  normalizeMusikkryssContent
+} from "./musikkryss/MusikkryssFormat";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
 
-function App() {
+function AppSessionApplication({
+  crosswordType,
+  setCrosswordType,
+  session,
+  setters,
+  updateSession
+}) {
+  const {
+    modeView,
+    rows,
+    cols,
+    cellTypes,
+    crosswordId,
+    gridArea,
+    cropArea,
+    competitionCells,
+    answerPaths,
+    horizontalLinePositions,
+    verticalLinePositions,
+    documentSize,
+    imageSrc,
+    imageFileName,
+    templateFileName,
+    editorZoomState,
+    editorScrollState,
+    digitizationResult,
+    editorDocumentLifecycleId,
+    musikkryss
+  } = session;
+  const {
+    setModeView,
+    setRows,
+    setCols,
+    setCellTypes,
+    setCrosswordId,
+    setGridArea,
+    setCropArea,
+    setCompetitionCells,
+    setAnswerPaths,
+    setHorizontalLinePositions,
+    setVerticalLinePositions,
+    setDocumentSize,
+    setImageSrc,
+    setImageFileName,
+    setEditorZoomState,
+    setEditorScrollState,
+    setDigitizationResult,
+    setEditorDocumentLifecycleId,
+    setMusikkryss
+  } = setters;
   
   const { id } = useParams();
   const isSharedView = window.location.search.includes("data=");
   const isPublicRuntime = !!id;
-  const [modeView, setModeView] = useState("edit"); // edit | play
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const data = params.get("data");
@@ -55,20 +110,24 @@ function App() {
 
     try {
       const parsed = JSON.parse(decodeURIComponent(data));
+      const targetType = parsed.crosswordType || "sverigekryss";
 
-      setCellTypes(parsed.cellTypes || {});
-      setImageSrc(parsed.imageSrc || "");
-
-      setGridArea(parsed.gridArea);
-      setDocumentSize(parsed.documentSize || DEFAULT_DOCUMENT_SIZE);
-      setCompetitionCells(parsed.competitionCells || []);
-
-      setModeView("play");
+      updateSession(targetType, current => ({
+        ...current,
+        cellTypes: parsed.cellTypes || {},
+        imageSrc: parsed.imageSrc || "",
+        gridArea: parsed.gridArea,
+        documentSize: parsed.documentSize || DEFAULT_DOCUMENT_SIZE,
+        competitionCells: parsed.competitionCells || [],
+        musikkryss: normalizeMusikkryssContent(parsed.musikkryss),
+        modeView: "play"
+      }));
+      setCrosswordType(targetType);
 
     } catch (err) {
       console.error("Fel vid parsing av URL-data", err);
     }
-  }, []);
+  }, [setCrosswordType, updateSession]);
 
 useEffect(() => {
 
@@ -76,68 +135,35 @@ useEffect(() => {
 
   loadBackendTemplate(id)
     .then(data => {
+      const targetType = data.crosswordType || "sverigekryss";
 
-      setCrosswordId(data.crosswordId);
-      setCellTypes(data.cellTypes);
-      setImageSrc(data.imageSrc);
-      setGridArea(data.gridArea);
-      setCropArea(data.cropArea);
-      setDocumentSize(data.documentSize);
-      setCompetitionCells(data.competitionCells || []);
-
-      setRows(data.rows);
-      setCols(data.cols);
-
-      setModeView("play");
+      updateSession(targetType, current => ({
+        ...current,
+        crosswordId: data.crosswordId,
+        cellTypes: data.cellTypes,
+        imageSrc: data.imageSrc,
+        gridArea: data.gridArea,
+        cropArea: data.cropArea,
+        documentSize: data.documentSize,
+        competitionCells: data.competitionCells || [],
+        musikkryss: normalizeMusikkryssContent(data.musikkryss),
+        rows: data.rows,
+        cols: data.cols,
+        modeView: "play"
+      }));
+      setCrosswordType(targetType);
 
     });
 
-}, [id]);
+}, [id, setCrosswordType, updateSession]);
 
-  const [rows, setRows] = useState(25);
-  const [cols, setCols] = useState(25);
-
-  const [cellTypes, setCellTypes] = useState(
-  Array(rows * cols).fill("empty")
-);
-
-  const [crosswordId, setCrosswordId] = useState("");
-
-  const [gridArea, setGridArea] = useState({
-    top: 0,
-    left: 0,
-    width: 1200,
-    height: 1200
-  });
-
-  const [cropArea, setCropArea] = useState({
-    top: 0,
-    left: 0,
-    width: 1200,
-    height: 1200
-  });
-
-  const [competitionCells, setCompetitionCells] = useState([]);
-  const [answerPaths, setAnswerPaths] = useState([]);
-  const [horizontalLinePositions, setHorizontalLinePositions] = useState(null);
-  const [verticalLinePositions, setVerticalLinePositions] = useState(null);
-
-  const [documentSize, setDocumentSize] = useState(DEFAULT_DOCUMENT_SIZE);
-
-  const [imageSrc, setImageSrc] = useState("");
-  const [imageFileName, setImageFileName] = useState("");
-  const [templateFileName, setTemplateFileName] = useState("");
-  const [editorZoomState, setEditorZoomState] = useState({
-    fitScale: 1,
-    scale: 1,
-    zoomMode: "fit"
-  });
   const [publications, setPublications] = useState([]);
   const [publicationsStatus, setPublicationsStatus] = useState("idle");
   const [publicationsError, setPublicationsError] = useState("");
-  const [digitizationResult, setDigitizationResult] = useState(null);
-  const [editorDocumentLifecycleId, setEditorDocumentLifecycleId] = useState(0);
-  const digitizationUploadIdRef = useRef(0);
+  const digitizationUploadIdRef = useRef({
+    sverigekryss: 0,
+    musikkryss: 0
+  });
   const gridLatticeReconstructionResult =
     digitizationResult?.status === "completed"
       ? digitizationResult.result?.gridLatticeReconstructionResult ?? null
@@ -207,12 +233,14 @@ useEffect(() => {
 
   if (!file) return;
 
-  const uploadId = ++digitizationUploadIdRef.current;
+  const originatingCrosswordType = crosswordType;
+  const uploadId = ++digitizationUploadIdRef.current[originatingCrosswordType];
 
   setEditorDocumentLifecycleId(uploadId);
   setImageSrc("");
   setDocumentSize(DEFAULT_DOCUMENT_SIZE);
   setAnswerPaths([]);
+  setMusikkryss(createEmptyMusikkryssContent());
   setHorizontalLinePositions(null);
   setVerticalLinePositions(null);
 
@@ -261,7 +289,12 @@ setCompetitionCells([]);
 
 e.target.value = "";
 
-  runDigitizationForUpload(canvas, documentSize, uploadId);
+    runDigitizationForUpload(
+      canvas,
+      documentSize,
+      uploadId,
+      originatingCrosswordType
+    );
 
 return;
 }
@@ -277,7 +310,12 @@ return;
     setCropArea(getFullDocumentArea(documentSize));
     setCompetitionCells([]);
 
-    runDigitizationForUpload(image, documentSize, uploadId);
+    runDigitizationForUpload(
+      image,
+      documentSize,
+      uploadId,
+      originatingCrosswordType
+    );
   };
 
   reader.readAsDataURL(file);
@@ -287,12 +325,15 @@ return;
   const runDigitizationForUpload = async (
     source,
     targetDocumentSize,
-    uploadId
+    uploadId,
+    originatingCrosswordType
   ) => {
     await runDigitizationUploadWithIdentity({
       uploadId,
       isCurrentUpload: (candidateUploadId) => (
-        candidateUploadId === digitizationUploadIdRef.current
+        candidateUploadId === (
+          digitizationUploadIdRef.current[originatingCrosswordType]
+        )
       ),
       runProduction: () => runDigitizationJob({
         job: {
@@ -305,21 +346,28 @@ return;
         readImageData: readBrowserImageData
       }),
       onPending: () => {
-        setDigitizationResult({
-          status: "pending"
-        });
+        updateSession(originatingCrosswordType, current => ({
+          ...current,
+          digitizationResult: { status: "pending" }
+        }));
       },
       onProductionCompleted: (productionResult) => {
-        setDigitizationResult({
-          status: "completed",
-          result: productionResult
-        });
+        updateSession(originatingCrosswordType, current => ({
+          ...current,
+          digitizationResult: {
+            status: "completed",
+            result: productionResult
+          }
+        }));
       },
       onProductionFailed: (err) => {
-        setDigitizationResult({
-          status: "failed",
-          error: err
-        });
+        updateSession(originatingCrosswordType, current => ({
+          ...current,
+          digitizationResult: {
+            status: "failed",
+            error: err
+          }
+        }));
         console.warn("Digitization failed during upload", err);
       },
     });
@@ -329,8 +377,6 @@ const handleTemplateImport = async (e) => {
   const file = e.target.files?.[0];
 
   if (!file) return;
-
-  setTemplateFileName(file.name);
 
   const data = await importTemplateFile(file, {
     crosswordId,
@@ -343,45 +389,38 @@ const handleTemplateImport = async (e) => {
     answerPaths,
     horizontalLinePositions,
     verticalLinePositions,
-    imageSrc
+    imageSrc,
+    crosswordType,
+    musikkryss
   });
 
-  if (data.crosswordId) {
-    setCrosswordId(data.crosswordId);
-  }
+  const targetType = data.crosswordType || "sverigekryss";
 
-  setRows(data.rows);
-  setCols(data.cols);
-
-  if (data.gridArea) {
-    setGridArea(data.gridArea);
-  }
-
-  if (data.documentSize) {
-    setDocumentSize(data.documentSize);
-  }
-
-  if (data.cropArea) {
-    setCropArea(data.cropArea);
-  }
-
-  setCompetitionCells(data.competitionCells || []);
-  setAnswerPaths(data.answerPaths || []);
-  setHorizontalLinePositions(data.horizontalLinePositions || null);
-  setVerticalLinePositions(data.verticalLinePositions || null);
-
-  if (data.cellTypes) {
-    setCellTypes(data.cellTypes);
-  }
-
-  if (data.imageSrc) {
-  setImageSrc(data.imageSrc);
-}
+  updateSession(targetType, current => ({
+    ...current,
+    crosswordId: data.crosswordId || current.crosswordId,
+    rows: data.rows,
+    cols: data.cols,
+    gridArea: data.gridArea || current.gridArea,
+    documentSize: data.documentSize || current.documentSize,
+    cropArea: data.cropArea || current.cropArea,
+    competitionCells: data.competitionCells || [],
+    answerPaths: data.answerPaths || [],
+    musikkryss: normalizeMusikkryssContent(data.musikkryss),
+    horizontalLinePositions: data.horizontalLinePositions || null,
+    verticalLinePositions: data.verticalLinePositions || null,
+    cellTypes: data.cellTypes || current.cellTypes,
+    imageSrc: data.imageSrc || current.imageSrc,
+    templateFileName: file.name
+  }));
+  setCrosswordType(targetType);
 
 };
   const exportTemplate = () => {
     exportTemplateFile({
       crosswordId,
+      crosswordType,
+      musikkryss,
       rows,
       cols,
       documentSize,
@@ -519,6 +558,7 @@ const handleTemplateImport = async (e) => {
 
   return (
     <EditorWorkspace
+      sessionKey={crosswordType}
       rows={rows}
       cols={cols}
       cellTypes={cellTypes}
@@ -579,6 +619,11 @@ const handleTemplateImport = async (e) => {
           </div>
         </section>
 
+        <EditorModeSwitch
+          value={crosswordType}
+          onChange={setCrosswordType}
+        />
+
         <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Korsord</h5>
           <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -593,10 +638,24 @@ const handleTemplateImport = async (e) => {
           </label>
         </section>
 
-	        {toolbar}
-	        {competitionMenu}
-	        {answerPathMenu}
+        {crosswordType === "musikkryss" && (
+          <section style={sidebarSectionStyle}>
+            <MusikkryssEditorPanel
+              value={musikkryss}
+              onChange={setMusikkryss}
+            />
+          </section>
+        )}
 
+	        {crosswordType === "sverigekryss" && (
+          <>
+	          {toolbar}
+	          {competitionMenu}
+	          {answerPathMenu}
+          </>
+        )}
+
+	        {crosswordType === "sverigekryss" && (
 	        <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Läge</h5>
           <button
@@ -606,6 +665,7 @@ const handleTemplateImport = async (e) => {
             {modeView === "edit" ? "SPELLÄGE" : "REDIGERINGSLÄGE"}
           </button>
         </section>
+        )}
 
         <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Filer</h5>
@@ -658,6 +718,8 @@ const handleTemplateImport = async (e) => {
 
               const template = {
                 crosswordId,
+                crosswordType,
+                ...(crosswordType === "musikkryss" ? { musikkryss } : {}),
                 gridArea,
                 cropArea,
                 documentSize,
@@ -747,11 +809,15 @@ const handleTemplateImport = async (e) => {
           documentSize={documentSize}
           zoomState={editorZoomState}
           setZoomState={setEditorZoomState}
+          scrollState={editorScrollState}
+          setScrollState={setEditorScrollState}
           documentLifecycleId={editorDocumentLifecycleId}
         >
           <TemplateCanvas
             template={{
               crosswordId,
+              crosswordType,
+              ...(crosswordType === "musikkryss" ? { musikkryss } : {}),
               rows,
               cols,
               cellTypes,
@@ -765,17 +831,23 @@ const handleTemplateImport = async (e) => {
               verticalLinePositions
 	            }}
 	          >
-	            <DigitizationSuggestionOverlay
-	              digitizationResult={digitizationResult}
-	              documentSize={documentSize}
-	            />
-	            {editor}
+	            {crosswordType === "sverigekryss" && (
+	              <>
+	                <DigitizationSuggestionOverlay
+	                  digitizationResult={digitizationResult}
+	                  documentSize={documentSize}
+	                />
+	                {editor}
+	              </>
+	            )}
 	          </TemplateCanvas>
         </EditorScrollWorkspace>
       ) : (
         <PlaySurface
           template={{
             crosswordId,
+            crosswordType,
+            ...(crosswordType === "musikkryss" ? { musikkryss } : {}),
             rows,
             cols,
             cellTypes,
@@ -795,6 +867,24 @@ const handleTemplateImport = async (e) => {
     </div>
       )}
     </EditorWorkspace>
+  );
+}
+
+function App() {
+  const [crosswordType, setCrosswordType] = useState("sverigekryss");
+
+  return (
+    <EditorSessionWorkspace activeType={crosswordType}>
+      {({ session, setters, updateSession }) => (
+        <AppSessionApplication
+          crosswordType={crosswordType}
+          setCrosswordType={setCrosswordType}
+          session={session}
+          setters={setters}
+          updateSession={updateSession}
+        />
+      )}
+    </EditorSessionWorkspace>
   );
 }
 

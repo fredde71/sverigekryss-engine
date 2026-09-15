@@ -2,8 +2,14 @@ import {
   getFullDocumentArea,
   normalizeDocumentSize
 } from "./documentGeometry";
+import {
+  normalizeMusikkryssContent
+} from "../musikkryss/MusikkryssFormat";
+
+const CROSSWORD_TYPES = new Set(["sverigekryss", "musikkryss"]);
 
 export function createTemplate(input) {
+  const crosswordType = normalizeCrosswordType(input.crosswordType);
   const rows = input.rows;
   const cols = input.cols;
   const documentSize = normalizeDocumentSize(input.documentSize);
@@ -23,6 +29,7 @@ export function createTemplate(input) {
 
   const template = {
     crosswordId: input.crosswordId,
+    crosswordType,
     rows,
     cols,
     cellTypes: normalizeCellTypes({
@@ -49,10 +56,17 @@ export function createTemplate(input) {
     Object.assign(template, explicitLinePositions);
   }
 
+  if (crosswordType === "musikkryss") {
+    template.musikkryss = normalizeMusikkryssContent(input.musikkryss);
+  }
+
   return template;
 }
 
 export function normalizeTemplate(input, defaults = {}) {
+  const crosswordType = normalizeCrosswordType(
+    input.crosswordType ?? defaults.crosswordType
+  );
   const rows = input.rows ?? defaults.rows;
   const cols = input.cols ?? defaults.cols;
   const documentSize = normalizeDocumentSize(
@@ -79,6 +93,7 @@ export function normalizeTemplate(input, defaults = {}) {
 
   const template = {
     crosswordId: input.crosswordId ?? defaults.crosswordId,
+    crosswordType,
     rows,
     cols,
     cellTypes,
@@ -104,7 +119,17 @@ export function normalizeTemplate(input, defaults = {}) {
     Object.assign(template, explicitLinePositions);
   }
 
+  if (crosswordType === "musikkryss") {
+    template.musikkryss = normalizeMusikkryssContent(
+      input.musikkryss ?? defaults.musikkryss
+    );
+  }
+
   return template;
+}
+
+function normalizeCrosswordType(value) {
+  return CROSSWORD_TYPES.has(value) ? value : "sverigekryss";
 }
 
 function normalizeCropArea(cropArea, documentSize) {

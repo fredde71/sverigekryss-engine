@@ -187,6 +187,43 @@ test("create import export round-trip preserves explicit grid-line positions", a
   expect(imported.verticalLinePositions).toEqual([20, 57, 120]);
 });
 
+test("create import export round-trip preserves Musikkryss editor content", async () => {
+  const createdUrls = [];
+  URL.createObjectURL = jest.fn((blob) => {
+    createdUrls.push(blob);
+    return "blob:template";
+  });
+  URL.revokeObjectURL = jest.fn();
+  jest.spyOn(document, "createElement").mockReturnValue({ click: jest.fn() });
+
+  exportTemplateFile({
+    crosswordId: "MUSIK-2026-0001",
+    crosswordType: "musikkryss",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    gridArea: {},
+    imageSrc: "/music-grid.png",
+    musikkryss: {
+      introScript: "Intro",
+      clues: [{
+        number: 13,
+        contentSequence: [{ type: "text", text: "Sista ledtråden" }]
+      }]
+    }
+  });
+
+  const exported = JSON.parse(await readBlobText(createdUrls[0]));
+  const imported = await importTemplateFile({
+    text: jest.fn().mockResolvedValue(JSON.stringify(exported))
+  }, {});
+
+  expect(imported.crosswordType).toBe("musikkryss");
+  expect(imported.musikkryss.introScript).toBe("Intro");
+  expect(imported.musikkryss.clues[12].contentSequence[0].text)
+    .toBe("Sista ledtråden");
+});
+
 function readBlobText(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

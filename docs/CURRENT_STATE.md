@@ -6,11 +6,27 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter browser-verifierat V1-flöde från PDF till publicerat och spelbart korsord.
+Efter browser-verifierat V1-flöde och etablerad Musikkryss-grund med separata Editor-sessioner.
 
 ---
 
 # Aktuell produktstatus
+
+Plattformen har två korsordstyper i samma applikationsskal:
+
+- `sverigekryss`
+- `musikkryss`
+
+Varje typ har en självständig Editor-session som äger eget dokument, filnamn,
+Template/redigerbart state, Digitization-resultat och förslag, zoom samt scroll.
+Byte av korsordstyp visar den sparade sessionen utan att återställa eller skriva
+över den andra. En ny eller oanvänd session visar en blank arbetsyta. Asynkrona
+Digitization-resultat dirigeras tillbaka till den session där uppladdningen startade.
+
+Musikkryss-grunden stödjer nu Intro och 13 separat valbara och redigerbara
+ledtrådsmanus. Infrastruktur, backendklienter, publiceringsgränser och runtime-skal
+är fortsatt gemensamma. Musikkryss Play, fast gridtopologi, audio och AI-röst är
+ännu inte implementerade.
 
 Följande är färdigt i aktuell editor/play-produktion:
 
@@ -113,6 +129,10 @@ Senarelagt bortom V1:
 ---
 
 # Senaste verifierade milstolpe
+
+Musikkryss editor foundation och självständiga Editor-sessioner är implementerade.
+Nästa milstolpe är det fasta Musikkryss-formatet 10 × 9 med fördefinierade
+skrivbara/blockerade celler och svarsvägar 1–13.
 
 Grid Reconstruction → Editor är produktionsintegrerad och verifierad som Grid V1.
 

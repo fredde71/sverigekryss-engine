@@ -45,6 +45,8 @@ export default function EditorScrollWorkspace({
   documentSize,
   zoomState,
   setZoomState,
+  scrollState,
+  setScrollState,
   documentLifecycleId = 0
 }) {
   const workspaceRef = useRef(null);
@@ -57,7 +59,15 @@ export default function EditorScrollWorkspace({
   const [localZoomState, setLocalZoomState] = useState(defaultZoomState);
   const currentZoomState = zoomState || localZoomState;
   const updateZoomState = setZoomState || setLocalZoomState;
+  const currentScrollState = scrollState || { top: 0, left: 0 };
   const { scale } = currentZoomState;
+
+  useLayoutEffect(() => {
+    if (workspaceRef.current) {
+      workspaceRef.current.scrollTop = currentScrollState.top;
+      workspaceRef.current.scrollLeft = currentScrollState.left;
+    }
+  }, [currentScrollState.left, currentScrollState.top]);
 
   useLayoutEffect(() => {
     if (previousDocumentLifecycleId.current === documentLifecycleId) {
@@ -71,7 +81,8 @@ export default function EditorScrollWorkspace({
       workspaceRef.current.scrollTop = 0;
       workspaceRef.current.scrollLeft = 0;
     }
-  }, [documentLifecycleId, updateZoomState]);
+    setScrollState?.({ top: 0, left: 0 });
+  }, [documentLifecycleId, updateZoomState, setScrollState]);
 
   useEffect(() => {
     if (!workspaceRef.current || typeof ResizeObserver === "undefined") {
@@ -216,8 +227,12 @@ export default function EditorScrollWorkspace({
       </div>
 
       <div
-        ref={workspaceRef}
-        data-testid="editor-scroll-workspace"
+      ref={workspaceRef}
+      data-testid="editor-scroll-workspace"
+      onScroll={event => setScrollState?.({
+        top: event.currentTarget.scrollTop,
+        left: event.currentTarget.scrollLeft
+      })}
         style={{
           maxWidth: "calc(100vw - 220px)",
           maxHeight: "calc(100vh - 78px)",

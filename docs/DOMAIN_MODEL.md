@@ -66,6 +66,7 @@ A Template contains no runtime state.
 ### Template v1 required fields
 
 - crosswordId
+- crosswordType
 - rows
 - cols
 - cellTypes
@@ -74,6 +75,9 @@ A Template contains no runtime state.
 - imageSrc
 
 ### Field rules
+
+`crosswordType` är `sverigekryss` eller `musikkryss`. Äldre Template-data utan
+fältet normaliseras till `sverigekryss`.
 
 cellTypes must be an array with exactly:
 
@@ -147,6 +151,15 @@ competitionCells[] = { index, position }
 ```
 
 `index` identifies a writable cell and `position` identifies one of the competition answer positions 1–6. Competition solution assembly consumes this mapping without changing cell type semantics.
+
+En Template med `crosswordType: "musikkryss"` kan dessutom innehålla:
+
+- `musikkryss.formatId`
+- `musikkryss.introScript`
+- `musikkryss.clues[1..13].contentSequence`
+
+Den nuvarande content sequence består av redigerbar text. Musikkryss Play,
+audio och AI-röst ingår ännu inte i domänbeteendet.
 
 ### Optional fields
 
@@ -398,6 +411,10 @@ Future candidates
 
 Represents the editor while building a crossword.
 
+Editor sessions are keyed by `crosswordType`. Sverigekryss and Musikkryss own
+independent sessions, and switching the active type does not mutate the inactive
+session. An unused session starts without an active document.
+
 ### Owns
 
 - activeTool
@@ -408,10 +425,19 @@ Represents the editor while building a crossword.
 - answer-path authoring selection and draft state
 - competition-cell assignment selection
 - document lifecycle reset state
+- zoom
+- scroll
+- uploaded document/image and filename
+- document size and crop
+- Template/editable state
+- grid/editor state
+- Digitization result and proposal
+
+Asynchronous upload and Digitization completion belongs to the session where
+the operation originated.
 
 Future candidates
 
-- zoom
 - selection
 - undo
 - redo

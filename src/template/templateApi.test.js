@@ -88,6 +88,7 @@ test("loadBackendTemplate returns normalized Template data", async () => {
 
   expect(template).toEqual({
     crosswordId: "TT-2026-0002",
+    crosswordType: "sverigekryss",
     rows: 25,
     cols: 25,
     cellTypes: [

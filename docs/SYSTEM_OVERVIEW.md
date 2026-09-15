@@ -4,7 +4,10 @@
 
 Sverigekryss Engine
 
-Målet är att skapa en webbaserad motor för Sverigekrysset där:
+Målet är att skapa en webbaserad korsordsplattform där Sverigekryss och
+Musikkryss delar samma infrastruktur men har separata Editor-sessioner.
+
+För Sverigekrysset gäller fortsatt att:
 
 - Layouten är konstant mellan utgåvor
 - Innehållet (bilder och ledtrådar) varierar
@@ -147,6 +150,19 @@ Ansvarar för:
 - Markering av celltyper
 - Template-definition
 
+`EditorSessionWorkspace` äger två separata sessioner, nycklade med
+`sverigekryss` respektive `musikkryss`. Varje session bevarar eget dokument,
+filnamn, dokumentgeometri/livscykel, Template/redigerbart state, gridstate,
+Digitization-resultat/förslag, zoom och scroll. Växling ändrar endast aktiv
+session; den andra sessionen lämnas oförändrad. En session utan uppladdat
+dokument renderar en blank arbetsyta. Uppladdning och asynkron Digitization är
+bundna till ursprungssessionens identitet.
+
+Musikkryss Editor-grunden innehåller Intro och 13 separat redigerbara
+ledtrådsmanus. Den återanvänder dokument-, canvas- och Template-infrastrukturen.
+Fast 10 × 9-topologi, fördefinierade celler/svarsvägar, Musikkryss Play, audio
+och AI-röst återstår.
+
 EditorWorkspace äger editor composition:
 
 - montering av EditorViewport
@@ -207,11 +223,12 @@ Duplicerad EditorGrid-rendering har tagits bort utan visuell stylingändring.
 App.js äger fortsatt:
 
 - workflow
-- template state
 - application workflow
 - tunn orkestrering från Digitization-resultat via GridLatticeEditorProposal till EditorWorkspace
 
-Template state ligger kvar i App.js tills Template Lifecycle-subsystemet tar över.
+App väljer aktiv korsordstyp. Typens dokument- och Template-state ägs av
+`EditorSessionWorkspace`; delad infrastruktur, routing, backend- och
+publiceringsklienter ligger kvar utanför sessionerna.
 
 Runtime ownership påverkas inte av EditorWorkspace.
 

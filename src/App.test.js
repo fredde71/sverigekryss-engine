@@ -5,6 +5,7 @@ import {
 
 const requiredTemplateFields = [
   "crosswordId",
+  "crosswordType",
   "rows",
   "cols",
   "cellTypes",
@@ -62,6 +63,7 @@ test("createTemplate returns canonical Template v1 fields", () => {
   expect(Object.keys(template)).toEqual(requiredTemplateFields);
   expect(template).toMatchObject({
     crosswordId: "TT-2026-0001",
+    crosswordType: "sverigekryss",
     rows: 2,
     cols: 3,
     documentSize: defaultDocumentSize,
@@ -76,6 +78,45 @@ test("createTemplate returns canonical Template v1 fields", () => {
       title: "Test puzzle"
     }
   });
+});
+
+test("Template preserves Musikkryss editor content", () => {
+  const template = createTemplate({
+    crosswordId: "MUSIK-2026-0001",
+    crosswordType: "musikkryss",
+    rows: 2,
+    cols: 2,
+    cellTypes: Array(4).fill("write"),
+    gridArea: {},
+    imageSrc: "",
+    musikkryss: {
+      introScript: "Intro",
+      clues: [{
+        number: 1,
+        contentSequence: [{ type: "text", text: "Första ledtråden" }]
+      }]
+    }
+  });
+
+  expect(template.crosswordType).toBe("musikkryss");
+  expect(template.musikkryss.introScript).toBe("Intro");
+  expect(template.musikkryss.clues).toHaveLength(13);
+  expect(template.musikkryss.clues[0].contentSequence[0].text)
+    .toBe("Första ledtråden");
+});
+
+test("legacy Template defaults to Sverigekryss without Musikkryss content", () => {
+  const template = normalizeTemplate({
+    crosswordId: "TT-LEGACY",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    gridArea: {},
+    imageSrc: ""
+  });
+
+  expect(template.crosswordType).toBe("sverigekryss");
+  expect(template).not.toHaveProperty("musikkryss");
 });
 
 test("createTemplate includes default documentSize", () => {
@@ -416,6 +457,7 @@ test("normalizeTemplate applies defaults and normalizes cellTypes", () => {
 
   expect(template).toEqual({
     crosswordId: "TT-2026-0002",
+    crosswordType: "sverigekryss",
     rows: 2,
     cols: 2,
     cellTypes: [

@@ -82,11 +82,14 @@ test("upload flow runs production digitization through the browser ImageData ada
     "};"
   );
 
-  expect(appSource).toContain("const [digitizationResult, setDigitizationResult] = useState(null);");
-  expect(appSource).toContain("const [imageSrc, setImageSrc] = useState(\"\");");
-  expect(appSource).toContain("const [editorDocumentLifecycleId, setEditorDocumentLifecycleId] = useState(0);");
-  expect(appSource).toContain("const digitizationUploadIdRef = useRef(0);");
-  expect(uploadSection).toContain("const uploadId = ++digitizationUploadIdRef.current;");
+  expect(appSource).toContain("digitizationResult,");
+  expect(appSource).toContain("imageSrc,");
+  expect(appSource).toContain("editorDocumentLifecycleId,");
+  expect(appSource).toContain("const digitizationUploadIdRef = useRef({");
+  expect(uploadSection).toContain("const originatingCrosswordType = crosswordType;");
+  expect(uploadSection).toContain(
+    "++digitizationUploadIdRef.current[originatingCrosswordType]"
+  );
   expect(uploadSection).toContain("setEditorDocumentLifecycleId(uploadId);");
   expect(uploadSection).toContain("setImageSrc(\"\");");
   expect(uploadSection).toContain("setDocumentSize(DEFAULT_DOCUMENT_SIZE);");
@@ -97,15 +100,15 @@ test("upload flow runs production digitization through the browser ImageData ada
   expect(pdfStateUpdateSection).toContain("setDocumentSize(documentSize);");
   expect(pdfStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
   expect(pdfStateUpdateSection).toContain("setCompetitionCells([]);");
-  expect(pdfStateUpdateSection).toContain("runDigitizationForUpload(canvas, documentSize, uploadId);");
+  expect(pdfStateUpdateSection).toContain("originatingCrosswordType");
   expect(imageStateUpdateSection).toContain("setImageSrc(image);");
   expect(imageStateUpdateSection).toContain("setDocumentSize(documentSize);");
   expect(imageStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
   expect(imageStateUpdateSection).toContain("setCompetitionCells([]);");
-  expect(imageStateUpdateSection).toContain("runDigitizationForUpload(image, documentSize, uploadId);");
+  expect(imageStateUpdateSection).toContain("originatingCrosswordType");
   expect(uploadSection).not.toContain("setTimeout");
   expect(uploadSection).not.toContain("AbortController");
-  expect(digitizationSection).toContain("setDigitizationResult({");
+  expect(digitizationSection).toContain("updateSession(originatingCrosswordType");
   expect(digitizationSection).toContain("status: \"pending\"");
   expect(digitizationSection).toContain("status: \"completed\"");
   expect(digitizationSection).toContain("status: \"failed\"");
@@ -115,7 +118,9 @@ test("upload flow runs production digitization through the browser ImageData ada
   expect(digitizationSection).toContain("productionResult");
   expect(digitizationSection).toContain("documentSize: targetDocumentSize");
   expect(digitizationSection).toContain("readImageData: readBrowserImageData");
-  expect(digitizationSection).toContain("candidateUploadId === digitizationUploadIdRef.current");
+  expect(digitizationSection).toContain(
+    "digitizationUploadIdRef.current[originatingCrosswordType]"
+  );
   expect(digitizationSection).toContain("console.warn(\"Digitization failed during upload\", err);");
   expect(digitizationSection).not.toContain("setGridArea");
   expect(digitizationSection).not.toContain("setRows");
@@ -150,8 +155,8 @@ test("answer paths remain Template-owned through import export publish and previ
     "</PlaySurface>"
   );
 
-  expect(appSource).toContain("const [answerPaths, setAnswerPaths] = useState([]);");
-  expect(appSource).toContain("setAnswerPaths(data.answerPaths || []);");
+  expect(appSource).toContain("answerPaths,");
+  expect(appSource).toContain("answerPaths: data.answerPaths || []");
   expect(appSource).toContain("answerPaths={answerPaths}");
   expect(appSource).toContain("setAnswerPaths={setAnswerPaths}");
   expect(appSource).toContain("answerPathMenu");
@@ -162,14 +167,14 @@ test("answer paths remain Template-owned through import export publish and previ
 });
 
 test("explicit grid-line positions remain Template-owned through Editor and Play", () => {
+  expect(appSource).toContain("horizontalLinePositions,");
+  expect(appSource).toContain("verticalLinePositions,");
   expect(appSource).toContain(
-    "const [horizontalLinePositions, setHorizontalLinePositions] = useState(null);"
+    "horizontalLinePositions: data.horizontalLinePositions || null"
   );
   expect(appSource).toContain(
-    "const [verticalLinePositions, setVerticalLinePositions] = useState(null);"
+    "verticalLinePositions: data.verticalLinePositions || null"
   );
-  expect(appSource).toContain("setHorizontalLinePositions(data.horizontalLinePositions || null);");
-  expect(appSource).toContain("setVerticalLinePositions(data.verticalLinePositions || null);");
   expect(appSource).toContain("horizontalLinePositions={horizontalLinePositions}");
   expect(appSource).toContain("verticalLinePositions={verticalLinePositions}");
   expect(appSource.match(/horizontalLinePositions/g).length).toBeGreaterThanOrEqual(7);
@@ -183,6 +188,45 @@ test("normal App contains no Digitization Lab diagnostics or controls", () => {
   expect(appSource).not.toContain("runUploadDigitizationExperimentComparison");
   expect(appSource).not.toContain("Utvecklardetaljer");
   expect(appSource).not.toContain("Digitization Lab");
+});
+
+test("App orchestrates the top-level Musikkryss editor shell", () => {
+  expect(appSource).toContain(
+    "const [crosswordType, setCrosswordType] = useState(\"sverigekryss\");"
+  );
+  expect(appSource).toContain("<EditorModeSwitch");
+  expect(appSource).toContain("<MusikkryssEditorPanel");
+  expect(appSource).toContain("value={musikkryss}");
+  expect(appSource).toContain("onChange={setMusikkryss}");
+  expect(appSource).toContain("crosswordType === \"musikkryss\"");
+  expect(appSource).not.toContain("setMusikkryssIntroScript");
+  expect(appSource).not.toContain("setMusikkryssClueText");
+});
+
+test("App delegates per-type document and editor state to EditorSessionWorkspace", () => {
+  expect(appSource).toContain("<EditorSessionWorkspace activeType={crosswordType}>");
+  expect(appSource).toContain("session={session}");
+  expect(appSource).toContain("setters={setters}");
+  expect(appSource).toContain("updateSession={updateSession}");
+  expect(appSource).toContain("sessionKey={crosswordType}");
+  expect(appSource).toContain("scrollState={editorScrollState}");
+  expect(appSource).toContain("setScrollState={setEditorScrollState}");
+});
+
+test("top-level crossword type exclusively controls the visible editor", () => {
+  const templateCanvas = getSourceBetween(
+    appSource,
+    "<TemplateCanvas",
+    "</TemplateCanvas>"
+  );
+
+  expect(appSource).toContain("crosswordType === \"musikkryss\"");
+  expect(appSource).toContain("<MusikkryssEditorPanel");
+  expect(templateCanvas).toContain(
+    "{crosswordType === \"sverigekryss\" && ("
+  );
+  expect(templateCanvas).toContain("{editor}");
+  expect(templateCanvas).toContain("<DigitizationSuggestionOverlay");
 });
 
 test("editor preview renders read-only digitization suggestion overlay", () => {
