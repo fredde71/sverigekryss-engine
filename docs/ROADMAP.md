@@ -20,19 +20,28 @@ De detaljerade faserna längre ned beskriver aktuell implementation och verifier
 
 ## Aktivt fokus: Product Readiness / V1
 
-Musikkryss editor foundation är genomförd:
+Musikkryss format- och Play-grund är genomförd:
 
 - plattformen växlar mellan `Sverigekryss` och `Musikkryss`
 - varje korsordstyp har en självständig Editor-session för dokument, Template,
   redigerbart state, Digitization, zoom och scroll
 - typbyte bevarar den inaktiva sessionen och en oanvänd session är blank
 - asynkrona Digitization-resultat återförs endast till ursprungssessionen
-- Musikkryss har Intro och 13 separat valbara/redigerbara ledtrådsmanus
+- det katalogägda återkommande formatet har fast 10 × 9-grid, normaliserad
+  geometri samt 59 skrivbara och 31 icke-skrivbara celler
+- topologin ger 13 numrerade startceller och 15 automatiskt härledda svar,
+  unikt identifierade av nummer och riktning
+- varje svar äger egen ordnad `answerPath` och redigerbar `contentSequence`
+- Musikkryss Editor stödjer Intro och separat innehåll för varje riktningssvar
+- Edit/Play-växling bevarar Musikkryss-sessionen
+- Musikkryss Play återanvänder gemensam `PlaySurface`/`RuntimeLayer`, visar
+  riktningssvar, markerar och navigerar hela svaret samt delar bokstäver i korsningar
+- Musikkryss Play-presentationen är responsiv med 650 px maximal desktopbredd
 - infrastruktur, backend-, publicerings- och runtime-gränser är fortsatt gemensamma
 
-Nästa milstolpe är ett fast 10 × 9 Musikkryss-format med fördefinierade
-skrivbara/blockerade celler och svarsvägar 1–13. Musikkryss Play, audio och
-AI-röst ingår inte i den nuvarande milstolpen.
+Audio, intro-uppspelning, AI-röst och övrig Musikkryss-spelorkestrering ingår
+inte i denna milstolpe. Det fasta formatet väljs utan filnamnslogik och den
+offline fixture som användes vid formatbekräftelse är inte ett runtime-beroende.
 
 V1-arbetsflödet är browser-testat end-to-end:
 

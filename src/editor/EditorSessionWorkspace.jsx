@@ -33,6 +33,40 @@ export function createEmptyEditorSession(crosswordType) {
   };
 }
 
+export function applyTemplateToEditorSession(session, template) {
+  return {
+    ...session,
+    crosswordType: template.crosswordType,
+    crosswordId: template.crosswordId,
+    rows: template.rows,
+    cols: template.cols,
+    cellTypes: [...template.cellTypes],
+    gridArea: { ...template.gridArea },
+    cropArea: { ...template.cropArea },
+    competitionCells: template.competitionCells
+      ? template.competitionCells.map(value => ({ ...value }))
+      : [],
+    answerPaths: template.answerPaths
+      ? template.answerPaths.map(entry => ({
+        ...entry,
+        paths: entry.paths.map(path => ({
+          ...path,
+          cellIndexes: [...path.cellIndexes]
+        }))
+      }))
+      : [],
+    horizontalLinePositions: template.horizontalLinePositions
+      ? [...template.horizontalLinePositions]
+      : null,
+    verticalLinePositions: template.verticalLinePositions
+      ? [...template.verticalLinePositions]
+      : null,
+    documentSize: { ...template.documentSize },
+    imageSrc: template.imageSrc,
+    musikkryss: template.musikkryss
+  };
+}
+
 export default function EditorSessionWorkspace({ activeType, children }) {
   const [sessions, setSessions] = useState(() => ({
     sverigekryss: createEmptyEditorSession("sverigekryss"),

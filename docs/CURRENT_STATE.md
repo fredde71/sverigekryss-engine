@@ -6,7 +6,7 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter browser-verifierat V1-flöde och etablerad Musikkryss-grund med separata Editor-sessioner.
+Efter browser-verifierat V1-flöde och verifierad Musikkryss format-/Play-grund.
 
 ---
 
@@ -23,9 +23,19 @@ Byte av korsordstyp visar den sparade sessionen utan att återställa eller skri
 över den andra. En ny eller oanvänd session visar en blank arbetsyta. Asynkrona
 Digitization-resultat dirigeras tillbaka till den session där uppladdningen startade.
 
-Musikkryss-grunden stödjer nu Intro och 13 separat valbara och redigerbara
-ledtrådsmanus. Infrastruktur, backendklienter, publiceringsgränser och runtime-skal
-är fortsatt gemensamma. Musikkryss Play, fast gridtopologi, audio och AI-röst är
+Musikkryss använder ett katalogägt återkommande format med 9 rader och 10
+kolumner. Formatet äger normaliserad grid-geometri, 59 skrivbara celler,
+31 icke-skrivbara celler och 13 numrerade startceller. Topologin härleder 15
+riktningsbundna svar identifierade av `number + direction`; varje svar äger sin
+ordnade `answerPath` och sin redigerbara `contentSequence`. Intro och svarsinnehåll
+bevaras i Musikkryss-sessionens Template. Ingen manuell svarsvägsdefinition krävs
+för det fasta formatet.
+
+Musikkryss återanvänder samma TemplateCanvas-, Runtime- och Play-gränser som
+Sverigekryss. Editor och Play kan växlas inom den separata Musikkryss-sessionen.
+Play visar riktningsetiketter, markerar hela vald svarsväg, fokuserar första cellen
+och navigerar i path-ordning; korsande svar delar samma bokstavsstate. Play-ytan är
+responsiv med 650 px maximal desktopbredd. Audio, intro-uppspelning och AI-röst är
 ännu inte implementerade.
 
 Följande är färdigt i aktuell editor/play-produktion:
@@ -130,9 +140,12 @@ Senarelagt bortom V1:
 
 # Senaste verifierade milstolpe
 
-Musikkryss editor foundation och självständiga Editor-sessioner är implementerade.
-Nästa milstolpe är det fasta Musikkryss-formatet 10 × 9 med fördefinierade
-skrivbara/blockerade celler och svarsvägar 1–13.
+Musikkryss format- och Play-grund är implementerad ovanpå de självständiga
+Editor-sessionerna. Ny Musikkryss-uppladdning initierar automatiskt det katalogägda
+10 × 9-formatet, dess celltopologi, 13 numrerade startceller, 15 härledda
+riktningssvar och explicita linjepositioner. Editor redigerar Intro och respektive
+svars content sequence. Lokal och publicerad Play återanvänder `PlaySurface` och
+den gemensamma Runtime-kedjan; ingen separat Musikkryss-runtime finns.
 
 Grid Reconstruction → Editor är produktionsintegrerad och verifierad som Grid V1.
 

@@ -1,5 +1,17 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import PlaySurface from "./PlaySurface";
+import { createMusikkryssTemplate } from "../musikkryss/MusikkryssTemplateInitializer";
+
+beforeAll(() => {
+  global.ResizeObserver = class ResizeObserver {
+    observe() {}
+    disconnect() {}
+  };
+});
+
+afterAll(() => {
+  delete global.ResizeObserver;
+});
 
 function createTemplate(cellTypes) {
   return {
@@ -205,6 +217,95 @@ test("Play renders cells from the Template's persisted explicit grid geometry", 
   });
 });
 
+test("Musikkryss lists directional answers and activates the complete path", async () => {
+  render(
+    <PlaySurface
+      template={{
+        ...createMusikkryssTemplate({
+          crosswordId: "MUSIK-2026-38",
+          documentSize: { width: 490, height: 540 },
+          imageSrc: "/music-grid.png"
+        })
+      }}
+      onSubmitAnswers={() => {}}
+    />
+  );
+
+  expect(screen.getByRole("region", { name: "Musikkryss-svar" }))
+    .toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "1 vågrätt" }))
+    .toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "1 lodrätt" }))
+    .toBeInTheDocument();
+  expect(screen.getByTestId("runtime-grid-explicit")).toBeInTheDocument();
+  expect(screen.getByTestId("musikkryss-play-crossword")).toHaveStyle({
+    flex: "0 0 650px",
+    width: "100%",
+    maxWidth: "650px"
+  });
+  expect(screen.getByTestId("template-canvas-responsive-wrapper"))
+    .toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "1 lodrätt" }));
+
+  await expectActiveCellIndexes([0, 10, 20, 30, 40, 50, 60, 70]);
+  expect(screen.getByRole("button", { name: "1 lodrätt" }))
+    .toHaveAttribute("aria-pressed", "true");
+  expect(getInputAt(0).parentElement).toHaveAttribute(
+    "data-path-state",
+    "focused"
+  );
+  expect(getInputAt(10).parentElement).toHaveAttribute(
+    "data-path-state",
+    "selected"
+  );
+  expect(getInputAt(1).parentElement).toHaveAttribute(
+    "data-path-state",
+    "dimmed"
+  );
+  expect(getInputAt(0)).toHaveStyle({
+    fontSize: "30px",
+    textAlign: "center",
+    lineHeight: "1"
+  });
+  await waitFor(() => expect(document.activeElement).toHaveAttribute(
+    "data-index",
+    "0"
+  ));
+});
+
+test("Musikkryss typing follows path order and crossing answers share letters", async () => {
+  render(
+    <PlaySurface
+      template={createMusikkryssTemplate({
+        crosswordId: "MUSIK-2026-38",
+        documentSize: { width: 490, height: 540 },
+        imageSrc: "/music-grid.png"
+      })}
+      onSubmitAnswers={() => {}}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "1 lodrätt" }));
+  const crossingInput = getInputAt(0);
+  fireEvent.change(crossingInput, { target: { value: "A" } });
+
+  await waitFor(() => expect(document.activeElement).toHaveAttribute(
+    "data-index",
+    "10"
+  ));
+  fireEvent.change(getInputAt(10), { target: { value: "B" } });
+  await waitFor(() => expect(document.activeElement).toHaveAttribute(
+    "data-index",
+    "20"
+  ));
+
+  fireEvent.click(screen.getByRole("button", { name: "1 vågrätt" }));
+  await expectActiveCellIndexes([0, 1, 2, 3, 4, 5, 6, 7]);
+  expect(getInputAt(0)).toHaveValue("A");
+  expect(getInputAt(10)).toHaveValue("B");
+});
+
 async function expectActiveInputs(inputs, activeIndexes) {
   await waitFor(() => {
     expect(inputs[activeIndexes[0]].parentElement).toHaveStyle({
@@ -223,4 +324,17 @@ async function expectActiveInputs(inputs, activeIndexes) {
       });
     }
   });
+}
+
+async function expectActiveCellIndexes(activeIndexes) {
+  await waitFor(() => {
+    activeIndexes.forEach(index => {
+      expect(getInputAt(index).parentElement.getAttribute("data-path-state"))
+        .toMatch(/^(focused|selected)$/);
+    });
+  });
+}
+
+function getInputAt(index) {
+  return document.querySelector(`input[data-index="${index}"]`);
 }

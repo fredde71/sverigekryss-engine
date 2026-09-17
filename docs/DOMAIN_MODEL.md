@@ -156,10 +156,39 @@ En Template med `crosswordType: "musikkryss"` kan dessutom innehålla:
 
 - `musikkryss.formatId`
 - `musikkryss.introScript`
-- `musikkryss.clues[1..13].contentSequence`
+- `musikkryss.answers[].number`
+- `musikkryss.answers[].direction`
+- `musikkryss.answers[].answerPath`
+- `musikkryss.answers[].contentSequence`
 
-Den nuvarande content sequence består av redigerbar text. Musikkryss Play,
-audio och AI-röst ingår ännu inte i domänbeteendet.
+Ett Musikkryss-svar identifieras unikt av `number + direction`, där riktningen är
+`across` eller `down`. Samma tryckta nummer kan därför äga både ett vågrätt och
+ett lodrätt svar. Varje svar äger sin egen ordnade lista av skrivbara cellindex
+och sin egen content sequence. Det fasta 10 × 9-formatet har 13 numrerade
+startceller och 15 svar; svarsvägarna härleds deterministiskt från formatets
+skrivbara/icke-skrivbara topologi och författas inte manuellt.
+
+Den nuvarande content sequence består av redigerbar text. Runtime konsumerar
+`musikkryss.answers` genom delad Play/Runtime-infrastruktur. Audio,
+intro-uppspelning och AI-röst ingår ännu inte i domänbeteendet.
+
+### MusikkryssFormat
+
+`MusikkryssFormat` är en immutabel, återanvändbar formatdefinition och äger:
+
+- format-ID och version
+- 9 × 10 grid-dimensioner för det nuvarande formatet
+- normaliserad dokumentplacering och linjegeometri
+- fast skrivbar/icke-skrivbar celltopologi
+- numrerade startceller
+- topologiskt härledda riktningssvar och deras ordnade paths
+
+`MusikkryssFormatCatalog` väljer format utan filnamnslogik.
+`MusikkryssTemplateInitializer` kopierar vald formatstruktur till en ny
+Musikkryss-Template och materialiserar grid/linjer mot uppladdningens
+dokumentdimensioner. Formatet är generellt katalogiserat för framtida format;
+den offline-källa som användes för att bekräfta nuvarande format är inte ett
+runtime-beroende.
 
 ### Optional fields
 

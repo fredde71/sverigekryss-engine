@@ -13,14 +13,23 @@ export default function RuntimeCell({
   onKeyDown,
   inputRef,
   dataIndex,
-  maxLength
+  maxLength,
+  presentation = "default",
+  isFocusedCell = false,
+  isDimmed = false
 }) {
+  const isMusikkryss = presentation === "musikkryss";
+  const dimmedBackground = isMusikkryss && isDimmed
+    ? "rgba(255, 255, 255, 0.42)"
+    : undefined;
+
   if (type === "image") {
   return (
     <div
       style={{
         width: "100%",
         height: "100%",
+        backgroundColor: dimmedBackground,
         ...style
       }}
     />
@@ -38,7 +47,7 @@ export default function RuntimeCell({
         ...style,
         backgroundColor: isActive
           ? "rgba(0, 120, 255, 0.2)"
-          : style?.backgroundColor || "transparent",
+          : dimmedBackground || style?.backgroundColor || "transparent",
         cursor: onClick ? "pointer" : "default"
       }}
     >
@@ -60,6 +69,9 @@ export default function RuntimeCell({
       inputRef={inputRef}
       dataIndex={dataIndex}
       maxLength={maxLength}
+      presentation={presentation}
+      isFocusedCell={isFocusedCell}
+      isDimmed={isDimmed}
       style={{
         width: "100%",
         height: "100%",
@@ -78,6 +90,7 @@ return (
     style={{
       width: "100%",
       height: "100%",
+      backgroundColor: dimmedBackground,
       ...style
     }}
   />

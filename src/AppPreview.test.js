@@ -6,7 +6,7 @@ test("editor preview TemplateCanvas remains uncropped", () => {
   const editModeCanvas = getSourceBetween(
     appSource,
     "{modeView === \"edit\" ? (",
-    ") : ("
+    "<PlaySurface"
   );
 
   expect(editModeCanvas).toContain("<TemplateCanvas");
@@ -66,10 +66,10 @@ test("upload flow runs production digitization through the browser ImageData ada
     "const handleImageUpload = async (e) => {",
     "const handleTemplateImport = async (e) => {"
   );
-  const pdfStateUpdateSection = getSourceBetween(
-    uploadSection,
-    "setImageSrc(image);",
-    "return;"
+  const documentApplicationSection = getSourceBetween(
+    appSource,
+    "const applyUploadedDocument = ({",
+    "const refreshPublications"
   );
   const imageStateUpdateSection = getSourceBetween(
     uploadSection,
@@ -97,14 +97,19 @@ test("upload flow runs production digitization through the browser ImageData ada
   expect(appSource).toContain("import { runDigitizationUploadWithIdentity } from \"./digitization/digitizationUploadIdentityGuard\";");
   expect(appSource).toContain("import { readBrowserImageData } from \"./digitization/adapters/browserImageDataReader\";");
   expect(appSource).toContain("import { runDigitizationJob } from \"./digitization/engine/DigitizationEngine\";");
-  expect(pdfStateUpdateSection).toContain("setDocumentSize(documentSize);");
-  expect(pdfStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
-  expect(pdfStateUpdateSection).toContain("setCompetitionCells([]);");
-  expect(pdfStateUpdateSection).toContain("originatingCrosswordType");
-  expect(imageStateUpdateSection).toContain("setImageSrc(image);");
-  expect(imageStateUpdateSection).toContain("setDocumentSize(documentSize);");
-  expect(imageStateUpdateSection).toContain("setCropArea(getFullDocumentArea(documentSize));");
-  expect(imageStateUpdateSection).toContain("setCompetitionCells([]);");
+  expect(documentApplicationSection).toContain(
+    "originatingCrosswordType === \"musikkryss\""
+  );
+  expect(documentApplicationSection).toContain("createMusikkryssTemplate({");
+  expect(documentApplicationSection).toContain("applyTemplateToEditorSession(");
+  expect(documentApplicationSection).toContain("setImageSrc(image);");
+  expect(documentApplicationSection).toContain("setDocumentSize(uploadedDocumentSize);");
+  expect(documentApplicationSection).toContain(
+    "setCropArea(getFullDocumentArea(uploadedDocumentSize));"
+  );
+  expect(documentApplicationSection).toContain("setCompetitionCells([]);");
+  expect(uploadSection.match(/applyUploadedDocument\(\{/g)).toHaveLength(2);
+  expect(imageStateUpdateSection).toContain("applyUploadedDocument({");
   expect(imageStateUpdateSection).toContain("originatingCrosswordType");
   expect(uploadSection).not.toContain("setTimeout");
   expect(uploadSection).not.toContain("AbortController");
@@ -130,7 +135,18 @@ test("upload flow runs production digitization through the browser ImageData ada
   expect(appSource).toContain("documentAvailable={Boolean(imageSrc)}");
   expect(
     appSource.match(/documentLifecycleId=\{editorDocumentLifecycleId\}/g)
-  ).toHaveLength(2);
+  ).toHaveLength(3);
+});
+
+test("Musikkryss upload selects the canonical format without filename logic", () => {
+  expect(appSource).toContain(
+    "import { createMusikkryssTemplate } from \"./musikkryss/MusikkryssTemplateInitializer\";"
+  );
+  expect(appSource).toContain(
+    "applyTemplateToEditorSession(current, createMusikkryssTemplate({"
+  );
+  expect(appSource).toContain("crosswordType !== \"sverigekryss\"");
+  expect(appSource).not.toContain("kryss2026w38");
 });
 
 test("answer paths remain Template-owned through import export publish and preview", () => {
@@ -147,7 +163,7 @@ test("answer paths remain Template-owned through import export publish and previ
   const editModeCanvas = getSourceBetween(
     appSource,
     "{modeView === \"edit\" ? (",
-    ") : ("
+    "<PlaySurface"
   );
   const localPlaySurface = getSourceBetween(
     appSource,
@@ -195,12 +211,35 @@ test("App orchestrates the top-level Musikkryss editor shell", () => {
     "const [crosswordType, setCrosswordType] = useState(\"sverigekryss\");"
   );
   expect(appSource).toContain("<EditorModeSwitch");
-  expect(appSource).toContain("<MusikkryssEditorPanel");
-  expect(appSource).toContain("value={musikkryss}");
-  expect(appSource).toContain("onChange={setMusikkryss}");
+  expect(appSource).toContain("<MusikkryssEditorContainer");
+  expect(appSource).toContain("musikkryss={musikkryss}");
+  expect(appSource).toContain("onMusikkryssChange={setMusikkryss}");
   expect(appSource).toContain("crosswordType === \"musikkryss\"");
   expect(appSource).not.toContain("setMusikkryssIntroScript");
   expect(appSource).not.toContain("setMusikkryssClueText");
+});
+
+test("Musikkryss uses its session-owned modeView to switch between Editor and Play", () => {
+  const viewSection = getSourceBetween(
+    appSource,
+    "<h5 style={sidebarTitleStyle}>Läge</h5>",
+    "</section>"
+  );
+  const renderedModeSection = getSourceBetween(
+    appSource,
+    "{modeView === \"edit\" ? (",
+    "</PlaySurface>"
+  );
+
+  expect(appSource).toContain(
+    "import EditorPlayModeSwitch from \"./editor/EditorPlayModeSwitch\";"
+  );
+  expect(viewSection).toContain("crosswordType === \"musikkryss\"");
+  expect(viewSection).toContain("<EditorPlayModeSwitch");
+  expect(viewSection).toContain("value={modeView}");
+  expect(viewSection).toContain("onChange={setModeView}");
+  expect(renderedModeSection).toContain("<MusikkryssEditorContainer");
+  expect(renderedModeSection).toContain("<PlaySurface");
 });
 
 test("App delegates per-type document and editor state to EditorSessionWorkspace", () => {
@@ -221,10 +260,8 @@ test("top-level crossword type exclusively controls the visible editor", () => {
   );
 
   expect(appSource).toContain("crosswordType === \"musikkryss\"");
-  expect(appSource).toContain("<MusikkryssEditorPanel");
-  expect(templateCanvas).toContain(
-    "{crosswordType === \"sverigekryss\" && ("
-  );
+  expect(appSource).toContain("<MusikkryssEditorContainer");
+  expect(appSource).toContain("editor={editor}");
   expect(templateCanvas).toContain("{editor}");
   expect(templateCanvas).toContain("<DigitizationSuggestionOverlay");
 });
@@ -233,7 +270,7 @@ test("editor preview renders read-only digitization suggestion overlay", () => {
   const editModeCanvas = getSourceBetween(
     appSource,
     "{modeView === \"edit\" ? (",
-    ") : ("
+    "<PlaySurface"
   );
   const localPlaySurface = getSourceBetween(
     appSource,

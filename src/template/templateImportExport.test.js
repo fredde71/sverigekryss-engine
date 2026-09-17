@@ -206,9 +206,10 @@ test("create import export round-trip preserves Musikkryss editor content", asyn
     imageSrc: "/music-grid.png",
     musikkryss: {
       introScript: "Intro",
-      clues: [{
-        number: 13,
-        contentSequence: [{ type: "text", text: "Sista ledtråden" }]
+      answers: [{
+        number: 8,
+        direction: "down",
+        contentSequence: [{ type: "text", text: "Lodrät ledtråd" }]
       }]
     }
   });
@@ -220,8 +221,11 @@ test("create import export round-trip preserves Musikkryss editor content", asyn
 
   expect(imported.crosswordType).toBe("musikkryss");
   expect(imported.musikkryss.introScript).toBe("Intro");
-  expect(imported.musikkryss.clues[12].contentSequence[0].text)
-    .toBe("Sista ledtråden");
+  const importedAnswer = imported.musikkryss.answers.find(answer => (
+    answer.number === 8 && answer.direction === "down"
+  ));
+  expect(importedAnswer.contentSequence[0].text).toBe("Lodrät ledtråd");
+  expect(importedAnswer.answerPath).toEqual([46, 56, 66, 76, 86]);
 });
 
 function readBlobText(blob) {

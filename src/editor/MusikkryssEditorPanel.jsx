@@ -3,28 +3,43 @@ import {
   normalizeMusikkryssContent
 } from "../musikkryss/MusikkryssFormat";
 
-export default function MusikkryssEditorPanel({ value, onChange }) {
-  const [selectedClueNumber, setSelectedClueNumber] = useState(1);
+export default function MusikkryssEditorPanel({
+  value,
+  onChange,
+  selectedAnswerId: controlledSelectedAnswerId,
+  onSelectedAnswerIdChange
+}) {
   const content = normalizeMusikkryssContent(value);
-  const selectedClue = content.clues.find(
-    clue => clue.number === selectedClueNumber
+  const defaultAnswerId = answerId(content.answers[0]);
+  const [localSelectedAnswerId, setLocalSelectedAnswerId] = useState(
+    defaultAnswerId
   );
-  const selectedText = selectedClue.contentSequence[0].text;
+  const selectedAnswerId = controlledSelectedAnswerId
+    ?? localSelectedAnswerId;
+  const selectedAnswer = content.answers.find(
+    answer => answerId(answer) === selectedAnswerId
+  ) || content.answers[0];
+  const selectedText = selectedAnswer.contentSequence[0].text;
+
+  const selectAnswer = (id) => {
+    setLocalSelectedAnswerId(id);
+    onSelectedAnswerIdChange?.(id);
+  };
 
   const updateIntroScript = (introScript) => {
     onChange({ ...content, introScript });
   };
 
-  const updateSelectedClueText = (text) => {
+  const updateSelectedAnswerText = (text) => {
     onChange({
       ...content,
-      clues: content.clues.map(clue => (
-        clue.number === selectedClueNumber
+      answers: content.answers.map(answer => (
+        answerId(answer) === answerId(selectedAnswer)
           ? {
-            ...clue,
+            ...answer,
             contentSequence: [{ type: "text", text }]
           }
-          : clue
+          : answer
       ))
     });
   };
@@ -45,25 +60,31 @@ export default function MusikkryssEditorPanel({ value, onChange }) {
         />
       </label>
 
-      <div aria-label="Ledtrådslista" style={clueListStyle}>
-        {content.clues.map(clue => (
-          <button
-            key={clue.number}
-            type="button"
-            aria-pressed={selectedClueNumber === clue.number}
-            onClick={() => setSelectedClueNumber(clue.number)}
-          >
-            Ledtråd {clue.number}
-          </button>
-        ))}
+      <div aria-label="Svarslista" style={clueListStyle}>
+        {content.answers.map(answer => {
+          const id = answerId(answer);
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={selectedAnswerId === id}
+              onClick={() => selectAnswer(id)}
+            >
+              {answer.number} {directionLabel(answer.direction)}
+            </button>
+          );
+        })}
       </div>
 
       <label style={{ display: "grid", gap: "4px" }}>
-        Innehåll för ledtråd {selectedClueNumber}
+        Innehåll för {selectedAnswer.number}{" "}
+        {directionLabel(selectedAnswer.direction)}
         <textarea
-          aria-label={`Innehåll för ledtråd ${selectedClueNumber}`}
+          aria-label={
+            `Innehåll för ${selectedAnswer.number} ${directionLabel(selectedAnswer.direction)}`
+          }
           value={selectedText}
-          onChange={event => updateSelectedClueText(event.target.value)}
+          onChange={event => updateSelectedAnswerText(event.target.value)}
           rows={5}
         />
       </label>
@@ -76,3 +97,11 @@ const clueListStyle = {
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: "4px"
 };
+
+function answerId(answer) {
+  return `${answer.number}:${answer.direction}`;
+}
+
+function directionLabel(direction) {
+  return direction === "down" ? "lodrätt" : "vågrätt";
+}

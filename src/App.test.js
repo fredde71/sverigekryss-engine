@@ -91,8 +91,9 @@ test("Template preserves Musikkryss editor content", () => {
     imageSrc: "",
     musikkryss: {
       introScript: "Intro",
-      clues: [{
+      answers: [{
         number: 1,
+        direction: "across",
         contentSequence: [{ type: "text", text: "Första ledtråden" }]
       }]
     }
@@ -100,8 +101,8 @@ test("Template preserves Musikkryss editor content", () => {
 
   expect(template.crosswordType).toBe("musikkryss");
   expect(template.musikkryss.introScript).toBe("Intro");
-  expect(template.musikkryss.clues).toHaveLength(13);
-  expect(template.musikkryss.clues[0].contentSequence[0].text)
+  expect(template.musikkryss.answers).toHaveLength(15);
+  expect(template.musikkryss.answers[0].contentSequence[0].text)
     .toBe("Första ledtråden");
 });
 

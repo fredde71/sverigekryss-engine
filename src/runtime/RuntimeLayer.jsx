@@ -17,7 +17,9 @@ import { normalizeInputValue } from "../engine/input";
 
 export default function RuntimeLayer({
   data,
-  onAnswersChange
+  onAnswersChange,
+  externalAnswerSelection = null,
+  presentation = "default"
 }) {
 
   console.log("RuntimeLayer rendered");
@@ -32,6 +34,34 @@ React.useEffect(() => {
 }, [activeCell]);
 
 const inputRefs = useRef([]);
+
+React.useEffect(() => {
+  if (!externalAnswerSelection) return undefined;
+
+  const answerCellIndexes = externalAnswerSelection.answerCellIndexes;
+  const firstCellIndex = answerCellIndexes[0];
+  const resolution = Object.freeze({
+    clueIndex: firstCellIndex,
+    clueType: "musikkryss-answer",
+    direction: externalAnswerSelection.direction,
+    answerStartIndex: firstCellIndex,
+    answerLength: answerCellIndexes.length,
+    answerCellIndexes
+  });
+
+  setDirection(externalAnswerSelection.direction);
+  setClueSelection(resolution);
+  setActiveCell(firstCellIndex);
+
+  const focusTimer = setTimeout(() => {
+    focusNextInput({
+      nextIndex: firstCellIndex,
+      inputRefs
+    });
+  }, 0);
+
+  return () => clearTimeout(focusTimer);
+}, [externalAnswerSelection]);
 
 const handleCellChange = (index, rawValue) => {
 
@@ -194,6 +224,10 @@ if (type === "image") {
     <RuntimeCell
       key={i}
       type={type}
+      presentation={presentation}
+      isDimmed={presentation === "musikkryss"
+        && Boolean(clueSelection)
+        && !activeCells.has(i)}
     />
   );
 }
@@ -205,6 +239,10 @@ if (type === "blocked") {
       type={type}
       dataIndex={i}
       isActive={false}
+      presentation={presentation}
+      isDimmed={presentation === "musikkryss"
+        && Boolean(clueSelection)
+        && !activeCells.has(i)}
       onClick={() => handleCellClick(i)}
     />
   );
@@ -218,6 +256,13 @@ return (
   inputRef={(el) => (inputRefs.current[i] = el)}
   dataIndex={i}
   isActive={activeCells.has(i)}
+  isFocusedCell={presentation === "musikkryss"
+    && activeCells.has(i)
+    && activeCell === i}
+  isDimmed={presentation === "musikkryss"
+    && Boolean(clueSelection)
+    && !activeCells.has(i)}
+  presentation={presentation}
   onClick={() => handleCellClick(i)}
   onFocus={(e) => {
   e.target.select();

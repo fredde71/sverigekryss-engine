@@ -4,8 +4,11 @@ import * as pdfjsLib from "pdfjs-dist";
 import EditorWorkspace from "./editor/EditorWorkspace";
 import EditorScrollWorkspace from "./editor/EditorScrollWorkspace";
 import EditorModeSwitch from "./editor/EditorModeSwitch";
-import MusikkryssEditorPanel from "./editor/MusikkryssEditorPanel";
-import EditorSessionWorkspace from "./editor/EditorSessionWorkspace";
+import EditorPlayModeSwitch from "./editor/EditorPlayModeSwitch";
+import MusikkryssEditorContainer from "./editor/MusikkryssEditorContainer";
+import EditorSessionWorkspace, {
+  applyTemplateToEditorSession
+} from "./editor/EditorSessionWorkspace";
 import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
 import PlaySurface from "./play/PlaySurface";
@@ -42,6 +45,7 @@ import {
   createEmptyMusikkryssContent,
   normalizeMusikkryssContent
 } from "./musikkryss/MusikkryssFormat";
+import { createMusikkryssTemplate } from "./musikkryss/MusikkryssTemplateInitializer";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -176,7 +180,8 @@ useEffect(() => {
     : null;
   const gridLatticeEditorProposal = React.useMemo(() => {
     if (
-      gridLatticeReconstructionResult?.status !== "available"
+      crosswordType !== "sverigekryss"
+      || gridLatticeReconstructionResult?.status !== "available"
       || gridLatticeReconstructionResult.lattice?.status !== "available"
       || !outerVisualExtent
     ) {
@@ -193,8 +198,31 @@ useEffect(() => {
   }, [
     gridLatticeReconstructionResult,
     outerVisualExtent,
-    gridFormatGeometrySelection
+    gridFormatGeometrySelection,
+    crosswordType
   ]);
+
+  const applyUploadedDocument = ({
+    originatingCrosswordType,
+    image,
+    documentSize: uploadedDocumentSize
+  }) => {
+    if (originatingCrosswordType === "musikkryss") {
+      updateSession(originatingCrosswordType, current => (
+        applyTemplateToEditorSession(current, createMusikkryssTemplate({
+          crosswordId: current.crosswordId,
+          documentSize: uploadedDocumentSize,
+          imageSrc: image
+        }))
+      ));
+      return;
+    }
+
+    setImageSrc(image);
+    setDocumentSize(uploadedDocumentSize);
+    setCropArea(getFullDocumentArea(uploadedDocumentSize));
+    setCompetitionCells([]);
+  };
 
   const refreshPublications = React.useCallback(async (targetCrosswordId) => {
     const normalizedCrosswordId = targetCrosswordId.trim();
@@ -282,10 +310,11 @@ const documentSize = getDocumentSizeForDimensions({
   height: viewport.height
 });
 
-setImageSrc(image);
-setDocumentSize(documentSize);
-setCropArea(getFullDocumentArea(documentSize));
-setCompetitionCells([]);
+applyUploadedDocument({
+  originatingCrosswordType,
+  image,
+  documentSize
+});
 
 e.target.value = "";
 
@@ -305,10 +334,11 @@ return;
     const image = reader.result;
     const documentSize = await loadImageDocumentSize(image);
 
-    setImageSrc(image);
-    setDocumentSize(documentSize);
-    setCropArea(getFullDocumentArea(documentSize));
-    setCompetitionCells([]);
+    applyUploadedDocument({
+      originatingCrosswordType,
+      image,
+      documentSize
+    });
 
     runDigitizationForUpload(
       image,
@@ -638,15 +668,6 @@ const handleTemplateImport = async (e) => {
           </label>
         </section>
 
-        {crosswordType === "musikkryss" && (
-          <section style={sidebarSectionStyle}>
-            <MusikkryssEditorPanel
-              value={musikkryss}
-              onChange={setMusikkryss}
-            />
-          </section>
-        )}
-
 	        {crosswordType === "sverigekryss" && (
           <>
 	          {toolbar}
@@ -655,17 +676,22 @@ const handleTemplateImport = async (e) => {
           </>
         )}
 
-	        {crosswordType === "sverigekryss" && (
 	        <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Läge</h5>
-          <button
-            onClick={() => setModeView(modeView === "edit" ? "play" : "edit")}
-            style={sidebarButtonStyle}
-          >
-            {modeView === "edit" ? "SPELLÄGE" : "REDIGERINGSLÄGE"}
-          </button>
+	          {crosswordType === "musikkryss" ? (
+	            <EditorPlayModeSwitch
+	              value={modeView}
+	              onChange={setModeView}
+	            />
+	          ) : (
+	            <button
+	              onClick={() => setModeView(modeView === "edit" ? "play" : "edit")}
+	              style={sidebarButtonStyle}
+	            >
+	              {modeView === "edit" ? "SPELLÄGE" : "REDIGERINGSLÄGE"}
+	            </button>
+	          )}
         </section>
-        )}
 
         <section style={sidebarSectionStyle}>
           <h5 style={sidebarTitleStyle}>Filer</h5>
@@ -805,6 +831,34 @@ const handleTemplateImport = async (e) => {
 
       {/* CANVAS */}
       {modeView === "edit" ? (
+        crosswordType === "musikkryss" ? (
+          <MusikkryssEditorContainer
+            template={{
+              crosswordId,
+              crosswordType,
+              musikkryss,
+              rows,
+              cols,
+              cellTypes,
+              imageSrc,
+              documentSize,
+              gridArea,
+              cropArea,
+              competitionCells,
+              answerPaths,
+              horizontalLinePositions,
+              verticalLinePositions
+            }}
+            editor={editor}
+            musikkryss={musikkryss}
+            onMusikkryssChange={setMusikkryss}
+            zoomState={editorZoomState}
+            setZoomState={setEditorZoomState}
+            scrollState={editorScrollState}
+            setScrollState={setEditorScrollState}
+            documentLifecycleId={editorDocumentLifecycleId}
+          />
+        ) : (
         <EditorScrollWorkspace
           documentSize={documentSize}
           zoomState={editorZoomState}
@@ -831,17 +885,14 @@ const handleTemplateImport = async (e) => {
               verticalLinePositions
 	            }}
 	          >
-	            {crosswordType === "sverigekryss" && (
-	              <>
-	                <DigitizationSuggestionOverlay
-	                  digitizationResult={digitizationResult}
-	                  documentSize={documentSize}
-	                />
-	                {editor}
-	              </>
-	            )}
+	            <DigitizationSuggestionOverlay
+	              digitizationResult={digitizationResult}
+	              documentSize={documentSize}
+	            />
+	            {editor}
 	          </TemplateCanvas>
         </EditorScrollWorkspace>
+        )
       ) : (
         <PlaySurface
           template={{

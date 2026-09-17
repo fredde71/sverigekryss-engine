@@ -1,6 +1,9 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import EditorSessionWorkspace from "./EditorSessionWorkspace";
+import EditorSessionWorkspace, {
+  applyTemplateToEditorSession
+} from "./EditorSessionWorkspace";
+import { createMusikkryssTemplate } from "../musikkryss/MusikkryssTemplateInitializer";
 
 function Harness() {
   const [activeType, setActiveType] = React.useState("sverigekryss");
@@ -91,4 +94,47 @@ test("an asynchronous result stays with its originating session", async () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "Sverige" }));
   expect(screen.getByTestId("result")).toHaveTextContent("done");
+});
+
+test("applies fixed Musikkryss template state without changing Sverigekryss", () => {
+  function InitializationHarness() {
+    const [activeType, setActiveType] = React.useState("sverigekryss");
+
+    return (
+      <EditorSessionWorkspace activeType={activeType}>
+        {({ session, updateSession }) => (
+          <>
+            <button onClick={() => setActiveType("sverigekryss")}>Sverige</button>
+            <button onClick={() => setActiveType("musikkryss")}>Musik</button>
+            <button onClick={() => updateSession("musikkryss", current => (
+              applyTemplateToEditorSession(current, createMusikkryssTemplate({
+                documentSize: { width: 980, height: 1080 },
+                imageSrc: "musik.png"
+              }))
+            ))}>
+              Initiera musik
+            </button>
+            <output data-testid="session-summary">
+              {session.crosswordType}:{session.rows}x{session.cols}:
+              {session.imageSrc || "blank"}
+            </output>
+          </>
+        )}
+      </EditorSessionWorkspace>
+    );
+  }
+
+  render(<InitializationHarness />);
+  fireEvent.click(screen.getByRole("button", { name: "Initiera musik" }));
+
+  expect(screen.getByTestId("session-summary"))
+    .toHaveTextContent("sverigekryss:25x25:blank");
+
+  fireEvent.click(screen.getByRole("button", { name: "Musik" }));
+  expect(screen.getByTestId("session-summary"))
+    .toHaveTextContent("musikkryss:9x10:musik.png");
+
+  fireEvent.click(screen.getByRole("button", { name: "Sverige" }));
+  expect(screen.getByTestId("session-summary"))
+    .toHaveTextContent("sverigekryss:25x25:blank");
 });

@@ -354,6 +354,17 @@ test("public PlaySurface mode is responsive and cropped", () => {
   );
 });
 
+test("Sverigekryss keeps its existing Play presentation", () => {
+  render(<PlaySurface template={template} onSubmitAnswers={() => {}} />);
+
+  expect(screen.queryByTestId("musikkryss-play-layout"))
+    .not.toBeInTheDocument();
+  expect(screen.getByTestId("template-canvas-viewport")).toHaveAttribute(
+    "data-responsive",
+    "false"
+  );
+});
+
 function openValidSubmissionDialog() {
   fireEvent.click(screen.getByRole("button", { name: "Skicka in svar" }));
   fireEvent.change(screen.getByLabelText("Namn *"), {

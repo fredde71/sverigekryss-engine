@@ -158,10 +158,18 @@ session; den andra sessionen lämnas oförändrad. En session utan uppladdat
 dokument renderar en blank arbetsyta. Uppladdning och asynkron Digitization är
 bundna till ursprungssessionens identitet.
 
-Musikkryss Editor-grunden innehåller Intro och 13 separat redigerbara
-ledtrådsmanus. Den återanvänder dokument-, canvas- och Template-infrastrukturen.
-Fast 10 × 9-topologi, fördefinierade celler/svarsvägar, Musikkryss Play, audio
-och AI-röst återstår.
+Musikkryss Editor använder ett katalogägt fast 10 × 9-format. En ny uppladdning
+initierar formatets normaliserade grid-geometri, 59 skrivbara och 31
+icke-skrivbara celler, explicita linjepositioner och 13 numrerade startceller.
+Topologin härleder deterministiskt 15 svar, vart och ett identifierat av nummer
+och riktning och med en egen ordnad `answerPath`. Editor redigerar Intro och varje
+svars textbaserade `contentSequence`; den kräver inte manuell författning av
+formatets svarsvägar.
+
+`MusikkryssEditorContainer` äger Musikkryss-specifik Editor-komposition ovanpå
+delad `TemplateCanvas` och Editor-grid. Sessionens `modeView` växlar mellan denna
+Editor och delad `PlaySurface` utan att återställa dokument eller Template-state.
+Audio, intro-uppspelning och AI-röst återstår.
 
 EditorWorkspace äger editor composition:
 
@@ -256,6 +264,14 @@ RuntimeLayer äger runtime state, interaction/navigation, active line och runtim
 `clueSelection` är den gemensamma rena Engine-gränsen för ledtrådsval. Den löser riktning, svarstart och hela den ordnade svarsvägen tillsammans. Runtime använder Template-ägd explicit `answerPath` när den finns, inklusive svängar, och bevarar rak topologisk inferens för äldre templates.
 
 RuntimeGrid använder Template-ägda explicita horisontella och vertikala linjepositioner när båda axlarna är kompletta. Äldre templates utan dessa fält använder oförändrad uniform CSS-grid-layout.
+
+För `crosswordType: "musikkryss"` adapterar `PlaySurface` vald post ur
+`musikkryss.answers` till den befintliga Runtime-selektionen. Den delade
+`RuntimeLayer` markerar hela `answerPath`, fokuserar dess första cell och använder
+samma path för skrivnavigation. Korsande svar delar RuntimeLayers befintliga
+bokstavsstate. Musikkryss har en egen svarlista och presentation, men ingen forkad
+Runtime; Sverigekryss-flödet är oförändrat. Musikkryss-canvasen är responsiv med
+650 px maximal desktopbredd.
 
 Aktiv runtime-pipeline:
 
