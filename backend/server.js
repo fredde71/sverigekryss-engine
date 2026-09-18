@@ -16,8 +16,10 @@ const {
 const {
   readPublication,
   listPublicationsByCrosswordId,
+  publishPublicationHelpAccess,
   writePublication
 } = require("./publicationStorage");
+const { projectPublicationForAccess } = require("./publicationAccess");
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -51,6 +53,11 @@ app.post("/api/publish", createPublishHandler());
 app.post("/api/submissions", createSubmissionHandler());
 
 app.post("/api/publications", createPublicationSaveHandler());
+
+app.post(
+  "/api/publications/:publicationId/help-access",
+  createPublicationHelpAccessHandler()
+);
 
 app.get("/api/publications/:publicationId", createPublicationLoadHandler());
 
@@ -238,7 +245,8 @@ function createPublicationSaveHandler({
   fsModule = fs,
   pathModule = path,
   publicationStorageDir = PUBLICATION_STORAGE_DIR,
-  generatePublicationId
+  generatePublicationId,
+  generateHelpAccessToken
 } = {}) {
   return (req, res) => {
     try {
@@ -257,7 +265,8 @@ function createPublicationSaveHandler({
         fsModule,
         pathModule,
         publicationStorageDir,
-        generatePublicationId
+        generatePublicationId,
+        generateHelpAccessToken
       });
 
       res.status(201).json(publication);
@@ -303,13 +312,55 @@ function createPublicationLoadHandler({
         });
       }
 
-      res.json(publication);
+      res.json(projectPublicationForAccess(
+        publication,
+        req.query?.helpAccessToken
+      ));
     } catch (err) {
       console.error(err);
 
       res.status(500).json({
         success: false,
         error: "Failed to load publication"
+      });
+    }
+  };
+}
+
+function createPublicationHelpAccessHandler({
+  fsModule = fs,
+  pathModule = path,
+  publicationStorageDir = PUBLICATION_STORAGE_DIR
+} = {}) {
+  return (req, res) => {
+    try {
+      const validationError = getPublicationIdValidationError(
+        req.params.publicationId
+      );
+      if (validationError) {
+        return res.status(400).json({ success: false, error: validationError });
+      }
+
+      const publication = publishPublicationHelpAccess(
+        req.params.publicationId,
+        { fsModule, pathModule, publicationStorageDir }
+      );
+      if (!publication) {
+        return res.status(404).json({
+          success: false,
+          error: "Publication not found"
+        });
+      }
+
+      return res.json(publication);
+    } catch (err) {
+      if (err.code === "HELP_ACCESS_NOT_READY") {
+        return res.status(409).json({ success: false, error: err.message });
+      }
+      console.error(err);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to publish help access"
       });
     }
   };
@@ -340,7 +391,9 @@ function createCrosswordPublicationsListHandler({
         publicationStorageDir
       });
 
-      res.json(publications);
+      res.json(publications.map(publication => (
+        projectPublicationForAccess(publication, null)
+      )));
     } catch (err) {
       console.error(err);
 
@@ -476,6 +529,7 @@ module.exports = {
   createLoadHandler,
   createSubmissionHandler,
   createPublicationSaveHandler,
+  createPublicationHelpAccessHandler,
   createPublicationLoadHandler,
   createCrosswordPublicationsListHandler
 };

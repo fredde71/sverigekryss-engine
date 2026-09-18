@@ -6,9 +6,10 @@ const {
   normalizePublicationId,
   getPublicationIdValidationError
 } = require("./publicationIdValidation");
+const { normalizeHelpAccessToken } = require("./helpAccessToken");
 
 function normalizePublication(input = {}) {
-  return {
+  const publication = {
     publicationId: normalizePublicationId(input.publicationId),
     crosswordId: normalizeCrosswordId(input.crosswordId),
     newspaper: normalizeOptionalString(input.newspaper),
@@ -19,11 +20,34 @@ function normalizePublication(input = {}) {
     url: normalizeOptionalString(input.url),
     statistics: normalizeStatistics(input.statistics)
   };
+  const snapshot = normalizeCrosswordSnapshot(input.crosswordSnapshot);
+
+  if (snapshot) {
+    publication.crosswordSnapshot = snapshot;
+  }
+
+  const helpAccessToken = normalizeHelpAccessToken(input.helpAccessToken);
+  if (helpAccessToken) {
+    publication.helpAccessToken = helpAccessToken;
+    publication.helpAccessStatus = input.helpAccessStatus === "active"
+      ? "active"
+      : "inactive";
+  }
+
+  return publication;
 }
 
 function createPublication(input = {}) {
   const publication = normalizePublication(input);
-  const errors = getPublicationValidationErrors(publication);
+  const errors = getPublicationValidationErrors({
+    ...publication,
+    ...(Object.hasOwn(input, "crosswordSnapshot") ? {
+      crosswordSnapshot: input.crosswordSnapshot
+    } : {}),
+    ...(Object.hasOwn(input, "helpAccessToken") ? {
+      helpAccessToken: input.helpAccessToken
+    } : {})
+  });
 
   if (errors.length > 0) {
     throw new Error(errors[0]);
@@ -48,6 +72,17 @@ function getPublicationValidationErrors(input = {}, {
 
   if (crosswordIdError) {
     errors.push(crosswordIdError);
+  }
+
+  if (input.crosswordSnapshot != null) {
+    const snapshot = normalizeCrosswordSnapshot(input.crosswordSnapshot);
+    if (!snapshot || snapshot.crosswordId !== normalizeCrosswordId(input.crosswordId)) {
+      errors.push("Invalid crosswordSnapshot");
+    }
+  }
+
+  if (input.helpAccessToken != null && !normalizeHelpAccessToken(input.helpAccessToken)) {
+    errors.push("Invalid helpAccessToken");
   }
 
   return errors;
@@ -79,6 +114,31 @@ function normalizeStatistics(value) {
   }
 
   return { ...value };
+}
+
+function normalizeCrosswordSnapshot(value) {
+  if (
+    value?.type !== "crossword-snapshot"
+    || value?.version !== 1
+    || !value.template
+    || typeof value.template !== "object"
+  ) {
+    return null;
+  }
+
+  const crosswordId = normalizeCrosswordId(
+    value.crosswordId || value.template.crosswordId
+  );
+  if (!crosswordId || normalizeCrosswordId(value.template.crosswordId) !== crosswordId) {
+    return null;
+  }
+
+  return {
+    type: "crossword-snapshot",
+    version: 1,
+    crosswordId,
+    template: structuredClone(value.template)
+  };
 }
 
 module.exports = {

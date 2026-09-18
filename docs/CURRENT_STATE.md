@@ -38,6 +38,22 @@ och navigerar i path-ordning; korsande svar delar samma bokstavsstate. Play-ytan
 responsiv med 650 px maximal desktopbredd. Audio, intro-uppspelning och AI-röst är
 ännu inte implementerade.
 
+Veckans Musikkryss-innehåll har nu en ren, källformatsoberoende importgräns.
+`MusikkryssFormat` äger fortsatt topologi och svarsvägar; veckoinnehållet äger
+issue-metadata, intro, manus och kanoniska lösningar. Importen matchar exakt på
+`number + direction` och avvisar saknade, duplicerade eller oväntade svar, tomma
+manus, felaktiga lösningslängder och bokstavskonflikter i korsningar. Endast en
+giltig import producerar normaliserat issue-innehåll, och importen ändrar aldrig
+dokument-, grid- eller sessionsstate direkt. JSON, CSV och Excel är framtida
+adaptrar till samma domänkontrakt, inte egna innehållsmodeller.
+
+Template äger kanoniska lösningar för båda korsordstyperna. En publicering
+innehåller ett immutabelt snapshot och en oförändrad lösarlänk. Facit/hjälp
+aktiveras separat med `Publicera facit` först när lösningarna är kompletta och
+korsningskonsistenta; en separat, ogissningsbar capability-token ger då åtkomst.
+Solve-projektionen innehåller inga kanoniska lösningar. Referenskrysset är en
+explicit utvecklings-/demofunktion och är inte standardinnehåll för nya issues.
+
 Följande är färdigt i aktuell editor/play-produktion:
 
 - svensk vänstermeny
@@ -139,6 +155,12 @@ Senarelagt bortom V1:
 ---
 
 # Senaste verifierade milstolpe
+
+Den source-neutrala `MusikkryssWeeklyContentImport`-gränsen är implementerad.
+Den väljer katalogformat, använder enbart formatägda svarsvägar och returnerar
+antingen ett immutabelt giltigt innehåll eller ett explicit ogiltigt resultat med
+ordnade diagnostikposter. Nästa milstolpe är en dedikerad veckoinnehålls-importyta
+och filadaptrar ovanpå denna domängräns.
 
 Musikkryss format- och Play-grund är implementerad ovanpå de självständiga
 Editor-sessionerna. Ny Musikkryss-uppladdning initierar automatiskt det katalogägda

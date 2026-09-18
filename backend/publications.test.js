@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
   createPublicationSaveHandler,
+  createPublicationHelpAccessHandler,
   createPublicationLoadHandler,
   createCrosswordPublicationsListHandler
 } = require("./server");
@@ -169,7 +170,67 @@ test("GET /api/publications/:publicationId returns stored Publication", () => {
   }, res);
 
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body, validPublication);
+  assert.deepEqual(res.body, {
+    ...validPublication,
+    access: {
+      type: "publication-access",
+      version: 1,
+      mode: "solve",
+      capabilities: {
+        useCanonicalSolutions: false
+      }
+    }
+  });
+});
+
+test("POST help-access explicitly activates the existing secure capability", () => {
+  const filePath = "/publications/PUB-HELP-1.json";
+  const files = new Map([[filePath, JSON.stringify({
+    ...validPublication,
+    publicationId: "PUB-HELP-1",
+    crosswordId: "TT-HELP-1",
+    helpAccessToken: "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789",
+    helpAccessStatus: "inactive",
+    crosswordSnapshot: {
+      type: "crossword-snapshot",
+      version: 1,
+      crosswordId: "TT-HELP-1",
+      template: {
+        crosswordId: "TT-HELP-1",
+        crosswordType: "sverigekryss",
+        rows: 1,
+        cols: 3,
+        cellTypes: ["blocked", "write", "write"],
+        answerPaths: [{
+          clueIndex: 0,
+          paths: [{
+            direction: "across",
+            cellIndexes: [1, 2],
+            solution: "AB"
+          }]
+        }]
+      }
+    }
+  })]]);
+  const handler = createPublicationHelpAccessHandler({
+    fsModule: {
+      existsSync(path) { return files.has(path); },
+      readFileSync(path) { return files.get(path); },
+      writeFileSync(path, contents) { files.set(path, contents); }
+    },
+    pathModule: createPathModule(),
+    publicationStorageDir: "/publications"
+  });
+  const res = createResponse();
+
+  handler({ params: { publicationId: "PUB-HELP-1" } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.helpAccessStatus, "active");
+  assert.equal(
+    JSON.parse(files.get(filePath)).helpAccessStatus,
+    "active"
+  );
 });
 
 test("GET /api/publications/:publicationId returns 404 for missing Publication", () => {

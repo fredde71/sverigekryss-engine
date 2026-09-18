@@ -5,6 +5,9 @@ import {
 import {
   normalizeMusikkryssContent
 } from "../musikkryss/MusikkryssFormat";
+import {
+  normalizeCanonicalSolution
+} from "./templateSolutions";
 
 const CROSSWORD_TYPES = new Set(["sverigekryss", "musikkryss"]);
 
@@ -231,8 +234,14 @@ function normalizeAnswerPaths({ answerPaths, rows, cols, cellTypes }) {
         cellIndexes.push(cellIndex);
       }
 
+      const solution = normalizeCanonicalSolution(path.solution);
+
       usedDirections.add(direction);
-      paths.push({ direction, cellIndexes });
+      paths.push({
+        direction,
+        cellIndexes,
+        ...(solution ? { solution } : {})
+      });
     });
 
     if (paths.length === 0) return;

@@ -36,7 +36,15 @@ test("publish flow creates Publication after existing template publish succeeds"
   expect(publishSection).toContain("createPublicationFromTemplate");
   expect(publishSection).toContain("const createdPublication = await createBackendPublication(publication);");
   expect(publishSection).toContain("createdPublication.publicationId || crosswordId");
+  expect(publishSection).toContain("setLatestPublicationByType");
   expect(publishSection).toContain("await refreshPublications(crosswordId);");
+});
+
+test("publish flow delegates solve/help link presentation", () => {
+  expect(appSource).toContain("<PublicationAccessLinks");
+  expect(appSource).toContain("publication={latestPublicationByType[crosswordType]}");
+  expect(appSource).toContain("publishBackendHelpAccess");
+  expect(appSource).toContain("onPublishHelp={async () => {");
 });
 
 test("editor sidebar contains Publication list section", () => {
@@ -132,7 +140,9 @@ test("upload flow runs production digitization through the browser ImageData ada
   expect(digitizationSection).not.toContain("setCols");
   expect(digitizationSection).not.toContain("setCropArea");
   expect(digitizationSection).not.toContain("setSuggestions");
-  expect(appSource).toContain("documentAvailable={Boolean(imageSrc)}");
+  expect(appSource).toContain(
+    "documentAvailable={hasEditorSessionDocumentOrGrid(session)}"
+  );
   expect(
     appSource.match(/documentLifecycleId=\{editorDocumentLifecycleId\}/g)
   ).toHaveLength(3);
@@ -214,6 +224,8 @@ test("App orchestrates the top-level Musikkryss editor shell", () => {
   expect(appSource).toContain("<MusikkryssEditorContainer");
   expect(appSource).toContain("musikkryss={musikkryss}");
   expect(appSource).toContain("onMusikkryssChange={setMusikkryss}");
+  expect(appSource).toContain("onLoadReference={() => updateSession(");
+  expect(appSource).toContain("loadMusikkryssReferenceIntoEditorSession");
   expect(appSource).toContain("crosswordType === \"musikkryss\"");
   expect(appSource).not.toContain("setMusikkryssIntroScript");
   expect(appSource).not.toContain("setMusikkryssClueText");

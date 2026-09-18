@@ -1,4 +1,5 @@
 import { createGridFormatGeometry } from "../digitization/analysis/reconstruction/GridFormatGeometry";
+import { normalizeCanonicalSolution } from "../template/templateSolutions";
 
 const ROWS = 9;
 const COLS = 10;
@@ -86,6 +87,7 @@ export function normalizeMusikkryssContent(value) {
       const textEntry = Array.isArray(source?.contentSequence)
         ? source.contentSequence.find(entry => entry?.type === "text")
         : null;
+      const solution = normalizeCanonicalSolution(source?.solution);
 
       return {
         number: definition.number,
@@ -94,7 +96,8 @@ export function normalizeMusikkryssContent(value) {
         contentSequence: [{
           type: "text",
           text: typeof textEntry?.text === "string" ? textEntry.text : ""
-        }]
+        }],
+        ...(solution ? { solution } : {})
       };
     })
   };

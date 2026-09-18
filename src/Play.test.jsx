@@ -41,6 +41,7 @@ jest.mock("./play/PlaySurface", () => {
 
 afterEach(() => {
   jest.clearAllMocks();
+  window.history.replaceState({}, "", "/");
 });
 
 test("network/load failure produces the Public Play error state", async () => {
@@ -96,7 +97,9 @@ test("Public Play loads template through Publication crosswordId first", async (
     expect(PlaySurface).toHaveBeenCalled();
   });
 
-  expect(loadBackendPublication).toHaveBeenCalledWith("missing-template");
+  expect(loadBackendPublication).toHaveBeenCalledWith("missing-template", {
+    helpAccessToken: ""
+  });
   expect(loadBackendTemplate).toHaveBeenCalledWith("TT-2026-0001");
   expect(PlaySurface).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -141,11 +144,95 @@ test("Public Play falls back to legacy crosswordId when Publication is missing",
     expect(PlaySurface).toHaveBeenCalled();
   });
 
-  expect(loadBackendPublication).toHaveBeenCalledWith("missing-template");
+  expect(loadBackendPublication).toHaveBeenCalledWith("missing-template", {
+    helpAccessToken: ""
+  });
   expect(loadBackendTemplate).toHaveBeenCalledWith("missing-template");
   expect(PlaySurface).toHaveBeenCalledWith(
     expect.objectContaining({
       publicationId: ""
+    }),
+    undefined
+  );
+});
+
+test("Public Play uses the Publication snapshot without loading mutable Template state", async () => {
+  loadBackendPublication.mockResolvedValue({
+    publicationId: "PUB-SNAPSHOT-1",
+    crosswordId: "TT-SNAPSHOT-1",
+    crosswordSnapshot: {
+      type: "crossword-snapshot",
+      version: 1,
+      crosswordId: "TT-SNAPSHOT-1",
+      template: {
+        crosswordId: "TT-SNAPSHOT-1",
+        crosswordType: "sverigekryss",
+        rows: 1,
+        cols: 1,
+        cellTypes: ["write"],
+        imageSrc: "/grid.png",
+        documentSize: { width: 100, height: 100 },
+        cropArea: { top: 0, left: 0, width: 100, height: 100 },
+        gridArea: { top: 0, left: 0, width: 100, height: 100 }
+      }
+    }
+  });
+
+  render(<Play />);
+
+  await waitFor(() => expect(PlaySurface).toHaveBeenCalled());
+  expect(loadBackendTemplate).not.toHaveBeenCalled();
+  expect(PlaySurface).toHaveBeenCalledWith(
+    expect.objectContaining({
+      publicationId: "PUB-SNAPSHOT-1",
+      template: expect.objectContaining({
+        crosswordId: "TT-SNAPSHOT-1"
+      })
+    }),
+    undefined
+  );
+});
+
+test("help link requests help access for the same Publication", async () => {
+  const helpAccessToken = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+  window.history.replaceState(
+    {},
+    "",
+    `/play/missing-template?helpAccessToken=${helpAccessToken}`
+  );
+  loadBackendPublication.mockResolvedValue({
+    publicationId: "PUB-HELP-1",
+    crosswordId: "TT-HELP-1",
+    access: {
+      mode: "help",
+      capabilities: { useCanonicalSolutions: true }
+    },
+    crosswordSnapshot: {
+      type: "crossword-snapshot",
+      version: 1,
+      crosswordId: "TT-HELP-1",
+      template: {
+        crosswordId: "TT-HELP-1",
+        crosswordType: "sverigekryss",
+        rows: 1,
+        cols: 1,
+        cellTypes: ["write"],
+        imageSrc: "",
+        documentSize: { width: 100, height: 100 },
+        gridArea: { top: 0, left: 0, width: 100, height: 100 }
+      }
+    }
+  });
+
+  render(<Play />);
+
+  await waitFor(() => expect(PlaySurface).toHaveBeenCalled());
+  expect(loadBackendPublication).toHaveBeenCalledWith("missing-template", {
+    helpAccessToken
+  });
+  expect(PlaySurface).toHaveBeenCalledWith(
+    expect.objectContaining({
+      publicationAccess: expect.objectContaining({ mode: "help" })
     }),
     undefined
   );

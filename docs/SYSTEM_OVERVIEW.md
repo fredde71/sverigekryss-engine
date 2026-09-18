@@ -171,6 +171,15 @@ delad `TemplateCanvas` och Editor-grid. Sessionens `modeView` växlar mellan den
 Editor och delad `PlaySurface` utan att återställa dokument eller Template-state.
 Audio, intro-uppspelning och AI-röst återstår.
 
+`MusikkryssWeeklyContentImport` är den rena domängränsen för levererat
+veckoinnehåll. Den tar ett source-neutralt kontrakt med format-ID, issue-metadata,
+intro samt manus och lösning per `number + direction`. Formatkatalogen levererar
+topologi och svarsvägar; importen får inte ta emot eller ändra dokument- eller
+grid-geometri. Den producerar normaliserat innehåll endast när alla förväntade
+svar finns exakt en gång, manus är ifyllda, lösningslängder stämmer och
+korsningarna är konsistenta. Excel-, CSV- och JSON-läsare ska vara adaptrar före
+denna gräns. En dedikerad Editor-container för veckoinnehållsimport är nästa steg.
+
 EditorWorkspace äger editor composition:
 
 - montering av EditorViewport
@@ -264,6 +273,11 @@ RuntimeLayer äger runtime state, interaction/navigation, active line och runtim
 `clueSelection` är den gemensamma rena Engine-gränsen för ledtrådsval. Den löser riktning, svarstart och hela den ordnade svarsvägen tillsammans. Runtime använder Template-ägd explicit `answerPath` när den finns, inklusive svängar, och bevarar rak topologisk inferens för äldre templates.
 
 RuntimeGrid använder Template-ägda explicita horisontella och vertikala linjepositioner när båda axlarna är kompletta. Äldre templates utan dessa fält använder oförändrad uniform CSS-grid-layout.
+
+Kanoniska lösningar ligger i Template men exponeras inte i normal Solve-access.
+`PlaySurface` använder en gemensam lösningsindex/reveal-operation för båda
+korsordstyperna när en publicerad Help-capability är giltig. Reveal-state är
+spelarspecifikt Runtime-state och ändrar varken Template eller publiceringssnapshot.
 
 För `crosswordType: "musikkryss"` adapterar `PlaySurface` vald post ur
 `musikkryss.answers` till den befintliga Runtime-selektionen. Den delade
@@ -404,6 +418,10 @@ Persistence Platform äger:
 - runtime persistence directories som repository-normaliserade mappar
 - oförändrad lagring av Template-ägda `answerPaths`, `competitionCells` och explicita linjepositioner
 - färsk template-load med `Cache-Control: no-store`/`cache: no-store`
+- ett immutabelt korsordssnapshot per publicering
+- separat, explicit aktivering av Help/Facit-capability när lösningarna är
+  kompletta och korsningskonsistenta
+- en ogissningsbar help-token som aldrig gör lösarlänken lösningsbehörig
 
 Persistence Platform äger inte:
 

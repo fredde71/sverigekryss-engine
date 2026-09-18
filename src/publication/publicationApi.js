@@ -17,9 +17,14 @@ export async function createBackendPublication(publication) {
   return data;
 }
 
-export async function loadBackendPublication(publicationId) {
+export async function loadBackendPublication(publicationId, {
+  helpAccessToken = ""
+} = {}) {
+  const accessQuery = helpAccessToken
+    ? `?helpAccessToken=${encodeURIComponent(helpAccessToken)}`
+    : "";
   const response = await fetch(
-    `${BACKEND_BASE_URL}/api/publications/${publicationId}`
+    `${BACKEND_BASE_URL}/api/publications/${publicationId}${accessQuery}`
   );
   const data = await response.json();
 
@@ -28,6 +33,20 @@ export async function loadBackendPublication(publicationId) {
 
     error.status = response.status;
     throw error;
+  }
+
+  return data;
+}
+
+export async function publishBackendHelpAccess(publicationId) {
+  const response = await fetch(
+    `${BACKEND_BASE_URL}/api/publications/${publicationId}/help-access`,
+    { method: "POST" }
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.error || "Failed to publish help access");
   }
 
   return data;

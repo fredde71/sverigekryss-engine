@@ -49,14 +49,22 @@ test("createPublication defaults optional fields safely", () => {
 });
 
 test("createPublicationFromTemplate builds the first editor Publication", () => {
+  const gridArea = { top: 0, left: 0, width: 100, height: 100 };
+  const template = {
+    crosswordId: "TT-2026-0001",
+    rows: 1,
+    cols: 1,
+    cellTypes: ["write"],
+    documentSize: { width: 100, height: 100 },
+    gridArea,
+    imageSrc: ""
+  };
   const publication = createPublicationFromTemplate({
-    template: {
-      crosswordId: "TT-2026-0001"
-    },
+    template,
     publicUrl: "https://wordex.example/play/TT-2026-0001"
   });
 
-  expect(publication).toEqual({
+  expect(publication).toMatchObject({
     publicationId: "",
     crosswordId: "TT-2026-0001",
     newspaper: "",
@@ -65,6 +73,38 @@ test("createPublicationFromTemplate builds the first editor Publication", () => 
     publishWeek: "",
     status: "published",
     url: "https://wordex.example/play/TT-2026-0001",
-    statistics: {}
+    statistics: {},
+    crosswordSnapshot: {
+      type: "crossword-snapshot",
+      version: 1,
+      crosswordId: "TT-2026-0001",
+      template: expect.objectContaining({
+        crosswordId: "TT-2026-0001"
+      })
+    }
   });
+  expect(Object.isFrozen(publication.crosswordSnapshot)).toBe(true);
+  expect(Object.isFrozen(gridArea)).toBe(false);
+  gridArea.width = 200;
+  expect(publication.crosswordSnapshot.template.gridArea.width).toBe(100);
+});
+
+test("Publication snapshot must belong to the same crossword", () => {
+  const snapshotPublication = createPublicationFromTemplate({
+    template: {
+      crosswordId: "TT-OTHER",
+      rows: 1,
+      cols: 1,
+      cellTypes: ["write"],
+      documentSize: { width: 100, height: 100 },
+      gridArea: { top: 0, left: 0, width: 100, height: 100 },
+      imageSrc: ""
+    },
+    publicUrl: "https://wordex.example/play/TT-OTHER"
+  });
+
+  expect(() => createPublication({
+    ...snapshotPublication,
+    crosswordId: "TT-DIFFERENT"
+  })).toThrow("Publication snapshot crosswordId mismatch");
 });

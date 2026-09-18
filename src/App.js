@@ -7,7 +7,9 @@ import EditorModeSwitch from "./editor/EditorModeSwitch";
 import EditorPlayModeSwitch from "./editor/EditorPlayModeSwitch";
 import MusikkryssEditorContainer from "./editor/MusikkryssEditorContainer";
 import EditorSessionWorkspace, {
-  applyTemplateToEditorSession
+  applyTemplateToEditorSession,
+  hasEditorSessionDocumentOrGrid,
+  loadMusikkryssReferenceIntoEditorSession
 } from "./editor/EditorSessionWorkspace";
 import GridCell from "./components/GridCell";
 import EditCell from "./components/EditCell";
@@ -31,9 +33,11 @@ import {
 } from "./template/publishMessages";
 import {
   createBackendPublication,
-  loadBackendPublicationsForCrossword
+  loadBackendPublicationsForCrossword,
+  publishBackendHelpAccess
 } from "./publication/publicationApi";
 import { createPublicationFromTemplate } from "./publication/publicationModel";
+import PublicationAccessLinks from "./publication/PublicationAccessLinks";
 import { readBrowserImageData } from "./digitization/adapters/browserImageDataReader";
 import { runDigitizationJob } from "./digitization/engine/DigitizationEngine";
 import DigitizationSuggestionOverlay from "./digitization/DigitizationSuggestionOverlay";
@@ -164,6 +168,10 @@ useEffect(() => {
   const [publications, setPublications] = useState([]);
   const [publicationsStatus, setPublicationsStatus] = useState("idle");
   const [publicationsError, setPublicationsError] = useState("");
+  const [latestPublicationByType, setLatestPublicationByType] = useState({
+    sverigekryss: null,
+    musikkryss: null
+  });
   const digitizationUploadIdRef = useRef({
     sverigekryss: 0,
     musikkryss: 0
@@ -610,7 +618,7 @@ const handleTemplateImport = async (e) => {
       setCellTypes={setCellTypes}
       gridProposal={gridLatticeEditorProposal}
       documentLifecycleId={editorDocumentLifecycleId}
-      documentAvailable={Boolean(imageSrc)}
+      documentAvailable={hasEditorSessionDocumentOrGrid(session)}
       isPublicRuntime={isPublicRuntime}
     >
       {({ toolbar, competitionMenu, answerPathMenu, editor }) => (
@@ -775,6 +783,14 @@ const handleTemplateImport = async (e) => {
                     createdPublication.publicationId || crosswordId
                   }`;
 
+                  setLatestPublicationByType(current => ({
+                    ...current,
+                    [crosswordType]: {
+                      ...createdPublication,
+                      url: publicUrl
+                    }
+                  }));
+
                   await refreshPublications(crosswordId);
 
                   alert(getPublishSuccessMessage(publicUrl));
@@ -795,6 +811,26 @@ const handleTemplateImport = async (e) => {
           <button onClick={generateLink} style={sidebarButtonStyle}>
             Generera länk
           </button>
+
+          <PublicationAccessLinks
+            publication={latestPublicationByType[crosswordType]}
+            onPublishHelp={async () => {
+              const currentPublication = latestPublicationByType[crosswordType];
+              if (!currentPublication?.publicationId) return;
+
+              try {
+                const activatedPublication = await publishBackendHelpAccess(
+                  currentPublication.publicationId
+                );
+                setLatestPublicationByType(current => ({
+                  ...current,
+                  [crosswordType]: activatedPublication
+                }));
+              } catch (err) {
+                alert(err.message || "Facit kunde inte publiceras.");
+              }
+            }}
+          />
         </section>
 
         <section style={sidebarSectionStyle}>
@@ -852,6 +888,10 @@ const handleTemplateImport = async (e) => {
             editor={editor}
             musikkryss={musikkryss}
             onMusikkryssChange={setMusikkryss}
+            onLoadReference={() => updateSession(
+              "musikkryss",
+              loadMusikkryssReferenceIntoEditorSession
+            )}
             zoomState={editorZoomState}
             setZoomState={setEditorZoomState}
             scrollState={editorScrollState}

@@ -10,6 +10,7 @@ export default function MusikkryssEditorContainer({
   editor,
   musikkryss,
   onMusikkryssChange,
+  onLoadReference,
   zoomState,
   setZoomState,
   scrollState,
@@ -51,6 +52,7 @@ export default function MusikkryssEditorContainer({
         <MusikkryssEditorPanel
           value={content}
           onChange={onMusikkryssChange}
+          onLoadReference={onLoadReference}
           selectedAnswerId={selectedAnswerId}
           onSelectedAnswerIdChange={setSelectedAnswerId}
         />

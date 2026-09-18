@@ -1,7 +1,8 @@
 import {
   createBackendPublication,
   loadBackendPublication,
-  loadBackendPublicationsForCrossword
+  loadBackendPublicationsForCrossword,
+  publishBackendHelpAccess
 } from "./publicationApi";
 import { BACKEND_BASE_URL } from "../template/persistenceConfig";
 
@@ -89,6 +90,42 @@ test("loadBackendPublication uses backend URL and returns Publication", async ()
     `${BACKEND_BASE_URL}/api/publications/pub-20260720102030-abc123`
   );
   expect(result).toEqual(responseBody);
+});
+
+test("loadBackendPublication presents the help capability explicitly", async () => {
+  global.fetch.mockResolvedValue({
+    ok: true,
+    json: jest.fn().mockResolvedValue({
+      publicationId: "PUB-HELP-1",
+      crosswordId: "TT-HELP-1",
+      access: { mode: "help" }
+    })
+  });
+
+  const helpAccessToken = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+  await loadBackendPublication("PUB-HELP-1", { helpAccessToken });
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    `${BACKEND_BASE_URL}/api/publications/PUB-HELP-1?helpAccessToken=${helpAccessToken}`
+  );
+});
+
+test("publishBackendHelpAccess activates facit for the existing Publication", async () => {
+  const responseBody = {
+    publicationId: "PUB-HELP-1",
+    helpAccessStatus: "active"
+  };
+  global.fetch.mockResolvedValue({
+    ok: true,
+    json: jest.fn().mockResolvedValue(responseBody)
+  });
+
+  await expect(publishBackendHelpAccess("PUB-HELP-1"))
+    .resolves.toEqual(responseBody);
+  expect(global.fetch).toHaveBeenCalledWith(
+    `${BACKEND_BASE_URL}/api/publications/PUB-HELP-1/help-access`,
+    { method: "POST" }
+  );
 });
 
 test("loadBackendPublication throws backend error with status for missing Publication", async () => {

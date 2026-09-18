@@ -160,6 +160,7 @@ En Template med `crosswordType: "musikkryss"` kan dessutom innehålla:
 - `musikkryss.answers[].direction`
 - `musikkryss.answers[].answerPath`
 - `musikkryss.answers[].contentSequence`
+- `musikkryss.answers[].solution`
 
 Ett Musikkryss-svar identifieras unikt av `number + direction`, där riktningen är
 `across` eller `down`. Samma tryckta nummer kan därför äga både ett vågrätt och
@@ -189,6 +190,42 @@ Musikkryss-Template och materialiserar grid/linjer mot uppladdningens
 dokumentdimensioner. Formatet är generellt katalogiserat för framtida format;
 den offline-källa som användes för att bekräfta nuvarande format är inte ett
 runtime-beroende.
+
+### MusikkryssWeeklyContentImport
+
+`MusikkryssWeeklyContentImport` äger validering och normalisering av ett levererat
+veckoinnehåll. Kontraktet innehåller:
+
+- `formatId`
+- issue-metadata (`crosswordId`, titel, nummer, publiceringsvecka/-datum och
+  producentreferens)
+- `introScript`
+- ett svar per `number + direction`, med textbaserad `contentSequence` och
+  kanonisk `solution`
+
+Kontraktet innehåller inte topologi, geometri eller svarsvägar. Dessa hämtas
+alltid från valt `MusikkryssFormat`. Importen avvisar saknade, duplicerade och
+oväntade svar, tomma manus, ogiltiga lösningslängder och konflikter i korsande
+celler. Ett giltigt resultat innehåller normaliserat issue-innehåll i formatets
+deterministiska svarsordning; ett ogiltigt resultat innehåller `content: null`
+och explicit diagnostik. Operationen är ren och får inte mutera Template,
+dokument, grid eller Editor-session.
+
+Excel, CSV och JSON är endast transport-/parseradaptrar in i detta kontrakt.
+Den explicita referenspacken är utvecklingsdata och är inte ett standardvärde
+för framtida Musikkryss-issues.
+
+### Canonical solutions and publication access
+
+Kanoniska lösningar ägs av Template: Musikkryss lagrar dem per riktningssvar och
+Sverigekryss per befintlig svarsväg. Ett gemensamt lösningsindex validerar längd,
+kompletthet och gemensamma bokstäver i korsningar.
+
+En `Publication` refererar ett immutabelt crossword snapshot. Solve-access får en
+projektion där kanoniska lösningar är borttagna. Help-access kräver både explicit
+aktivering efter publicering och en separat ogissningsbar `helpAccessToken`;
+saknad eller felaktig token beter sig som Solve. Help/reveal-state är Runtime-data
+och muterar inte snapshot eller Template.
 
 ### Optional fields
 

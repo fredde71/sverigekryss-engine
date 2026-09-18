@@ -14,7 +14,8 @@ function PlayCell({
   maxLength,
   presentation = "default",
   isFocusedCell = false,
-  isDimmed = false
+  isDimmed = false,
+  readOnly = false
 }) {
   const isMusikkryss = presentation === "musikkryss";
   const backgroundColor = isMusikkryss
@@ -46,6 +47,7 @@ function PlayCell({
         value={value}
         onChange={onChange}
         disabled={disabled}
+        readOnly={readOnly}
         autoFocus={isActive}
         ref={inputRef}
         data-index={dataIndex}

@@ -6,6 +6,10 @@ const {
   getPublicationIdValidationError
 } = require("./publicationIdValidation");
 const { createPublicationId } = require("./publicationIdGenerator");
+const { createHelpAccessToken } = require("./helpAccessToken");
+const {
+  hasCompleteTemplateSolutions
+} = require("./templateSolutionCompleteness");
 
 const DEFAULT_PUBLICATION_STORAGE_DIR =
   process.env.PUBLICATION_STORAGE_DIR || path.join(__dirname, "publications");
@@ -71,25 +75,125 @@ function writePublication(publication, {
   fsModule = fs,
   pathModule = path,
   publicationStorageDir = DEFAULT_PUBLICATION_STORAGE_DIR,
-  generatePublicationId = createPublicationId
+  generatePublicationId = createPublicationId,
+  generateHelpAccessToken = createHelpAccessToken
 } = {}) {
   const ensuredPublication = ensurePublicationId(
     publication,
     generatePublicationId
   );
-  const normalizedPublication = createPublication(ensuredPublication);
+  const normalizedPublication = createPublication({
+    ...ensuredPublication,
+    helpAccessToken: undefined,
+    helpAccessStatus: undefined
+  });
   const filePath = getPublicationFilePath(normalizedPublication.publicationId, {
     pathModule,
     publicationStorageDir
+  });
+  const publicationToWrite = preserveImmutablePublicationCapabilities({
+    publication: normalizedPublication,
+    filePath,
+    fsModule,
+    generateHelpAccessToken
   });
 
   fsModule.mkdirSync(publicationStorageDir, { recursive: true });
   fsModule.writeFileSync(
     filePath,
-    JSON.stringify(normalizedPublication, null, 2)
+    JSON.stringify(publicationToWrite, null, 2)
   );
 
-  return normalizedPublication;
+  return publicationToWrite;
+}
+
+function preserveImmutablePublicationCapabilities({
+  publication,
+  filePath,
+  fsModule,
+  generateHelpAccessToken
+}) {
+  if (
+    typeof fsModule.existsSync !== "function"
+    || !fsModule.existsSync(filePath)
+  ) {
+    return withGeneratedHelpCapability(publication, generateHelpAccessToken);
+  }
+
+  const existing = createPublication(JSON.parse(
+    fsModule.readFileSync(filePath, "utf8")
+  ));
+  if (!existing.crosswordSnapshot) {
+    return withGeneratedHelpCapability(publication, generateHelpAccessToken);
+  }
+
+  if (
+    publication.crosswordSnapshot
+    && JSON.stringify(publication.crosswordSnapshot)
+      !== JSON.stringify(existing.crosswordSnapshot)
+  ) {
+    throw new Error("Publication crosswordSnapshot is immutable");
+  }
+
+  const preservedPublication = {
+    ...publication,
+    crosswordSnapshot: existing.crosswordSnapshot,
+    ...(existing.helpAccessToken ? {
+      helpAccessToken: existing.helpAccessToken,
+      helpAccessStatus: existing.helpAccessStatus || "inactive"
+    } : {})
+  };
+
+  return existing.helpAccessToken
+    ? preservedPublication
+    : withGeneratedHelpCapability(
+      preservedPublication,
+      generateHelpAccessToken
+    );
+}
+
+function withGeneratedHelpCapability(publication, generateHelpAccessToken) {
+  const template = publication.crosswordSnapshot?.template;
+  if (!template || !hasCompleteTemplateSolutions(template)) return publication;
+
+  return createPublication({
+    ...publication,
+    helpAccessToken: generateHelpAccessToken(),
+    helpAccessStatus: "inactive"
+  });
+}
+
+function publishPublicationHelpAccess(publicationId, {
+  fsModule = fs,
+  pathModule = path,
+  publicationStorageDir = DEFAULT_PUBLICATION_STORAGE_DIR
+} = {}) {
+  const publication = readPublication(publicationId, {
+    fsModule,
+    pathModule,
+    publicationStorageDir
+  });
+  if (!publication) return null;
+
+  if (
+    !publication.helpAccessToken
+    || !hasCompleteTemplateSolutions(publication.crosswordSnapshot?.template)
+  ) {
+    const error = new Error("Complete valid solutions are required");
+    error.code = "HELP_ACCESS_NOT_READY";
+    throw error;
+  }
+
+  const activated = createPublication({
+    ...publication,
+    helpAccessStatus: "active"
+  });
+  const filePath = getPublicationFilePath(publicationId, {
+    pathModule,
+    publicationStorageDir
+  });
+  fsModule.writeFileSync(filePath, JSON.stringify(activated, null, 2));
+  return activated;
 }
 
 function ensurePublicationId(publication, generatePublicationId) {
@@ -153,6 +257,7 @@ module.exports = {
   DEFAULT_PUBLICATION_STORAGE_DIR,
   getPublicationFilePath,
   listPublicationsByCrosswordId,
+  publishPublicationHelpAccess,
   readPublication,
   writePublication
 };

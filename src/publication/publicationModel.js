@@ -1,5 +1,11 @@
+import {
+  createCrosswordSnapshot,
+  normalizeCrosswordSnapshot
+} from "./crosswordSnapshot";
+import { normalizeHelpAccessToken } from "./publicationAccess";
+
 export function createPublication(input = {}) {
-  return {
+  const publication = {
     publicationId: normalizeString(input.publicationId),
     crosswordId: normalizeString(input.crosswordId),
     newspaper: normalizeString(input.newspaper),
@@ -10,6 +16,28 @@ export function createPublication(input = {}) {
     url: normalizeString(input.url),
     statistics: normalizeStatistics(input.statistics)
   };
+  const snapshot = normalizeCrosswordSnapshot(input.crosswordSnapshot);
+
+  if (input.crosswordSnapshot != null && !snapshot) {
+    throw new Error("Invalid Publication snapshot");
+  }
+
+  if (snapshot) {
+    if (snapshot.crosswordId !== publication.crosswordId) {
+      throw new Error("Publication snapshot crosswordId mismatch");
+    }
+    publication.crosswordSnapshot = snapshot;
+  }
+
+  const helpAccessToken = normalizeHelpAccessToken(input.helpAccessToken);
+  if (helpAccessToken) {
+    publication.helpAccessToken = helpAccessToken;
+    publication.helpAccessStatus = input.helpAccessStatus === "active"
+      ? "active"
+      : "inactive";
+  }
+
+  return publication;
 }
 
 export function createPublicationFromTemplate({
@@ -25,7 +53,8 @@ export function createPublicationFromTemplate({
     publishWeek: "",
     status,
     url: publicUrl,
-    statistics: {}
+    statistics: {},
+    crosswordSnapshot: createCrosswordSnapshot(template)
   });
 }
 

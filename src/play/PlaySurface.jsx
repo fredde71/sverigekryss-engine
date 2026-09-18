@@ -7,10 +7,18 @@ import { submitCompetitionEntry } from "../template/templateApi";
 import { normalizeMusikkryssContent } from "../musikkryss/MusikkryssFormat";
 import MusikkryssAnswerList from "./MusikkryssAnswerList";
 import { createMusikkryssRuntimeSelection } from "./musikkryssRuntimeAdapter";
+import { createTemplateSolutionIndex } from "../template/templateSolutions";
+import {
+  applySolutionReveal,
+  createSolutionRevealState,
+  SOLUTION_REVEAL_ACTIONS
+} from "../engine/solutionReveal";
+import SolutionHelpControls from "./SolutionHelpControls";
 
 export default function PlaySurface({
   template,
   publicationId = "",
+  publicationAccess = null,
   responsive = false,
   onSubmitAnswers
 }) {
@@ -20,6 +28,10 @@ export default function PlaySurface({
   const [submitError, setSubmitError] = useState("");
   const [submitSuccessMessage, setSubmitSuccessMessage] = useState("");
   const [selectedMusikkryssAnswerId, setSelectedMusikkryssAnswerId] = useState(null);
+  const [activeAnswerSelection, setActiveAnswerSelection] = useState(null);
+  const [solutionRevealState, setSolutionRevealState] = useState(
+    createSolutionRevealState
+  );
   const isSubmittingRef = useRef(false);
   const musikkryssContent = useMemo(() => (
     template.crosswordType === "musikkryss"
@@ -32,6 +44,13 @@ export default function PlaySurface({
   const musikkryssRuntimeSelection = useMemo(() => (
     createMusikkryssRuntimeSelection(selectedMusikkryssAnswer)
   ), [selectedMusikkryssAnswer]);
+  const solutionIndex = useMemo(
+    () => createTemplateSolutionIndex(template),
+    [template]
+  );
+  const helpEnabled = Boolean(
+    publicationAccess?.capabilities?.useCanonicalSolutions
+  );
   const initialSolution = buildCompetitionSolution({
     template,
     answers: runtimeAnswers
@@ -47,13 +66,28 @@ export default function PlaySurface({
         onAnswersChange={setRuntimeAnswers}
         externalAnswerSelection={musikkryssRuntimeSelection}
         presentation={musikkryssContent ? "musikkryss" : "default"}
+        revealedCellLetters={solutionRevealState.cellLetters}
+        onAnswerSelectionChange={helpEnabled
+          ? setActiveAnswerSelection
+          : undefined}
       />
     </TemplateCanvas>
   );
 
   useEffect(() => {
     setSelectedMusikkryssAnswerId(null);
-  }, [template.crosswordId, template.crosswordType]);
+    setActiveAnswerSelection(null);
+    setSolutionRevealState(createSolutionRevealState());
+  }, [publicationId, template.crosswordId, template.crosswordType]);
+
+  const reveal = action => {
+    setSolutionRevealState(previous => applySolutionReveal({
+      state: previous,
+      action,
+      answerCellIndexes: activeAnswerSelection?.answerCellIndexes,
+      solutionIndex
+    }));
+  };
 
   const openSubmissionDialog = () => {
     setSubmitError("");
@@ -134,6 +168,15 @@ export default function PlaySurface({
           </div>
         </div>
       ) : runtimeCanvas}
+
+      {helpEnabled && (
+        <SolutionHelpControls
+          answerSelected={Boolean(activeAnswerSelection)}
+          onRevealLetter={() => reveal(SOLUTION_REVEAL_ACTIONS.LETTER)}
+          onRevealAnswer={() => reveal(SOLUTION_REVEAL_ACTIONS.ANSWER)}
+          onRevealAll={() => reveal(SOLUTION_REVEAL_ACTIONS.ALL)}
+        />
+      )}
 
       <button
         type="button"

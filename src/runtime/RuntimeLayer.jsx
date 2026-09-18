@@ -19,7 +19,9 @@ export default function RuntimeLayer({
   data,
   onAnswersChange,
   externalAnswerSelection = null,
-  presentation = "default"
+  presentation = "default",
+  revealedCellLetters = {},
+  onAnswerSelectionChange
 }) {
 
   console.log("RuntimeLayer rendered");
@@ -28,10 +30,29 @@ export default function RuntimeLayer({
   const [activeCell, setActiveCell] = useState(null);
   const [direction, setDirection] = useState("across");
   const [clueSelection, setClueSelection] = useState(null);
+  const answersRef = useRef({});
 
 React.useEffect(() => {
   console.log("RuntimeLayer activeCell changed", activeCell);
 }, [activeCell]);
+
+React.useEffect(() => {
+  onAnswerSelectionChange?.(clueSelection);
+}, [clueSelection, onAnswerSelectionChange]);
+
+React.useEffect(() => {
+  if (Object.keys(revealedCellLetters).length === 0) return;
+
+  const changed = Object.entries(revealedCellLetters).some(
+    ([index, letter]) => answersRef.current[index] !== letter
+  );
+  if (!changed) return;
+
+  const next = { ...answersRef.current, ...revealedCellLetters };
+  answersRef.current = next;
+  setAnswers(next);
+  onAnswersChange?.(next);
+}, [onAnswersChange, revealedCellLetters]);
 
 const inputRefs = useRef([]);
 
@@ -70,18 +91,17 @@ const handleCellChange = (index, rawValue) => {
     rawValue
   });
     
+  if (Object.hasOwn(revealedCellLetters, index)) return;
+
   const value = normalizeInputValue(rawValue);
 
-  setAnswers(prev => {
-    const next = {
-      ...prev,
-      [index]: value
-    };
-
-    onAnswersChange?.(next);
-
-    return next;
-  });
+  const next = {
+    ...answersRef.current,
+    [index]: value
+  };
+  answersRef.current = next;
+  setAnswers(next);
+  onAnswersChange?.(next);
   if (value) {
 
   setTimeout(() => {
@@ -252,7 +272,7 @@ return (
   <RuntimeCell
   key={i}
   type={cellTypes[i]}
-  value={answers[i] || ""}
+  value={revealedCellLetters[i] ?? answers[i] ?? ""}
   inputRef={(el) => (inputRefs.current[i] = el)}
   dataIndex={i}
   isActive={activeCells.has(i)}
@@ -263,6 +283,7 @@ return (
     && Boolean(clueSelection)
     && !activeCells.has(i)}
   presentation={presentation}
+  readOnly={Object.hasOwn(revealedCellLetters, i)}
   onClick={() => handleCellClick(i)}
   onFocus={(e) => {
   e.target.select();

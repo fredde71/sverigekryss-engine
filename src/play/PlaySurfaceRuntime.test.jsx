@@ -306,6 +306,111 @@ test("Musikkryss typing follows path order and crossing answers share letters", 
   expect(getInputAt(10)).toHaveValue("B");
 });
 
+test("solve mode exposes no solution controls", () => {
+  render(
+    <PlaySurface
+      template={{
+        ...createTemplate(["blocked", "write", "write", "write"]),
+        answerPaths: [{
+          clueIndex: 0,
+          paths: [{
+            direction: "across",
+            cellIndexes: [1, 2, 3],
+            solution: "ABC"
+          }]
+        }]
+      }}
+      onSubmitAnswers={() => {}}
+    />
+  );
+
+  expect(screen.queryByRole("region", { name: "Facit och hjälp" }))
+    .not.toBeInTheDocument();
+});
+
+test("Sverigekryss help reveals selected letters and answer without mutating other input", async () => {
+  const helpTemplate = {
+    ...createTemplate([
+      "blocked", "write", "write", "write",
+      "write", "write", "write", "empty",
+      "empty", "empty", "empty", "empty"
+    ]),
+    answerPaths: [{
+      clueIndex: 0,
+      paths: [{
+        direction: "across",
+        cellIndexes: [1, 2, 3],
+        solution: "ABC"
+      }]
+    }]
+  };
+
+  render(
+    <PlaySurface
+      template={helpTemplate}
+      publicationAccess={{ capabilities: { useCanonicalSolutions: true } }}
+      onSubmitAnswers={() => {}}
+    />
+  );
+
+  fireEvent.change(getInputAt(5), { target: { value: "X" } });
+  fireEvent.click(screen.getByTestId("runtime-clue-cell"));
+  fireEvent.click(screen.getByRole("button", { name: "Visa en bokstav" }));
+
+  await waitFor(() => expect(getInputAt(1)).toHaveValue("A"));
+  expect(getInputAt(1)).toHaveAttribute("readonly");
+  expect(getInputAt(5)).toHaveValue("X");
+
+  fireEvent.change(getInputAt(2), { target: { value: "Z" } });
+  fireEvent.click(screen.getByRole("button", { name: "Visa svaret" }));
+  await waitFor(() => {
+    expect(getInputAt(1)).toHaveValue("A");
+    expect(getInputAt(2)).toHaveValue("B");
+    expect(getInputAt(3)).toHaveValue("C");
+  });
+  expect(helpTemplate.answerPaths[0].paths[0].solution).toBe("ABC");
+});
+
+test("Musikkryss help reveals selected directional answer and full solution", async () => {
+  const base = createMusikkryssTemplate({
+    crosswordId: "MUSIK-HELP-1",
+    documentSize: { width: 490, height: 540 },
+    imageSrc: "/music-grid.png"
+  });
+  const template = {
+    ...base,
+    musikkryss: {
+      ...base.musikkryss,
+      answers: base.musikkryss.answers.map(answer => ({
+        ...answer,
+        solution: "A".repeat(answer.answerPath.length)
+      }))
+    }
+  };
+
+  render(
+    <PlaySurface
+      template={template}
+      publicationAccess={{ capabilities: { useCanonicalSolutions: true } }}
+      onSubmitAnswers={() => {}}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "1 lodrätt" }));
+  fireEvent.click(screen.getByRole("button", { name: "Visa svaret" }));
+  await waitFor(() => {
+    [0, 10, 20, 30, 40, 50, 60, 70].forEach(index => {
+      expect(getInputAt(index)).toHaveValue("A");
+    });
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Visa hela facit" }));
+  await waitFor(() => {
+    expect(getInputAt(1)).toHaveValue("A");
+    expect(getInputAt(86)).toHaveValue("A");
+  });
+});
+
 async function expectActiveInputs(inputs, activeIndexes) {
   await waitFor(() => {
     expect(inputs[activeIndexes[0]].parentElement).toHaveStyle({

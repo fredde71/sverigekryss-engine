@@ -6,6 +6,7 @@ import {
 export default function MusikkryssEditorPanel({
   value,
   onChange,
+  onLoadReference,
   selectedAnswerId: controlledSelectedAnswerId,
   onSelectedAnswerIdChange
 }) {
@@ -50,6 +51,12 @@ export default function MusikkryssEditorPanel({
       style={{ display: "grid", gap: "10px" }}
     >
       <h5 style={{ margin: 0 }}>Musikkryss</h5>
+      <button
+        type="button"
+        onClick={onLoadReference}
+      >
+        Ladda referenskryss
+      </button>
       <label style={{ display: "grid", gap: "4px" }}>
         Intro
         <textarea

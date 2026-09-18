@@ -10,6 +10,7 @@ jest.mock("./EditorScrollWorkspace", () => ({ children }) => (
 
 test("owns Musikkryss panel and mounts the supplied editor in TemplateCanvas", () => {
   const onMusikkryssChange = jest.fn();
+  const onLoadReference = jest.fn();
 
   render(
     <MusikkryssEditorContainer
@@ -26,6 +27,7 @@ test("owns Musikkryss panel and mounts the supplied editor in TemplateCanvas", (
       editor={<div data-testid="musikkryss-grid-layer">grid</div>}
       musikkryss={createEmptyMusikkryssContent()}
       onMusikkryssChange={onMusikkryssChange}
+      onLoadReference={onLoadReference}
       zoomState={{ fitScale: 1, scale: 1, zoomMode: "fit" }}
       setZoomState={jest.fn()}
       scrollState={{ top: 0, left: 0 }}
@@ -45,6 +47,9 @@ test("owns Musikkryss panel and mounts the supplied editor in TemplateCanvas", (
   expect(onMusikkryssChange).toHaveBeenCalledWith(expect.objectContaining({
     introScript: "Musikintro"
   }));
+
+  fireEvent.click(screen.getByRole("button", { name: "Ladda referenskryss" }));
+  expect(onLoadReference).toHaveBeenCalledTimes(1);
 });
 
 test("shows topology-derived paths for independently selectable answers", () => {
@@ -65,6 +70,7 @@ test("shows topology-derived paths for independently selectable answers", () => 
           editor={<div data-testid="musikkryss-grid-layer">grid</div>}
           musikkryss={musikkryss}
           onMusikkryssChange={setMusikkryss}
+          onLoadReference={jest.fn()}
           zoomState={{ fitScale: 1, scale: 1, zoomMode: "fit" }}
           setZoomState={jest.fn()}
           scrollState={{ top: 0, left: 0 }}

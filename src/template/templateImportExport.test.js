@@ -121,7 +121,8 @@ test("create import export round-trip preserves explicit answer paths", async ()
     clueIndex: 0,
     paths: [{
       direction: "across",
-      cellIndexes: [1, 2, 5, 8, 7]
+      cellIndexes: [1, 2, 5, 8, 7],
+      solution: "ABCDE"
     }]
   }];
   const createdUrls = [];

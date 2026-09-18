@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { DEFAULT_DOCUMENT_SIZE } from "../template/documentGeometry";
 import { createEmptyMusikkryssContent } from "../musikkryss/MusikkryssFormat";
+import { createMusikkryssTemplate } from "../musikkryss/MusikkryssTemplateInitializer";
+import {
+  createMusikkryssReferenceContent
+} from "../musikkryss/MusikkryssReferenceContentPack";
 
 export const EDITOR_SESSION_TYPES = Object.freeze([
   "sverigekryss",
@@ -65,6 +69,52 @@ export function applyTemplateToEditorSession(session, template) {
     imageSrc: template.imageSrc,
     musikkryss: template.musikkryss
   };
+}
+
+export function loadMusikkryssReferenceIntoEditorSession(session) {
+  const referenceContent = createMusikkryssReferenceContent();
+
+  if (hasEditorSessionDocumentOrGrid(session)) {
+    return {
+      ...session,
+      musikkryss: referenceContent
+    };
+  }
+
+  const initializedSession = applyTemplateToEditorSession(
+    session,
+    createMusikkryssTemplate({
+      crosswordId: session.crosswordId,
+      documentSize: session.documentSize,
+      imageSrc: session.imageSrc
+    })
+  );
+
+  return {
+    ...initializedSession,
+    musikkryss: referenceContent
+  };
+}
+
+export function hasEditorSessionDocumentOrGrid(session) {
+  if (session.imageSrc) return true;
+  if (session.crosswordType !== "musikkryss") return false;
+
+  const cellTypes = Array.isArray(session.cellTypes) ? session.cellTypes : [];
+  const hasCellTopology = (
+    Number.isInteger(session.rows)
+    && Number.isInteger(session.cols)
+    && cellTypes.length === session.rows * session.cols
+    && cellTypes.some(cellType => cellType !== "empty")
+  );
+  const hasExplicitGridGeometry = (
+    Array.isArray(session.horizontalLinePositions)
+    && session.horizontalLinePositions.length === session.rows + 1
+    && Array.isArray(session.verticalLinePositions)
+    && session.verticalLinePositions.length === session.cols + 1
+  );
+
+  return hasCellTopology || hasExplicitGridGeometry;
 }
 
 export default function EditorSessionWorkspace({ activeType, children }) {

@@ -27,7 +27,8 @@ test("backend publish and load preserve ordered answer paths unchanged", () => {
     clueIndex: 0,
     paths: [{
       direction: "across",
-      cellIndexes: [1, 2, 6, 10, 9]
+      cellIndexes: [1, 2, 6, 10, 9],
+      solution: "ABCDE"
     }]
   }];
   const template = {

@@ -38,10 +38,23 @@ Musikkryss format- och Play-grund är genomförd:
   riktningssvar, markerar och navigerar hela svaret samt delar bokstäver i korsningar
 - Musikkryss Play-presentationen är responsiv med 650 px maximal desktopbredd
 - infrastruktur, backend-, publicerings- och runtime-gränser är fortsatt gemensamma
+- source-neutral veckoinnehållsimport matchar exakt på `number + direction`,
+  använder formatägda svarsvägar och validerar fullständighet, manus,
+  lösningslängder och korsningar utan att ändra dokument/grid/session
+- kanoniska lösningar bevaras i ett immutabelt publiceringssnapshot men tas bort
+  ur Solve-projektionen; Help/Facit aktiveras explicit och kräver en separat
+  ogissningsbar capability-token
 
 Audio, intro-uppspelning, AI-röst och övrig Musikkryss-spelorkestrering ingår
 inte i denna milstolpe. Det fasta formatet väljs utan filnamnslogik och den
 offline fixture som användes vid formatbekräftelse är inte ett runtime-beroende.
+Referenskrysset är fortsatt endast en explicit utvecklings-/demofunktion.
+
+Nästa Musikkryss-milstolpe är en dedikerad veckoinnehålls-importyta/container.
+Excel, CSV och JSON ska implementeras som adaptrar till det verifierade
+`MusikkryssWeeklyContentImport`-kontraktet, inte som separata domänflöden. UI:t
+ska kunna förhandsvisa diagnostik och applicera endast ett giltigt innehåll på
+den aktiva Musikkryss-sessionen; format, dokument och grid ska lämnas oförändrade.
 
 V1-arbetsflödet är browser-testat end-to-end:
 

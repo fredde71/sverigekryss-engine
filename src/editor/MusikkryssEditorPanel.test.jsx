@@ -2,13 +2,20 @@ import React, { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import MusikkryssEditorPanel from "./MusikkryssEditorPanel";
 import { createEmptyMusikkryssContent } from "../musikkryss/MusikkryssFormat";
+import {
+  createMusikkryssReferenceContent
+} from "../musikkryss/MusikkryssReferenceContentPack";
 
 function Harness() {
   const [value, setValue] = useState(createEmptyMusikkryssContent);
   return (
     <>
       <div data-testid="musikkryss-state">{JSON.stringify(value)}</div>
-      <MusikkryssEditorPanel value={value} onChange={setValue} />
+      <MusikkryssEditorPanel
+        value={value}
+        onChange={setValue}
+        onLoadReference={() => setValue(createMusikkryssReferenceContent())}
+      />
     </>
   );
 }
@@ -65,4 +72,21 @@ test("keeps across and down content independent for one printed number", () => {
   )).contentSequence[0].text).toBe("Lodrätt innehåll");
   expect(screen.getByRole("button", { name: "1 lodrätt" }))
     .toHaveAttribute("aria-pressed", "true");
+});
+
+test("loads the complete reference issue only on explicit action", () => {
+  render(<Harness />);
+
+  expect(JSON.parse(screen.getByTestId("musikkryss-state").textContent)
+    .answers[0]).not.toHaveProperty("solution");
+
+  fireEvent.click(screen.getByRole("button", { name: "Ladda referenskryss" }));
+
+  const state = JSON.parse(
+    screen.getByTestId("musikkryss-state").textContent
+  );
+  expect(state.answers).toHaveLength(15);
+  expect(state.answers.every(answer => answer.solution)).toBe(true);
+  expect(state.answers.every(answer => answer.contentSequence[0].text)).toBe(true);
+  expect(state.introScript).toContain("Välkommen till Musikkrysset!");
 });

@@ -16,7 +16,8 @@ export default function RuntimeCell({
   maxLength,
   presentation = "default",
   isFocusedCell = false,
-  isDimmed = false
+  isDimmed = false,
+  readOnly = false
 }) {
   const isMusikkryss = presentation === "musikkryss";
   const dimmedBackground = isMusikkryss && isDimmed
@@ -60,6 +61,7 @@ export default function RuntimeCell({
   return (
     <PlayCell
       disabled={false}
+      readOnly={readOnly}
       value={value}
       onChange={onChange}
       isActive={isActive}
