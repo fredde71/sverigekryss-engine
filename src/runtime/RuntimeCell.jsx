@@ -1,5 +1,32 @@
 import React from "react";
 import PlayCell from "../components/PlayCell";
+import { CELL_TYPE_BLACK } from "../template/cellTypes";
+
+const cellLabelStyle = {
+  position: "absolute",
+  top: "2px",
+  left: "3px",
+  zIndex: 2,
+  color: "rgb(15, 23, 42)",
+  fontSize: "10px",
+  fontWeight: 700,
+  lineHeight: 1,
+  pointerEvents: "none"
+};
+
+function renderCellLabel(cellLabel) {
+  if (cellLabel == null || cellLabel === "") return null;
+
+  return (
+    <span
+      data-testid={`runtime-cell-label-${cellLabel}`}
+      aria-hidden="true"
+      style={cellLabelStyle}
+    >
+      {cellLabel}
+    </span>
+  );
+}
 
 export default function RuntimeCell({
   type,
@@ -13,6 +40,7 @@ export default function RuntimeCell({
   onKeyDown,
   inputRef,
   dataIndex,
+  cellLabel,
   maxLength,
   presentation = "default",
   isFocusedCell = false,
@@ -23,6 +51,21 @@ export default function RuntimeCell({
   const dimmedBackground = isMusikkryss && isDimmed
     ? "rgba(255, 255, 255, 0.42)"
     : undefined;
+
+  if (type === CELL_TYPE_BLACK) {
+    return (
+      <div
+        data-testid="runtime-black-cell"
+        data-index={dataIndex}
+        style={{
+          width: "100%",
+          height: "100%",
+          ...style,
+          backgroundColor: "rgb(0, 0, 0)"
+        }}
+      />
+    );
+  }
 
   if (type === "image") {
   return (
@@ -82,6 +125,7 @@ export default function RuntimeCell({
         ...style
       }}
     >
+      {renderCellLabel(cellLabel)}
       {children}
     </PlayCell>
   );

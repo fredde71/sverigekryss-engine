@@ -3,11 +3,13 @@ import {
   normalizeDocumentSize
 } from "./documentGeometry";
 import {
-  normalizeMusikkryssContent
-} from "../musikkryss/MusikkryssFormat";
+  getMusikkryssFormat,
+  normalizeCatalogMusikkryssContent
+} from "../musikkryss/MusikkryssFormatCatalog";
 import {
   normalizeCanonicalSolution
 } from "./templateSolutions";
+import { CELL_TYPE_BLACK } from "./cellTypes";
 
 const CROSSWORD_TYPES = new Set(["sverigekryss", "musikkryss"]);
 
@@ -35,7 +37,9 @@ export function createTemplate(input) {
     crosswordType,
     rows,
     cols,
-    cellTypes: normalizeCellTypes({
+    cellTypes: normalizeTemplateCellTypes({
+      crosswordType,
+      musikkryss: input.musikkryss,
       cellTypes: input.cellTypes,
       rows,
       cols
@@ -60,7 +64,9 @@ export function createTemplate(input) {
   }
 
   if (crosswordType === "musikkryss") {
-    template.musikkryss = normalizeMusikkryssContent(input.musikkryss);
+    template.musikkryss = normalizeCatalogMusikkryssContent(
+      input.musikkryss
+    );
   }
 
   return template;
@@ -76,7 +82,9 @@ export function normalizeTemplate(input, defaults = {}) {
     input.documentSize ?? defaults.documentSize
   );
   const competitionCells = normalizeCompetitionCells(input.competitionCells);
-  const cellTypes = normalizeCellTypes({
+  const cellTypes = normalizeTemplateCellTypes({
+    crosswordType,
+    musikkryss: input.musikkryss ?? defaults.musikkryss,
     cellTypes: input.cellTypes,
     rows,
     cols
@@ -123,7 +131,7 @@ export function normalizeTemplate(input, defaults = {}) {
   }
 
   if (crosswordType === "musikkryss") {
-    template.musikkryss = normalizeMusikkryssContent(
+    template.musikkryss = normalizeCatalogMusikkryssContent(
       input.musikkryss ?? defaults.musikkryss
     );
   }
@@ -152,6 +160,33 @@ function normalizeCellTypes({
   }
 
   return normalized;
+}
+
+function normalizeTemplateCellTypes({
+  crosswordType,
+  musikkryss,
+  cellTypes,
+  rows,
+  cols
+}) {
+  const normalized = normalizeCellTypes({ cellTypes, rows, cols });
+  if (crosswordType !== "musikkryss") return normalized;
+
+  const format = getMusikkryssFormat(musikkryss?.formatId);
+  if (
+    !format
+    || rows !== format.gridDimensions.rows
+    || cols !== format.gridDimensions.cols
+    || format.cellTopology.length !== normalized.length
+  ) {
+    return normalized;
+  }
+
+  return normalized.map((cellType, index) => (
+    format.cellTopology[index] === "non-writable" && cellType === "empty"
+      ? CELL_TYPE_BLACK
+      : cellType
+  ));
 }
 
 function normalizeCompetitionCells(competitionCells) {

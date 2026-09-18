@@ -1,6 +1,7 @@
 import React from "react";
 
 function PlayCell({
+  children,
   value,
   onChange,
   style,
@@ -36,12 +37,14 @@ function PlayCell({
             : "idle"
       : undefined}
     style={{
+  position: "relative",
   width: "100%",
   height: "100%",
   ...style,
   backgroundColor
 }}
     >
+      {children}
       <input
         maxLength={maxLength}
         value={value}
@@ -78,6 +81,6 @@ export default React.memo(PlayCell);
 function musikkryssCellBackground({ isActive, isFocusedCell, isDimmed }) {
   if (isFocusedCell) return "rgba(37, 99, 235, 0.58)";
   if (isActive) return "rgba(125, 211, 252, 0.52)";
-  if (isDimmed) return "rgba(255, 255, 255, 0.42)";
+  if (isDimmed) return "rgba(148, 163, 184, 0.38)";
   return "transparent";
 }

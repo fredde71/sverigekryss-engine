@@ -6,7 +6,8 @@ Projekt: Sverigekryss Engine
 
 Senast uppdaterad:
 
-Efter browser-verifierat V1-flöde och verifierad Musikkryss format-/Play-grund.
+Efter browser-verifierat Musikkryss-produktionsflöde från producentimport till
+Editor, Play och separat publicering av facit/hjälp.
 
 ---
 
@@ -23,36 +24,49 @@ Byte av korsordstyp visar den sparade sessionen utan att återställa eller skri
 över den andra. En ny eller oanvänd session visar en blank arbetsyta. Asynkrona
 Digitization-resultat dirigeras tillbaka till den session där uppladdningen startade.
 
-Musikkryss använder ett katalogägt återkommande format med 9 rader och 10
+Musikkryss använder för närvarande ett katalogägt återkommande format med 9 rader och 10
 kolumner. Formatet äger normaliserad grid-geometri, 59 skrivbara celler,
-31 icke-skrivbara celler och 13 numrerade startceller. Topologin härleder 15
+31 svarta celler och 13 numrerade startceller. Topologin härleder 15
 riktningsbundna svar identifierade av `number + direction`; varje svar äger sin
 ordnade `answerPath` och sin redigerbara `contentSequence`. Intro och svarsinnehåll
 bevaras i Musikkryss-sessionens Template. Ingen manuell svarsvägsdefinition krävs
-för det fasta formatet.
+för formatet. Formatkatalogen är utbyggbar och plattformen gör inget globalt
+antagande om 9 × 10.
 
 Musikkryss återanvänder samma TemplateCanvas-, Runtime- och Play-gränser som
 Sverigekryss. Editor och Play kan växlas inom den separata Musikkryss-sessionen.
 Play visar riktningsetiketter, markerar hela vald svarsväg, fokuserar första cellen
-och navigerar i path-ordning; korsande svar delar samma bokstavsstate. Play-ytan är
-responsiv med 650 px maximal desktopbredd. Audio, intro-uppspelning och AI-röst är
-ännu inte implementerade.
+och navigerar i path-ordning; korsande svar delar samma bokstavsstate. Numrerade
+startceller visas, vald väg hålls ljusblå, fokuscellen förstärks och övriga
+skrivbara celler tonas ned medan svarta celler förblir svarta. Play kan rendera
+hela formatgridet utan underliggande bild och är responsiv med 650 px maximal
+desktopbredd. Audio, intro-uppspelning och AI-röst är ännu inte implementerade.
 
-Veckans Musikkryss-innehåll har nu en ren, källformatsoberoende importgräns.
-`MusikkryssFormat` äger fortsatt topologi och svarsvägar; veckoinnehållet äger
-issue-metadata, intro, manus och kanoniska lösningar. Importen matchar exakt på
-`number + direction` och avvisar saknade, duplicerade eller oväntade svar, tomma
-manus, felaktiga lösningslängder och bokstavskonflikter i korsningar. Endast en
-giltig import producerar normaliserat issue-innehåll, och importen ändrar aldrig
-dokument-, grid- eller sessionsstate direkt. JSON, CSV och Excel är framtida
-adaptrar till samma domänkontrakt, inte egna innehållsmodeller.
+Korsordsproducenten skapar veckans Musikkryss och levererar metadata, intro,
+manus och kanoniska lösningar. Wordex importerar, validerar, kan redigera,
+förhandsgranskar och publicerar leveransen. Den källformatsoberoende
+`MusikkryssWeeklyContentImport` matchar exakt på `number + direction` och avvisar
+saknade, duplicerade eller oväntade svar, tomma manus, felaktiga
+lösningslängder och bokstavskonflikter i korsningar. En explicit användaråtgärd
+applicerar ett giltigt resultat atomiskt till aktiv Musikkryss-session och
+initierar katalogformatet när sessionen är blank. Ett kompatibelt uppladdat
+dokument och dess placering bevaras. Topologi, geometri och svarsvägar kommer
+alltid från `MusikkryssFormatCatalog`, aldrig från producentfilen.
+
+Excel är den första producentfiladaptern och översätter bladen `Utgåva` och
+`Frågor` till samma source-neutrala importkontrakt före semantisk validering.
+CSV, JSON eller andra källor kan senare tillkomma som likvärdiga adaptrar.
+`Ladda referenskryss` är endast utvecklings-/demofunktionalitet. Referensarbetsboken
+är endast en development-/manuell verifieringsfixture och är inte runtime-data
+eller standardinnehåll.
 
 Template äger kanoniska lösningar för båda korsordstyperna. En publicering
 innehåller ett immutabelt snapshot och en oförändrad lösarlänk. Facit/hjälp
 aktiveras separat med `Publicera facit` först när lösningarna är kompletta och
 korsningskonsistenta; en separat, ogissningsbar capability-token ger då åtkomst.
-Solve-projektionen innehåller inga kanoniska lösningar. Referenskrysset är en
-explicit utvecklings-/demofunktion och är inte standardinnehåll för nya issues.
+Solve-projektionen innehåller inga kanoniska lösningar. Efter aktivering kan
+Help/Facit visa en bokstav, valt svar eller hela facit genom gemensamt Runtime-state
+utan att mutera Template eller publiceringssnapshot.
 
 Följande är färdigt i aktuell editor/play-produktion:
 
@@ -156,15 +170,27 @@ Senarelagt bortom V1:
 
 # Senaste verifierade milstolpe
 
-Den source-neutrala `MusikkryssWeeklyContentImport`-gränsen är implementerad.
-Den väljer katalogformat, använder enbart formatägda svarsvägar och returnerar
-antingen ett immutabelt giltigt innehåll eller ett explicit ogiltigt resultat med
-ordnade diagnostikposter. Nästa milstolpe är en dedikerad veckoinnehålls-importyta
-och filadaptrar ovanpå denna domängräns.
+Det kompletta Musikkryss-produktionsflödet är browser-verifierat:
+
+```text
+producentfil
+  → Excel-adapter
+  → source-neutral veckoinnehållsvalidering
+  → importförhandsvisning och explicit godkännande
+  → katalogägd formatinitiering och atomisk sessionsapplicering
+  → redigerbar Editor
+  → Play-förhandsvisning
+  → publicerad Solve
+  → explicit Publicera facit
+  → säker Help/Facit
+```
+
+Importerad metadata, intro, manus och lösningar är normal Template-/sessionsdata
+efter godkännande och är inte skrivskyddad eller bunden till Excelkällan.
 
 Musikkryss format- och Play-grund är implementerad ovanpå de självständiga
 Editor-sessionerna. Ny Musikkryss-uppladdning initierar automatiskt det katalogägda
-10 × 9-formatet, dess celltopologi, 13 numrerade startceller, 15 härledda
+9 × 10-formatet, dess celltopologi, 13 numrerade startceller, 15 härledda
 riktningssvar och explicita linjepositioner. Editor redigerar Intro och respektive
 svars content sequence. Lokal och publicerad Play återanvänder `PlaySurface` och
 den gemensamma Runtime-kedjan; ingen separat Musikkryss-runtime finns.
@@ -175,7 +201,10 @@ Den verifierade Wordex-källan ger ett redigerbart 25 × 25-förslag. Explicita 
 
 Fortsatt forskning om image-aligned linjegeometri, avbrutna linjer, projection ridges, fragment tracks och lattice-conditioned evidence är senarelagd till efter V1. Ground Truth används fortsatt endast för validering.
 
-Produktens aktiva fokus är Product Readiness / V1. Avancerad automatisk klassificering av celler och ledtrådar är senarelagt bortom V1.
+Nästa produktmilstolpe är tydlig Editor-redigering av importerad issue-metadata
+och kanoniska lösningar, följt av TTS/audio-integration. Slutlig UX-polering är
+senarelagd. Avancerad automatisk klassificering av celler och ledtrådar är också
+senarelagd bortom V1.
 
 Tidigare verifierade arkitekturmilstolpar följer nedan.
 

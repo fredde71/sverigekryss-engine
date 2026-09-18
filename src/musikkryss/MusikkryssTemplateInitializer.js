@@ -5,14 +5,16 @@ import {
 } from "../template/documentGeometry";
 import { createEmptyMusikkryssContent } from "./MusikkryssFormat";
 import { getMusikkryssFormat } from "./MusikkryssFormatCatalog";
+import { CELL_TYPE_BLACK } from "../template/cellTypes";
 
 export function createMusikkryssTemplate({
   formatId,
+  formatCatalog,
   crosswordId = "",
   documentSize,
   imageSrc = ""
 } = {}) {
-  const format = getMusikkryssFormat(formatId);
+  const format = getMusikkryssFormat(formatId, formatCatalog);
   if (!format) {
     throw new Error("Unknown Musikkryss format");
   }
@@ -24,14 +26,15 @@ export function createMusikkryssTemplate({
   });
   const rows = format.gridDimensions.rows;
   const cols = format.gridDimensions.cols;
+  const musikkryss = createEmptyMusikkryssContent(format);
 
-  return createTemplate({
+  const template = createTemplate({
     crosswordId,
     crosswordType: "musikkryss",
     rows,
     cols,
     cellTypes: format.cellTopology.map(cell => (
-      cell === "writable" ? "write" : "empty"
+      cell === "writable" ? "write" : CELL_TYPE_BLACK
     )),
     gridArea,
     cropArea: getFullDocumentArea(safeDocumentSize),
@@ -49,8 +52,13 @@ export function createMusikkryssTemplate({
       start: gridArea.left,
       span: gridArea.width
     }),
-    musikkryss: createEmptyMusikkryssContent()
+    musikkryss
   });
+
+  return {
+    ...template,
+    musikkryss
+  };
 }
 
 function materializeGridArea({ normalizedGridArea, documentSize }) {

@@ -94,6 +94,11 @@ Supported v1 cell types:
 - double
 - write
 - empty
+- black
+
+`black` är en hållbar formatcell för Musikkryss och betyder en synlig, icke
+skrivbar svart cell. Den är inte en Sverigekryss-ledtrådscell och ersätter inte
+`blocked`. Äldre Templates utan typen förblir kompatibla.
 
 gridArea represents the placement of the interactive grid over the rendered puzzle surface.
 
@@ -165,9 +170,9 @@ En Template med `crosswordType: "musikkryss"` kan dessutom innehålla:
 Ett Musikkryss-svar identifieras unikt av `number + direction`, där riktningen är
 `across` eller `down`. Samma tryckta nummer kan därför äga både ett vågrätt och
 ett lodrätt svar. Varje svar äger sin egen ordnade lista av skrivbara cellindex
-och sin egen content sequence. Det fasta 10 × 9-formatet har 13 numrerade
+och sin egen content sequence. Det nuvarande 9 × 10-formatet har 13 numrerade
 startceller och 15 svar; svarsvägarna härleds deterministiskt från formatets
-skrivbara/icke-skrivbara topologi och författas inte manuellt.
+skrivbara/svarta topologi och författas inte manuellt.
 
 Den nuvarande content sequence består av redigerbar text. Runtime konsumerar
 `musikkryss.answers` genom delad Play/Runtime-infrastruktur. Audio,
@@ -178,13 +183,15 @@ intro-uppspelning och AI-röst ingår ännu inte i domänbeteendet.
 `MusikkryssFormat` är en immutabel, återanvändbar formatdefinition och äger:
 
 - format-ID och version
-- 9 × 10 grid-dimensioner för det nuvarande formatet
+- grid-dimensioner; det nuvarande katalogformatet är 9 × 10
 - normaliserad dokumentplacering och linjegeometri
 - fast skrivbar/icke-skrivbar celltopologi
 - numrerade startceller
 - topologiskt härledda riktningssvar och deras ordnade paths
 
-`MusikkryssFormatCatalog` väljer format utan filnamnslogik.
+`MusikkryssFormatCatalog` väljer format utan filnamnslogik och kan ersättas eller
+utökas med andra dimensioner utan att importkontraktet eller applikationsflödet
+antar 9 × 10.
 `MusikkryssTemplateInitializer` kopierar vald formatstruktur till en ny
 Musikkryss-Template och materialiserar grid/linjer mot uppladdningens
 dokumentdimensioner. Formatet är generellt katalogiserat för framtida format;
@@ -212,8 +219,23 @@ och explicit diagnostik. Operationen är ren och får inte mutera Template,
 dokument, grid eller Editor-session.
 
 Excel, CSV och JSON är endast transport-/parseradaptrar in i detta kontrakt.
-Den explicita referenspacken är utvecklingsdata och är inte ett standardvärde
-för framtida Musikkryss-issues.
+Excel är den första implementerade adaptern och äger varken valideringsregler,
+formatstruktur eller sessionsapplicering.
+
+### MusikkryssWeeklyContentApplication
+
+Efter giltig validering och explicit användargodkännande äger
+`MusikkryssWeeklyContentApplication` den atomiska överföringen till aktiv
+Musikkryss-session. En blank session initieras från importens registrerade format
+genom `MusikkryssTemplateInitializer`; en kompatibel befintlig session behåller
+uppladdat dokument, placering, geometri och formatägda svarsvägar. Endast
+issue-metadata, intro, manus och lösningar kommer från veckoinnehållet. Ogiltigt
+eller ännu inte godkänt innehåll får inte initiera eller mutera sessionen.
+
+Efter applicering är importinnehållet vanlig redigerbar Template-/sessionsdata
+och har ingen fortsatt koppling till producentfilen. `Ladda referenskryss` och
+referensarbetsboken är development-/manuella verifieringsfixtures, inte
+produktionsflöde eller runtime-standardvärden.
 
 ### Canonical solutions and publication access
 

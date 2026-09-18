@@ -6,6 +6,7 @@ export default function RuntimeGrid({
   gridArea,
   horizontalLinePositions,
   verticalLinePositions,
+  presentation = "default",
   children,
   style
 }) {
@@ -30,6 +31,9 @@ export default function RuntimeGrid({
           return React.cloneElement(child, {
             style: {
               ...child.props.style,
+              ...(presentation === "musikkryss"
+                ? musikkryssCellFrameStyle
+                : {}),
               position: "absolute",
               top: explicitGeometry.horizontal[row],
               left: explicitGeometry.vertical[col],
@@ -53,10 +57,25 @@ export default function RuntimeGrid({
         gridTemplateRows: `repeat(${rows}, 1fr)`
       }}
     >
-      {children}
+      {presentation === "musikkryss"
+        ? React.Children.toArray(children).map(child => React.cloneElement(
+          child,
+          {
+            style: {
+              ...child.props.style,
+              ...musikkryssCellFrameStyle
+            }
+          }
+        ))
+        : children}
     </div>
   );
 }
+
+const musikkryssCellFrameStyle = {
+  boxSizing: "border-box",
+  border: "1px solid rgb(0, 0, 0)"
+};
 
 function createExplicitGeometry({
   rows,

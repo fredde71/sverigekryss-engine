@@ -34,3 +34,12 @@ test("double clue cells keep the same clickable non-writable behavior", () => {
   expect(onClick).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
 });
+
+test("Musikkryss black cells are solid and never writable", () => {
+  render(<RuntimeCell type="black" presentation="musikkryss" />);
+
+  expect(screen.getByTestId("runtime-black-cell")).toHaveStyle({
+    backgroundColor: "rgb(0, 0, 0)"
+  });
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+});

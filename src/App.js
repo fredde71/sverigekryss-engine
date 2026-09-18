@@ -46,10 +46,15 @@ import {
   createGridLatticeEditorProposal
 } from "./digitization/analysis/reconstruction/GridLatticeEditorProposal";
 import {
-  createEmptyMusikkryssContent,
-  normalizeMusikkryssContent
+  createEmptyMusikkryssContent
 } from "./musikkryss/MusikkryssFormat";
+import {
+  normalizeCatalogMusikkryssContent
+} from "./musikkryss/MusikkryssFormatCatalog";
 import { createMusikkryssTemplate } from "./musikkryss/MusikkryssTemplateInitializer";
+import {
+  applyMusikkryssWeeklyContentImport
+} from "./musikkryss/MusikkryssWeeklyContentApplication";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -127,7 +132,7 @@ function AppSessionApplication({
         gridArea: parsed.gridArea,
         documentSize: parsed.documentSize || DEFAULT_DOCUMENT_SIZE,
         competitionCells: parsed.competitionCells || [],
-        musikkryss: normalizeMusikkryssContent(parsed.musikkryss),
+        musikkryss: normalizeCatalogMusikkryssContent(parsed.musikkryss),
         modeView: "play"
       }));
       setCrosswordType(targetType);
@@ -154,7 +159,7 @@ useEffect(() => {
         cropArea: data.cropArea,
         documentSize: data.documentSize,
         competitionCells: data.competitionCells || [],
-        musikkryss: normalizeMusikkryssContent(data.musikkryss),
+        musikkryss: normalizeCatalogMusikkryssContent(data.musikkryss),
         rows: data.rows,
         cols: data.cols,
         modeView: "play"
@@ -444,7 +449,7 @@ const handleTemplateImport = async (e) => {
     cropArea: data.cropArea || current.cropArea,
     competitionCells: data.competitionCells || [],
     answerPaths: data.answerPaths || [],
-    musikkryss: normalizeMusikkryssContent(data.musikkryss),
+    musikkryss: normalizeCatalogMusikkryssContent(data.musikkryss),
     horizontalLinePositions: data.horizontalLinePositions || null,
     verticalLinePositions: data.verticalLinePositions || null,
     cellTypes: data.cellTypes || current.cellTypes,
@@ -891,6 +896,13 @@ const handleTemplateImport = async (e) => {
             onLoadReference={() => updateSession(
               "musikkryss",
               loadMusikkryssReferenceIntoEditorSession
+            )}
+            onApplyWeeklyContent={(importResult) => updateSession(
+              "musikkryss",
+              current => applyMusikkryssWeeklyContentImport({
+                session: current,
+                importResult
+              }).session
             )}
             zoomState={editorZoomState}
             setZoomState={setEditorZoomState}

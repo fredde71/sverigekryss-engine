@@ -17,12 +17,14 @@ const ISSUE_FIELDS = Object.freeze([
   "producerReference"
 ]);
 
-export function importMusikkryssWeeklyContent(input) {
+export function importMusikkryssWeeklyContent(input, {
+  formatCatalog
+} = {}) {
   const diagnostics = [];
   validateEnvelope(input, diagnostics);
 
   const format = typeof input?.formatId === "string"
-    ? getMusikkryssFormat(input.formatId)
+    ? getMusikkryssFormat(input.formatId, formatCatalog)
     : null;
   if (!format) {
     diagnostics.push(diagnostic({

@@ -1,4 +1,7 @@
-import { MUSIKKRYSS_FIXED_FORMAT } from "./MusikkryssFormat";
+import {
+  MUSIKKRYSS_FIXED_FORMAT,
+  normalizeMusikkryssContent
+} from "./MusikkryssFormat";
 
 export const MUSIKKRYSS_FORMAT_CATALOG = Object.freeze({
   type: "musikkryss-format-catalog",
@@ -8,9 +11,20 @@ export const MUSIKKRYSS_FORMAT_CATALOG = Object.freeze({
 });
 
 export function getMusikkryssFormat(
-  formatId = MUSIKKRYSS_FORMAT_CATALOG.defaultFormatId
+  formatId,
+  catalog = MUSIKKRYSS_FORMAT_CATALOG
 ) {
-  return MUSIKKRYSS_FORMAT_CATALOG.formats.find(
-    format => format.id === formatId
+  const selectedFormatId = formatId ?? catalog.defaultFormatId;
+
+  return catalog.formats.find(
+    format => format.id === selectedFormatId
   ) || null;
+}
+
+export function normalizeCatalogMusikkryssContent(
+  value,
+  catalog = MUSIKKRYSS_FORMAT_CATALOG
+) {
+  const format = getMusikkryssFormat(value?.formatId, catalog);
+  return normalizeMusikkryssContent(value, format || undefined);
 }

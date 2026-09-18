@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import EditorScrollWorkspace from "./EditorScrollWorkspace";
 import MusikkryssEditorPanel from "./MusikkryssEditorPanel";
+import MusikkryssWeeklyContentImportContainer from "./MusikkryssWeeklyContentImportContainer";
 import MusikkryssAnswerPathOverlay from "./MusikkryssAnswerPathOverlay";
 import TemplateCanvas from "../template/TemplateCanvas";
-import { normalizeMusikkryssContent } from "../musikkryss/MusikkryssFormat";
+import {
+  normalizeCatalogMusikkryssContent
+} from "../musikkryss/MusikkryssFormatCatalog";
 
 export default function MusikkryssEditorContainer({
   template,
@@ -11,13 +14,19 @@ export default function MusikkryssEditorContainer({
   musikkryss,
   onMusikkryssChange,
   onLoadReference,
+  weeklyContentCandidate,
+  weeklyContentFormatCatalog,
+  onApplyWeeklyContent,
   zoomState,
   setZoomState,
   scrollState,
   setScrollState,
   documentLifecycleId
 }) {
-  const content = normalizeMusikkryssContent(musikkryss);
+  const content = normalizeCatalogMusikkryssContent(
+    musikkryss,
+    weeklyContentFormatCatalog
+  );
   const firstAnswerId = answerId(content.answers[0]);
   const [selectedAnswerId, setSelectedAnswerId] = useState(firstAnswerId);
   const selectedAnswer = content.answers.find(
@@ -53,8 +62,15 @@ export default function MusikkryssEditorContainer({
           value={content}
           onChange={onMusikkryssChange}
           onLoadReference={onLoadReference}
+          formatCatalog={weeklyContentFormatCatalog}
           selectedAnswerId={selectedAnswerId}
           onSelectedAnswerIdChange={setSelectedAnswerId}
+        />
+        <MusikkryssWeeklyContentImportContainer
+          candidate={weeklyContentCandidate}
+          formatId={content.formatId}
+          formatCatalog={weeklyContentFormatCatalog}
+          onApprove={onApplyWeeklyContent}
         />
       </aside>
 

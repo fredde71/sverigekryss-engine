@@ -1,4 +1,5 @@
 import React from "react";
+import { CELL_TYPE_BLACK } from "../template/cellTypes";
 
 const GRID_LINE_COLOR = "rgba(0,0,0,0.15)";
 
@@ -185,15 +186,17 @@ function createCellStyle(cellType, includeBorder) {
     pointerEvents: "none",
     ...(includeBorder ? { border: `1px solid ${GRID_LINE_COLOR}` } : {}),
     backgroundColor:
-      cellType === "image"
-        ? "rgba(0,120,255,0.3)"
-        : cellType === "blocked"
-          ? "rgba(0,0,0,0.4)"
-          : cellType === "double"
-            ? "rgba(255,0,0,0.3)"
-            : cellType === "write"
-              ? "rgba(0,255,0,0.25)"
-              : "rgba(0,0,0,0.0)"
+      cellType === CELL_TYPE_BLACK
+        ? "rgb(0, 0, 0)"
+        : cellType === "image"
+          ? "rgba(0,120,255,0.3)"
+          : cellType === "blocked"
+            ? "rgba(0,0,0,0.4)"
+            : cellType === "double"
+              ? "rgba(255,0,0,0.3)"
+              : cellType === "write"
+                ? "rgba(0,255,0,0.25)"
+                : "rgba(0,0,0,0.0)"
   };
 }
 

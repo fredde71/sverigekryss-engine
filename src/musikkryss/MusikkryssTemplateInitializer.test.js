@@ -24,7 +24,7 @@ test("initializes a durable template from the fixed 10 by 9 format", () => {
     Array.from({ length: 11 }, (_, index) => 40 + index * 90)
   );
   expect(template.cellTypes.filter(value => value === "write")).toHaveLength(59);
-  expect(template.cellTypes.filter(value => value === "empty")).toHaveLength(31);
+  expect(template.cellTypes.filter(value => value === "black")).toHaveLength(31);
   expect(template).not.toHaveProperty("answerPaths");
   expect(template.musikkryss.introScript).toBe("");
   expect(template.musikkryss.answers).toHaveLength(15);

@@ -1,6 +1,24 @@
 import { render, screen } from "@testing-library/react";
 import EditorGrid from "./EditorGrid";
 
+test("renders durable Musikkryss black cells without changing write styling", () => {
+  render(
+    <EditorGrid
+      rows={1}
+      cols={2}
+      cellTypes={["black", "write"]}
+      gridArea={{ top: 0, left: 0, width: 100, height: 50 }}
+    />
+  );
+
+  expect(screen.getByTestId("editor-grid-cell-0")).toHaveStyle({
+    backgroundColor: "rgb(0, 0, 0)"
+  });
+  expect(screen.getByTestId("editor-grid-cell-1")).toHaveStyle({
+    backgroundColor: "rgba(0,255,0,0.25)"
+  });
+});
+
 test("renders explicit reconstructed boundaries at their supplied positions", () => {
   render(
     <EditorGrid

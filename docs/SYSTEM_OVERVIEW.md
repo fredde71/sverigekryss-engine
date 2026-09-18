@@ -158,9 +158,11 @@ session; den andra sessionen lämnas oförändrad. En session utan uppladdat
 dokument renderar en blank arbetsyta. Uppladdning och asynkron Digitization är
 bundna till ursprungssessionens identitet.
 
-Musikkryss Editor använder ett katalogägt fast 10 × 9-format. En ny uppladdning
-initierar formatets normaliserade grid-geometri, 59 skrivbara och 31
-icke-skrivbara celler, explicita linjepositioner och 13 numrerade startceller.
+Musikkryss Editor använder ett format ur `MusikkryssFormatCatalog`. Det nuvarande
+återkommande formatet är 9 × 10, men Editor- och importflödet antar inte dessa
+dimensioner globalt. En ny uppladdning initierar formatets normaliserade
+grid-geometri, 59 skrivbara och 31 svarta celler, explicita linjepositioner och
+13 numrerade startceller.
 Topologin härleder deterministiskt 15 svar, vart och ett identifierat av nummer
 och riktning och med en egen ordnad `answerPath`. Editor redigerar Intro och varje
 svars textbaserade `contentSequence`; den kräver inte manuell författning av
@@ -171,14 +173,23 @@ delad `TemplateCanvas` och Editor-grid. Sessionens `modeView` växlar mellan den
 Editor och delad `PlaySurface` utan att återställa dokument eller Template-state.
 Audio, intro-uppspelning och AI-röst återstår.
 
-`MusikkryssWeeklyContentImport` är den rena domängränsen för levererat
-veckoinnehåll. Den tar ett source-neutralt kontrakt med format-ID, issue-metadata,
-intro samt manus och lösning per `number + direction`. Formatkatalogen levererar
-topologi och svarsvägar; importen får inte ta emot eller ändra dokument- eller
-grid-geometri. Den producerar normaliserat innehåll endast när alla förväntade
-svar finns exakt en gång, manus är ifyllda, lösningslängder stämmer och
-korsningarna är konsistenta. Excel-, CSV- och JSON-läsare ska vara adaptrar före
-denna gräns. En dedikerad Editor-container för veckoinnehållsimport är nästa steg.
+Korsordsproducenten skapar veckans innehåll. Wordex importerar, validerar,
+förhandsgranskar, kan redigera och publicerar det. `MusikkryssWeeklyContentImport`
+är den rena domängränsen för leveransen och tar ett source-neutralt kontrakt med
+format-ID, issue-metadata, intro samt manus och lösning per `number + direction`.
+Formatkatalogen levererar topologi och svarsvägar; importen får inte ta emot
+eller ändra dokument- eller grid-geometri. Den producerar normaliserat innehåll
+endast när alla förväntade svar finns exakt en gång, manus är ifyllda,
+lösningslängder stämmer och korsningarna är konsistenta.
+
+`MusikkryssWeeklyContentExcelAdapter` är den första transportadaptern. Den läser
+producentbladen `Utgåva` och `Frågor` och skapar domänkontraktet men äger ingen
+korsordssemantik. `MusikkryssWeeklyContentImportContainer` visar adapter- och
+domändiagnostik samt förhandsvisning. Först explicit godkännande anropar den
+source-neutrala application-gränsen, som vid behov initierar det registrerade
+formatet genom `MusikkryssTemplateInitializer` och därefter applicerar innehållet
+atomiskt. Befintligt kompatibelt dokument och grid bevaras. CSV, JSON och andra
+källformat kan anslutas som adaptrar före samma gräns.
 
 EditorWorkspace äger editor composition:
 
@@ -255,6 +266,7 @@ Celltyper:
 - blocked
 - double
 - write
+- black (hållbar Musikkryss-semantik för formatägda svarta celler)
 
 ---
 
@@ -285,7 +297,11 @@ För `crosswordType: "musikkryss"` adapterar `PlaySurface` vald post ur
 samma path för skrivnavigation. Korsande svar delar RuntimeLayers befintliga
 bokstavsstate. Musikkryss har en egen svarlista och presentation, men ingen forkad
 Runtime; Sverigekryss-flödet är oförändrat. Musikkryss-canvasen är responsiv med
-650 px maximal desktopbredd.
+650 px maximal desktopbredd. Formatets numrerade startceller renderas i Runtime,
+svarta celler förblir svarta och hela gridet kan renderas utan `imageSrc`. Vid
+svarsval hålls vald väg ljusblå, fokuscellen förstärks och övriga skrivbara celler
+tonas ned. Samma val exponerar svarets `contentSequence` som aktiv källa inför
+framtida audio utan att starta uppspelning.
 
 Aktiv runtime-pipeline:
 

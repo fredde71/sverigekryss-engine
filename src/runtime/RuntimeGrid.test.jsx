@@ -46,3 +46,32 @@ test("legacy runtime grids retain uniform CSS-grid rendering", () => {
   });
   expect(screen.queryByTestId("runtime-grid-explicit")).not.toBeInTheDocument();
 });
+
+test("Musikkryss presentation adds visible boundaries without changing geometry", () => {
+  render(
+    <RuntimeGrid
+      rows={1}
+      cols={2}
+      gridArea={{ top: 10, left: 20, width: 100, height: 40 }}
+      horizontalLinePositions={[10, 50]}
+      verticalLinePositions={[20, 55, 120]}
+      presentation="musikkryss"
+    >
+      <div data-testid="musikkryss-runtime-cell-0" />
+      <div data-testid="musikkryss-runtime-cell-1" />
+    </RuntimeGrid>
+  );
+
+  expect(screen.getByTestId("musikkryss-runtime-cell-0")).toHaveStyle({
+    top: "0px",
+    left: "0px",
+    width: "35px",
+    height: "40px",
+    border: "1px solid rgb(0, 0, 0)",
+    boxSizing: "border-box"
+  });
+  expect(screen.getByTestId("musikkryss-runtime-cell-1")).toHaveStyle({
+    left: "35px",
+    width: "65px"
+  });
+});

@@ -58,11 +58,11 @@ export const MUSIKKRYSS_FIXED_FORMAT = deepFreeze({
   clueNumbers: ANSWER_DEFINITIONS.numberedStartCells.map(start => start.number)
 });
 
-export function createEmptyMusikkryssContent() {
+export function createEmptyMusikkryssContent(format = MUSIKKRYSS_FIXED_FORMAT) {
   return {
-    formatId: MUSIKKRYSS_FIXED_FORMAT.id,
+    formatId: format.id,
     introScript: "",
-    answers: MUSIKKRYSS_FIXED_FORMAT.answerDefinitions.map(definition => ({
+    answers: format.answerDefinitions.map(definition => ({
       number: definition.number,
       direction: definition.direction,
       answerPath: [...definition.answerPath],
@@ -71,15 +71,20 @@ export function createEmptyMusikkryssContent() {
   };
 }
 
-export function normalizeMusikkryssContent(value) {
+export function normalizeMusikkryssContent(
+  value,
+  format = MUSIKKRYSS_FIXED_FORMAT
+) {
   const sourceAnswers = Array.isArray(value?.answers) ? value.answers : [];
+  const issue = normalizeMusikkryssIssue(value?.issue);
 
   return {
-    formatId: MUSIKKRYSS_FIXED_FORMAT.id,
+    formatId: format.id,
+    ...(issue ? { issue } : {}),
     introScript: typeof value?.introScript === "string"
       ? value.introScript
       : "",
-    answers: MUSIKKRYSS_FIXED_FORMAT.answerDefinitions.map(definition => {
+    answers: format.answerDefinitions.map(definition => {
       const source = sourceAnswers.find(answer => (
         answer?.number === definition.number
         && answer?.direction === definition.direction
@@ -101,6 +106,22 @@ export function normalizeMusikkryssContent(value) {
       };
     })
   };
+}
+
+function normalizeMusikkryssIssue(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  return Object.fromEntries([
+    "crosswordId",
+    "title",
+    "issueNumber",
+    "publishWeek",
+    "publishDate",
+    "producerReference"
+  ].map(field => [
+    field,
+    typeof value[field] === "string" ? value[field].trim() : ""
+  ]));
 }
 
 function deepFreeze(value) {

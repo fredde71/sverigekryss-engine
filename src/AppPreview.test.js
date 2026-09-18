@@ -226,6 +226,10 @@ test("App orchestrates the top-level Musikkryss editor shell", () => {
   expect(appSource).toContain("onMusikkryssChange={setMusikkryss}");
   expect(appSource).toContain("onLoadReference={() => updateSession(");
   expect(appSource).toContain("loadMusikkryssReferenceIntoEditorSession");
+  expect(appSource).toContain("onApplyWeeklyContent={(importResult) => updateSession(");
+  expect(appSource).toContain("applyMusikkryssWeeklyContentImport({");
+  expect(appSource).not.toContain("importMusikkryssWeeklyContent(candidate");
+  expect(appSource).not.toContain("MusikkryssWeeklyContentExcelAdapter");
   expect(appSource).toContain("crosswordType === \"musikkryss\"");
   expect(appSource).not.toContain("setMusikkryssIntroScript");
   expect(appSource).not.toContain("setMusikkryssClueText");

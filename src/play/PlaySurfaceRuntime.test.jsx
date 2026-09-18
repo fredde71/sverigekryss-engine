@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import PlaySurface from "./PlaySurface";
 import { createMusikkryssTemplate } from "../musikkryss/MusikkryssTemplateInitializer";
+import {
+  createMusikkryssReferenceContent
+} from "../musikkryss/MusikkryssReferenceContentPack";
 
 beforeAll(() => {
   global.ResizeObserver = class ResizeObserver {
@@ -218,16 +221,20 @@ test("Play renders cells from the Template's persisted explicit grid geometry", 
 });
 
 test("Musikkryss lists directional answers and activates the complete path", async () => {
+  const base = createMusikkryssTemplate({
+    crosswordId: "MUSIK-2026-38",
+    documentSize: { width: 490, height: 540 },
+    imageSrc: "/music-grid.png"
+  });
+  const onActiveSpokenContentSourceChange = jest.fn();
   render(
     <PlaySurface
       template={{
-        ...createMusikkryssTemplate({
-          crosswordId: "MUSIK-2026-38",
-          documentSize: { width: 490, height: 540 },
-          imageSrc: "/music-grid.png"
-        })
+        ...base,
+        musikkryss: createMusikkryssReferenceContent()
       }}
       onSubmitAnswers={() => {}}
+      onActiveSpokenContentSourceChange={onActiveSpokenContentSourceChange}
     />
   );
 
@@ -245,6 +252,8 @@ test("Musikkryss lists directional answers and activates the complete path", asy
   });
   expect(screen.getByTestId("template-canvas-responsive-wrapper"))
     .toBeInTheDocument();
+  expect(screen.getByTestId("runtime-cell-label-1")).toHaveTextContent("1");
+  expect(screen.getByTestId("runtime-cell-label-13")).toHaveTextContent("13");
 
   fireEvent.click(screen.getByRole("button", { name: "1 lodrätt" }));
 
@@ -263,6 +272,20 @@ test("Musikkryss lists directional answers and activates the complete path", asy
     "data-path-state",
     "dimmed"
   );
+  expect(getInputAt(0).parentElement).toHaveStyle({
+    backgroundColor: "rgba(37, 99, 235, 0.58)"
+  });
+  expect(getInputAt(10).parentElement).toHaveStyle({
+    backgroundColor: "rgba(125, 211, 252, 0.52)"
+  });
+  expect(getInputAt(1).parentElement).toHaveStyle({
+    backgroundColor: "rgba(148, 163, 184, 0.38)"
+  });
+  expect(document.querySelector(
+    '[data-testid="runtime-black-cell"][data-index="8"]'
+  )).toHaveStyle({
+    backgroundColor: "rgb(0, 0, 0)"
+  });
   expect(getInputAt(0)).toHaveStyle({
     fontSize: "30px",
     textAlign: "center",
@@ -272,6 +295,15 @@ test("Musikkryss lists directional answers and activates the complete path", asy
     "data-index",
     "0"
   ));
+  await waitFor(() => expect(onActiveSpokenContentSourceChange)
+    .toHaveBeenLastCalledWith(expect.objectContaining({
+      type: "musikkryss-spoken-content-source",
+      answerId: "1:down",
+      contentSequence: [expect.objectContaining({
+        type: "text",
+        text: expect.stringContaining("Deep Purple")
+      })]
+    })));
 });
 
 test("Musikkryss typing follows path order and crossing answers share letters", async () => {

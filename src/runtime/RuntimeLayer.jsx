@@ -19,6 +19,7 @@ export default function RuntimeLayer({
   data,
   onAnswersChange,
   externalAnswerSelection = null,
+  cellLabels = null,
   presentation = "default",
   revealedCellLetters = {},
   onAnswerSelectionChange
@@ -234,6 +235,7 @@ const handleCellClick = (index) => {
   gridArea={gridArea}
   horizontalLinePositions={data.horizontalLinePositions}
   verticalLinePositions={data.verticalLinePositions}
+  presentation={presentation}
 >
   {Array.from({ length: rows * cols }).map((_, i) => {
    
@@ -283,6 +285,7 @@ return (
     && Boolean(clueSelection)
     && !activeCells.has(i)}
   presentation={presentation}
+  cellLabel={cellLabels?.[i]}
   readOnly={Object.hasOwn(revealedCellLetters, i)}
   onClick={() => handleCellClick(i)}
   onFocus={(e) => {

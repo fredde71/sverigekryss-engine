@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import {
-  normalizeMusikkryssContent
-} from "../musikkryss/MusikkryssFormat";
+  normalizeCatalogMusikkryssContent
+} from "../musikkryss/MusikkryssFormatCatalog";
 
 export default function MusikkryssEditorPanel({
   value,
   onChange,
   onLoadReference,
+  formatCatalog,
   selectedAnswerId: controlledSelectedAnswerId,
   onSelectedAnswerIdChange
 }) {
-  const content = normalizeMusikkryssContent(value);
+  const content = normalizeCatalogMusikkryssContent(value, formatCatalog);
   const defaultAnswerId = answerId(content.answers[0]);
   const [localSelectedAnswerId, setLocalSelectedAnswerId] = useState(
     defaultAnswerId
