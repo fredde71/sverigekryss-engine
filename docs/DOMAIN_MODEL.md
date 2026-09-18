@@ -166,6 +166,8 @@ En Template med `crosswordType: "musikkryss"` kan dessutom innehålla:
 - `musikkryss.answers[].answerPath`
 - `musikkryss.answers[].contentSequence`
 - `musikkryss.answers[].solution`
+- `musikkryss.introSpokenAudio`
+- `musikkryss.answers[].spokenAudio`
 
 Ett Musikkryss-svar identifieras unikt av `number + direction`, där riktningen är
 `across` eller `down`. Samma tryckta nummer kan därför äga både ett vågrätt och
@@ -177,6 +179,41 @@ skrivbara/svarta topologi och författas inte manuellt.
 Den nuvarande content sequence består av redigerbar text. Runtime konsumerar
 `musikkryss.answers` genom delad Play/Runtime-infrastruktur. Audio,
 intro-uppspelning och AI-röst ingår ännu inte i domänbeteendet.
+
+### SpeechGenerationRequest
+
+`SpeechGenerationRequest` är ett immutabelt, provider-oberoende underlag för
+förgenererat tal. Kontraktet innehåller:
+
+- type och speech-contract-version
+- `sourceRef` för Musikkryss-intro eller svar identifierat av `number + direction`
+- normaliserad `contentSequence`
+- locale
+- produktägd, provider-neutral `voiceProfileId`
+- deterministiskt `sourceFingerprint`
+
+Fingerprinten härleds från normaliserad content sequence, locale, voice profile
+och speech-contract-version. Ändring i något av dessa värden skapar en annan
+fingerprint. Source reference ingår inte i fingerprinten, så identiskt talunderlag
+kan identifieras oberoende av var det används.
+
+### SpokenAudioReference
+
+`SpokenAudioReference` är immutabel härledd Template-data som refererar en redan
+genererad audioasset genom asset-ID/version, media type, publik URL,
+`sourceFingerprint`, `voiceProfileId` och locale. En jämförelse med aktuell
+`SpeechGenerationRequest` är:
+
+- `current` när fingerprints matchar
+- `stale` när en audioasset finns men manus, locale, voice profile eller contract
+  har ändrats
+- `unavailable` när ingen giltig referens finns
+
+Musikkryss Template kan lagra en referens för intro och en per riktningssvar.
+Provider-namn, provider-röst-ID, API-parametrar och secrets är förbjudna i
+referensen och ingår inte i Template. Tal genereras före publicering och ska
+återanvändas av spelare; provideradapter och secrets tillhör en framtida
+server-side `SpeechGenerationService`, inte Template eller Runtime.
 
 ### MusikkryssFormat
 

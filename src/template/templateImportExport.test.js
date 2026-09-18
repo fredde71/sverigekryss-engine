@@ -1,5 +1,9 @@
 import { exportTemplateFile } from "./templateExport";
 import { importTemplateFile } from "./templateImport";
+import {
+  createSpeechGenerationRequest,
+  createSpokenAudioReference
+} from "../speech/SpeechGeneration";
 
 const originalCreateObjectURL = URL.createObjectURL;
 const originalRevokeObjectURL = URL.revokeObjectURL;
@@ -190,6 +194,30 @@ test("create import export round-trip preserves explicit grid-line positions", a
 
 test("create import export round-trip preserves Musikkryss editor content", async () => {
   const createdUrls = [];
+  const introRequest = createSpeechGenerationRequest({
+    sourceRef: { type: "musikkryss-intro" },
+    contentSequence: [{ type: "text", text: "Intro" }],
+    locale: "sv-SE",
+    voiceProfileId: "sv-female-natural-v1"
+  });
+  const answerRequest = createSpeechGenerationRequest({
+    sourceRef: {
+      type: "musikkryss-answer",
+      number: 8,
+      direction: "down"
+    },
+    contentSequence: [{ type: "text", text: "Lodrät ledtråd" }],
+    locale: "sv-SE",
+    voiceProfileId: "sv-female-natural-v1"
+  });
+  const introSpokenAudio = createTestAudioReference(
+    "intro-asset",
+    introRequest
+  );
+  const answerSpokenAudio = createTestAudioReference(
+    "answer-8-down-asset",
+    answerRequest
+  );
   URL.createObjectURL = jest.fn((blob) => {
     createdUrls.push(blob);
     return "blob:template";
@@ -207,10 +235,12 @@ test("create import export round-trip preserves Musikkryss editor content", asyn
     imageSrc: "/music-grid.png",
     musikkryss: {
       introScript: "Intro",
+      introSpokenAudio,
       answers: [{
         number: 8,
         direction: "down",
-        contentSequence: [{ type: "text", text: "Lodrät ledtråd" }]
+        contentSequence: [{ type: "text", text: "Lodrät ledtråd" }],
+        spokenAudio: answerSpokenAudio
       }]
     }
   });
@@ -222,11 +252,13 @@ test("create import export round-trip preserves Musikkryss editor content", asyn
 
   expect(imported.crosswordType).toBe("musikkryss");
   expect(imported.musikkryss.introScript).toBe("Intro");
+  expect(imported.musikkryss.introSpokenAudio).toEqual(introSpokenAudio);
   const importedAnswer = imported.musikkryss.answers.find(answer => (
     answer.number === 8 && answer.direction === "down"
   ));
   expect(importedAnswer.contentSequence[0].text).toBe("Lodrät ledtråd");
   expect(importedAnswer.answerPath).toEqual([46, 56, 66, 76, 86]);
+  expect(importedAnswer.spokenAudio).toEqual(answerSpokenAudio);
 });
 
 test("template round-trip preserves black cells and legacy cell types", async () => {
@@ -301,5 +333,17 @@ function readBlobText(blob) {
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsText(blob);
+  });
+}
+
+function createTestAudioReference(assetId, request) {
+  return createSpokenAudioReference({
+    assetId,
+    assetVersion: 1,
+    mediaType: "audio/mpeg",
+    publicUrl: `/audio/${assetId}.mp3`,
+    sourceFingerprint: request.sourceFingerprint,
+    voiceProfileId: request.voiceProfileId,
+    locale: request.locale
   });
 }

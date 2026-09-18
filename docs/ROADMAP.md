@@ -62,15 +62,23 @@ Musikkryss produktionsimport och Play-flöde är genomfört och browser-verifier
   ogissningsbar capability-token
 - publicering visar först endast Lösarlänken; `Publicera facit` aktiverar senare
   Facit-/hjälplänken och dess kontroller för en bokstav, valt svar och hela facit
+- provider-oberoende `SpeechGenerationRequest` och `SpokenAudioReference` är
+  implementerade för Musikkryss-intro och riktningssvar
+- deterministiska, versionsbundna fingerprints gör genererad audio `stale` när
+  manus, locale eller provider-neutral voice profile ändras
+- provider-neutrala audioreferenser kan bevaras i Template; providerdata och
+  secrets ingår inte i Template, App, Runtime eller Play
 
 Det registrerade formatet väljs utan filnamnslogik. `Ladda referenskryss` är
 fortsatt endast en explicit utvecklings-/demofunktion och referensarbetsboken är
 en development-/manuell verifieringsfixture, inte runtime-standard eller del av
 produktionspubliceringen.
 
-Nästa Musikkryss-milstolpe är provider-oberoende TTS/audio-generering. Audio,
-intro-uppspelning och AI-röst är ännu inte implementerade. Slutlig UX-polering
-är senarelagd.
+Nästa Musikkryss-milstolpe är en backendägd `SpeechGenerationService` och den
+första utbytbara server-side TTS-provideradaptern. Generering ska ske före
+publicering och samma asset ska återanvändas av alla spelare; providerhemligheter
+ska stanna server-side. Genereringsendpoint, Play-uppspelning och AI-röst är ännu
+inte implementerade. Slutlig UX-polering är senarelagd.
 
 V1-arbetsflödet är browser-testat end-to-end:
 

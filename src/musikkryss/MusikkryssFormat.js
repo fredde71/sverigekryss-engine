@@ -1,5 +1,8 @@
 import { createGridFormatGeometry } from "../digitization/analysis/reconstruction/GridFormatGeometry";
 import { normalizeCanonicalSolution } from "../template/templateSolutions";
+import {
+  normalizeSpokenAudioReference
+} from "../speech/SpeechGeneration";
 
 const ROWS = 9;
 const COLS = 10;
@@ -77,10 +80,14 @@ export function normalizeMusikkryssContent(
 ) {
   const sourceAnswers = Array.isArray(value?.answers) ? value.answers : [];
   const issue = normalizeMusikkryssIssue(value?.issue);
+  const introSpokenAudio = normalizeSpokenAudioReference(
+    value?.introSpokenAudio
+  );
 
   return {
     formatId: format.id,
     ...(issue ? { issue } : {}),
+    ...(introSpokenAudio ? { introSpokenAudio } : {}),
     introScript: typeof value?.introScript === "string"
       ? value.introScript
       : "",
@@ -93,6 +100,7 @@ export function normalizeMusikkryssContent(
         ? source.contentSequence.find(entry => entry?.type === "text")
         : null;
       const solution = normalizeCanonicalSolution(source?.solution);
+      const spokenAudio = normalizeSpokenAudioReference(source?.spokenAudio);
 
       return {
         number: definition.number,
@@ -102,7 +110,8 @@ export function normalizeMusikkryssContent(
           type: "text",
           text: typeof textEntry?.text === "string" ? textEntry.text : ""
         }],
-        ...(solution ? { solution } : {})
+        ...(solution ? { solution } : {}),
+        ...(spokenAudio ? { spokenAudio } : {})
       };
     })
   };

@@ -171,7 +171,7 @@ formatets svarsvägar.
 `MusikkryssEditorContainer` äger Musikkryss-specifik Editor-komposition ovanpå
 delad `TemplateCanvas` och Editor-grid. Sessionens `modeView` växlar mellan denna
 Editor och delad `PlaySurface` utan att återställa dokument eller Template-state.
-Audio, intro-uppspelning och AI-röst återstår.
+Audio-uppspelning och AI-röst återstår.
 
 Korsordsproducenten skapar veckans innehåll. Wordex importerar, validerar,
 förhandsgranskar, kan redigera och publicerar det. `MusikkryssWeeklyContentImport`
@@ -199,6 +199,26 @@ kompletthet och korsningskonsistens. Ogiltig eller ofullständig författardata
 bevaras för korrigering, medan Help/Facit fortsatt kräver ett komplett och
 konsistent lösningsindex. App äger ingen sådan redigerings- eller
 valideringslogik.
+
+## SpeechGeneration
+
+SpeechGeneration är en delad, provider-oberoende domängräns. Den skapar ett
+immutabelt `SpeechGenerationRequest` för Musikkryss-intro eller ett riktningssvar
+från `sourceRef`, normaliserad `contentSequence`, locale och en produktägd
+`voiceProfileId`. Ett deterministiskt och versionsbundet `sourceFingerprint`
+identifierar exakt det talunderlag som ska genereras.
+
+En färdig asset representeras av `SpokenAudioReference`. Referensen innehåller
+endast provider-neutral assetidentitet, version, media type, publik URL,
+fingerprint, voice profile och locale. Jämförelse mot aktuell request ger
+`current`, `stale` eller `unavailable`. Template bevarar referenser för intro och
+respektive riktningssvar, men känner inte till provider, provider-röst-ID,
+API-parametrar eller hemligheter.
+
+Talproduktionen ska ske före publicering och dess asset återanvändas av alla
+spelare. Nästa systemgräns är en backendägd `SpeechGenerationService` med en
+utbytbar server-side provideradapter och server-side secrets. Någon provider,
+genereringsendpoint eller Runtime/Play-uppspelning ingår ännu inte.
 
 EditorWorkspace äger editor composition:
 
