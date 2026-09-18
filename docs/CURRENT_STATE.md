@@ -186,7 +186,14 @@ producentfil
 ```
 
 Importerad metadata, intro, manus och lösningar är normal Template-/sessionsdata
-efter godkännande och är inte skrivskyddad eller bunden till Excelkällan.
+efter godkännande och är inte skrivskyddad eller bunden till Excelkällan. Editor
+kan ändra `crosswordId`, titel, utgåvenummer, publiceringsvecka/-datum,
+producentreferens, intro, varje riktningssvars manus och dess kanoniska lösning.
+Samma lösningsvalidering som styr Help/Facit visar felaktig längd och
+korsningskonflikter utan att skriva om användarens indata. Ofullständiga eller
+ogiltiga lösningar får ligga kvar under redigering; korrigering återställer
+komplett och giltig Help/Facit-status. Formatägda svarsvägar och övrigt innehåll
+bevaras.
 
 Musikkryss format- och Play-grund är implementerad ovanpå de självständiga
 Editor-sessionerna. Ny Musikkryss-uppladdning initierar automatiskt det katalogägda
@@ -201,10 +208,9 @@ Den verifierade Wordex-källan ger ett redigerbart 25 × 25-förslag. Explicita 
 
 Fortsatt forskning om image-aligned linjegeometri, avbrutna linjer, projection ridges, fragment tracks och lattice-conditioned evidence är senarelagd till efter V1. Ground Truth används fortsatt endast för validering.
 
-Nästa produktmilstolpe är tydlig Editor-redigering av importerad issue-metadata
-och kanoniska lösningar, följt av TTS/audio-integration. Slutlig UX-polering är
-senarelagd. Avancerad automatisk klassificering av celler och ledtrådar är också
-senarelagd bortom V1.
+Nästa produktmilstolpe är provider-oberoende TTS/audio-generering för
+Musikkryss. Slutlig UX-polering är senarelagd. Avancerad automatisk klassificering
+av celler och ledtrådar är också senarelagd bortom V1.
 
 Tidigare verifierade arkitekturmilstolpar följer nedan.
 

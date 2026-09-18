@@ -49,6 +49,10 @@ Musikkryss produktionsimport och Play-flöde är genomfört och browser-verifier
 - importerad metadata, intro, manus och lösningar är fortsatt redigerbar
   Template-/sessionsdata; producenten skapar innehållet och Wordex verifierar,
   kan redigera, förhandsgranskar och publicerar
+- Editor redigerar samtliga importerade issue-fält, intro, riktningsmanus och
+  kanoniska lösningar utan fortsatt Excelberoende; gemensam validering visar
+  längdfel och korsningskonflikter och återställer Help/Facit-giltighet efter
+  korrigering utan att ändra formatägda svarsvägar
 - Musikkryss Editor och image-free Play renderar formatets explicita geometri,
   numrerade startceller, skrivbara celler och svarta celler
 - vald svarsväg, fokuserad cell, nedtoning, skrivnavigation och korsande
@@ -64,10 +68,9 @@ fortsatt endast en explicit utvecklings-/demofunktion och referensarbetsboken ä
 en development-/manuell verifieringsfixture, inte runtime-standard eller del av
 produktionspubliceringen.
 
-Nästa Musikkryss-milstolpe är Editor-stöd för att tydligt redigera importerad
-issue-metadata och kanoniska lösningar. Därefter följer TTS/audio-integration.
-Audio, intro-uppspelning och AI-röst är ännu inte implementerade. Slutlig
-UX-polering är senarelagd.
+Nästa Musikkryss-milstolpe är provider-oberoende TTS/audio-generering. Audio,
+intro-uppspelning och AI-röst är ännu inte implementerade. Slutlig UX-polering
+är senarelagd.
 
 V1-arbetsflödet är browser-testat end-to-end:
 

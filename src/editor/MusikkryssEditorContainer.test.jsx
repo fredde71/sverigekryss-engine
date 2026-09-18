@@ -10,6 +10,7 @@ jest.mock("./EditorScrollWorkspace", () => ({ children }) => (
 
 test("owns Musikkryss panel and mounts the supplied editor in TemplateCanvas", () => {
   const onMusikkryssChange = jest.fn();
+  const onCrosswordIdChange = jest.fn();
   const onLoadReference = jest.fn();
 
   render(
@@ -27,6 +28,7 @@ test("owns Musikkryss panel and mounts the supplied editor in TemplateCanvas", (
       editor={<div data-testid="musikkryss-grid-layer">grid</div>}
       musikkryss={createEmptyMusikkryssContent()}
       onMusikkryssChange={onMusikkryssChange}
+      onCrosswordIdChange={onCrosswordIdChange}
       onLoadReference={onLoadReference}
       zoomState={{ fitScale: 1, scale: 1, zoomMode: "fit" }}
       setZoomState={jest.fn()}
@@ -47,6 +49,11 @@ test("owns Musikkryss panel and mounts the supplied editor in TemplateCanvas", (
   expect(onMusikkryssChange).toHaveBeenCalledWith(expect.objectContaining({
     introScript: "Musikintro"
   }));
+
+  fireEvent.change(screen.getByLabelText("Korsords-ID"), {
+    target: { value: "MUSIK-EDITED" }
+  });
+  expect(onCrosswordIdChange).toHaveBeenCalledWith("MUSIK-EDITED");
 
   fireEvent.click(screen.getByRole("button", { name: "Ladda referenskryss" }));
   expect(onLoadReference).toHaveBeenCalledTimes(1);

@@ -893,6 +893,7 @@ const handleTemplateImport = async (e) => {
             editor={editor}
             musikkryss={musikkryss}
             onMusikkryssChange={setMusikkryss}
+            onCrosswordIdChange={setCrosswordId}
             onLoadReference={() => updateSession(
               "musikkryss",
               loadMusikkryssReferenceIntoEditorSession

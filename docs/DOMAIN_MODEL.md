@@ -237,6 +237,13 @@ och har ingen fortsatt koppling till producentfilen. `Ladda referenskryss` och
 referensarbetsboken är development-/manuella verifieringsfixtures, inte
 produktionsflöde eller runtime-standardvärden.
 
+Editor får därefter ändra issue-metadata, intro, svarens `contentSequence` och
+kanoniska `solution` direkt i denna data. Formatägda `answerPath`-värden ändras
+inte av innehållsredigering. En lösning får vara ofullständig eller ogiltig medan
+den författas och bevaras då som inmatad; den gemensamma Template-valideringen
+rapporterar path-längd och korsningskonflikter. Endast kompletta och konsistenta
+lösningar ger Help/Facit-behörighet.
+
 ### Canonical solutions and publication access
 
 Kanoniska lösningar ägs av Template: Musikkryss lagrar dem per riktningssvar och

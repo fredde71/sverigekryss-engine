@@ -191,6 +191,15 @@ formatet genom `MusikkryssTemplateInitializer` och därefter applicerar innehål
 atomiskt. Befintligt kompatibelt dokument och grid bevaras. CSV, JSON och andra
 källformat kan anslutas som adaptrar före samma gräns.
 
+Efter godkännande äger Musikkryss-sessionens normala Template-state fortsatt
+redigering; Excel-adaptern deltar inte längre. `MusikkryssEditorPanel` redigerar
+issue-metadata, intro, textinnehåll och kanonisk lösning per riktningssvar.
+Panelen använder den gemensamma Template-lösningsvalideringen för path-längd,
+kompletthet och korsningskonsistens. Ogiltig eller ofullständig författardata
+bevaras för korrigering, medan Help/Facit fortsatt kräver ett komplett och
+konsistent lösningsindex. App äger ingen sådan redigerings- eller
+valideringslogik.
+
 EditorWorkspace äger editor composition:
 
 - montering av EditorViewport

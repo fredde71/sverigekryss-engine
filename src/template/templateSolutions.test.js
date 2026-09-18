@@ -2,8 +2,31 @@ import { createMusikkryssTemplate } from "../musikkryss/MusikkryssTemplateInitia
 import { createTemplate } from "./templateModel";
 import {
   createTemplateSolutionIndex,
-  stripTemplateSolutions
+  stripTemplateSolutions,
+  validateAnswerPathSolution
 } from "./templateSolutions";
+
+test("validates editable answer solutions with the shared path semantics", () => {
+  expect(validateAnswerPathSolution("AB", [1, 2])).toMatchObject({
+    status: "valid",
+    expectedLength: 2,
+    actualLength: 2,
+    diagnostics: []
+  });
+  expect(validateAnswerPathSolution("A", [1, 2])).toMatchObject({
+    status: "invalid",
+    diagnostics: [{
+      code: "solution-length-mismatch",
+      expectedLength: 2,
+      actualLength: 1
+    }]
+  });
+  expect(validateAnswerPathSolution("", [1, 2])).toMatchObject({
+    status: "incomplete",
+    expectedLength: 2,
+    actualLength: 0
+  });
+});
 
 test("Sverigekryss stores canonical solutions on its existing answer paths", () => {
   const template = createSverigekryssTemplate({

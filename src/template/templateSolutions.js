@@ -5,6 +5,40 @@ export function normalizeCanonicalSolution(value) {
   return normalized.length > 0 ? normalized : null;
 }
 
+export function validateAnswerPathSolution(value, answerPath) {
+  const normalized = normalizeCanonicalSolution(value);
+  const expectedLength = Array.isArray(answerPath) ? answerPath.length : 0;
+  const actualLength = normalized ? Array.from(normalized).length : 0;
+
+  if (!normalized) {
+    return deepFreeze({
+      status: "incomplete",
+      expectedLength,
+      actualLength,
+      diagnostics: []
+    });
+  }
+
+  const diagnostics = [];
+  if (actualLength !== expectedLength) {
+    diagnostics.push({
+      code: "solution-length-mismatch",
+      expectedLength,
+      actualLength
+    });
+  }
+  if (Array.from(normalized).some(letter => /\s/u.test(letter))) {
+    diagnostics.push({ code: "solution-contains-whitespace" });
+  }
+
+  return deepFreeze({
+    status: diagnostics.length > 0 ? "invalid" : "valid",
+    expectedLength,
+    actualLength,
+    diagnostics
+  });
+}
+
 export function createTemplateSolutionIndex(template) {
   const expectedAnswers = collectExpectedAnswers(template);
   const expectedAnswerCount = getExpectedAnswerCount(template);
@@ -140,11 +174,9 @@ function collectSolutionEntries(template) {
 
 function normalizeCompleteSolution(value, answerPath) {
   const normalized = normalizeCanonicalSolution(value);
-  if (!normalized || !Array.isArray(answerPath)) return null;
+  if (!normalized) return null;
 
-  const letters = Array.from(normalized);
-  return letters.length === answerPath.length
-    && letters.every(letter => !/\s/u.test(letter))
+  return validateAnswerPathSolution(normalized, answerPath).status === "valid"
     ? normalized
     : null;
 }

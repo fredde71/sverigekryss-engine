@@ -13,6 +13,7 @@ export default function MusikkryssEditorContainer({
   editor,
   musikkryss,
   onMusikkryssChange,
+  onCrosswordIdChange,
   onLoadReference,
   weeklyContentCandidate,
   weeklyContentFormatCatalog,
@@ -65,6 +66,7 @@ export default function MusikkryssEditorContainer({
           formatCatalog={weeklyContentFormatCatalog}
           selectedAnswerId={selectedAnswerId}
           onSelectedAnswerIdChange={setSelectedAnswerId}
+          onCrosswordIdChange={onCrosswordIdChange}
         />
         <MusikkryssWeeklyContentImportContainer
           candidate={weeklyContentCandidate}
