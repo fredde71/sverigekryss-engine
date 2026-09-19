@@ -197,6 +197,13 @@ och speech-contract-version. Ändring i något av dessa värden skapar en annan
 fingerprint. Source reference ingår inte i fingerprinten, så identiskt talunderlag
 kan identifieras oberoende av var det används.
 
+En textpost kan ha `speechText` som valfri provider-neutral uppläsningsvariant.
+Requesten bevarar både `text` och `speechText`: visning använder alltid `text`,
+medan fingerprint och talgenerering använder `speechText` när egenskapen finns
+och annars `text`. Därmed gör ändrad uppläsning befintlig audio `stale` utan att
+den författade visningstexten behöver skrivas om. Fältet ska innehålla naturlig,
+korrekt text och är inte ett fonetiskt eller provider-specifikt markupspråk.
+
 ### SpokenAudioReference
 
 `SpokenAudioReference` är immutabel härledd Template-data som refererar en redan
@@ -212,8 +219,21 @@ genererad audioasset genom asset-ID/version, media type, publik URL,
 Musikkryss Template kan lagra en referens för intro och en per riktningssvar.
 Provider-namn, provider-röst-ID, API-parametrar och secrets är förbjudna i
 referensen och ingår inte i Template. Tal genereras före publicering och ska
-återanvändas av spelare; provideradapter och secrets tillhör en framtida
-server-side `SpeechGenerationService`, inte Template eller Runtime.
+återanvändas av spelare.
+
+### SpeechGenerationService och audioassets
+
+Backendens `SpeechGenerationService` tar en validerad provider-neutral request
+för Musikkryss-intro eller ett riktningssvar. Den återanvänder en befintlig asset
+med samma fingerprint eller anropar den server-side ElevenLabs-adaptern. Profilen
+`sv-female-natural-v1` mappas till provider-röst och modell på servern.
+
+Genererad audio lagras som en separat, immutable versionsbunden MP3-asset och
+returneras som `SpokenAudioReference`. Providerproveniens lagras i privat
+server-side metadata och ingår inte i publik URL, Template eller API-respons.
+Providerfel diagnostiseras med sanerad serverloggning utan API-nycklar eller
+authorization headers. Misslyckad generering muterar inte Template. Tjänsten
+genererar inte live per spelare och Runtime har ingen providerkunskap.
 
 ### MusikkryssFormat
 

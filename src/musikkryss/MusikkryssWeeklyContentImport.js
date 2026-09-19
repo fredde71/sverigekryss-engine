@@ -180,7 +180,8 @@ function normalizeAnswers({ format, answers, diagnostics }) {
 
     const { answer, index } = supplied;
     const path = `answers[${index}]`;
-    const script = getTextScript(answer?.contentSequence);
+    const textEntry = getTextEntry(answer?.contentSequence);
+    const script = normalizeText(textEntry?.text);
     if (!script) {
       diagnostics.push(diagnostic({
         code: "empty-script",
@@ -218,7 +219,13 @@ function normalizeAnswers({ format, answers, diagnostics }) {
       number: definition.number,
       direction: definition.direction,
       answerPath: [...definition.answerPath],
-      contentSequence: [{ type: "text", text: script }],
+      contentSequence: [{
+        type: "text",
+        text: script,
+        ...(typeof textEntry?.speechText === "string"
+          ? { speechText: normalizeText(textEntry.speechText) }
+          : {})
+      }],
       ...(solution ? { solution } : {})
     }];
   });
@@ -254,11 +261,9 @@ function hasBlockingAnswerDiagnostics(diagnostics) {
   ));
 }
 
-function getTextScript(contentSequence) {
-  if (!Array.isArray(contentSequence)) return "";
-
-  const textEntry = contentSequence.find(entry => entry?.type === "text");
-  return normalizeText(textEntry?.text);
+function getTextEntry(contentSequence) {
+  if (!Array.isArray(contentSequence)) return null;
+  return contentSequence.find(entry => entry?.type === "text") || null;
 }
 
 function answerId(value) {

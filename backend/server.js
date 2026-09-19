@@ -20,6 +20,12 @@ const {
   writePublication
 } = require("./publicationStorage");
 const { projectPublicationForAccess } = require("./publicationAccess");
+const {
+  createDefaultSpeechGenerationService
+} = require("./speechGenerationService");
+const {
+  validateSpeechGenerationRequest
+} = require("./speechGenerationContract");
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -33,16 +39,27 @@ const SUBMISSION_STORAGE_DIR =
   process.env.SUBMISSION_STORAGE_DIR || path.join(__dirname, "submissions");
 const PUBLICATION_STORAGE_DIR =
   process.env.PUBLICATION_STORAGE_DIR || path.join(__dirname, "publications");
+const SPEECH_AUDIO_STORAGE_DIR =
+  process.env.SPEECH_AUDIO_STORAGE_DIR || path.join(__dirname, "speech-assets");
+const SPEECH_PROVENANCE_STORAGE_DIR =
+  process.env.SPEECH_PROVENANCE_STORAGE_DIR
+  || path.join(__dirname, "speech-provenance");
 
 fs.mkdirSync(TEMPLATE_STORAGE_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_STORAGE_DIR, { recursive: true });
 fs.mkdirSync(SUBMISSION_STORAGE_DIR, { recursive: true });
 fs.mkdirSync(PUBLICATION_STORAGE_DIR, { recursive: true });
+fs.mkdirSync(SPEECH_AUDIO_STORAGE_DIR, { recursive: true });
+fs.mkdirSync(SPEECH_PROVENANCE_STORAGE_DIR, { recursive: true });
 
 app.use(createCorsMiddleware());
 app.use(express.json({ limit: "50mb" }));
 
 app.use("/uploads", express.static(UPLOAD_STORAGE_DIR));
+app.use("/speech-audio", express.static(SPEECH_AUDIO_STORAGE_DIR, {
+  immutable: true,
+  maxAge: "1y"
+}));
 
 app.get("/", (req, res) => {
   res.send("Crossword backend running");
@@ -53,6 +70,16 @@ app.post("/api/publish", createPublishHandler());
 app.post("/api/submissions", createSubmissionHandler());
 
 app.post("/api/publications", createPublicationSaveHandler());
+
+app.post(
+  "/api/speech/musikkryss/intro",
+  createMusikkryssIntroSpeechGenerationHandler()
+);
+
+app.post(
+  "/api/speech/musikkryss/answer",
+  createMusikkryssAnswerSpeechGenerationHandler()
+);
 
 app.post(
   "/api/publications/:publicationId/help-access",
@@ -405,6 +432,97 @@ function createCrosswordPublicationsListHandler({
   };
 }
 
+function createMusikkryssIntroSpeechGenerationHandler({
+  generateIntro,
+  ...options
+} = {}) {
+  return createMusikkryssSpeechGenerationHandler({
+    ...options,
+    generateSpeech: generateIntro,
+    serviceMethod: "generateMusikkryssIntro"
+  });
+}
+
+function createMusikkryssAnswerSpeechGenerationHandler({
+  generateAnswer,
+  ...options
+} = {}) {
+  return createMusikkryssSpeechGenerationHandler({
+    ...options,
+    generateSpeech: generateAnswer,
+    serviceMethod: "generateMusikkryssAnswer"
+  });
+}
+
+function createMusikkryssSpeechGenerationHandler({
+  generateSpeech,
+  serviceMethod,
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  fsModule = fs,
+  pathModule = path,
+  audioStorageDir = SPEECH_AUDIO_STORAGE_DIR,
+  provenanceStorageDir = SPEECH_PROVENANCE_STORAGE_DIR,
+  publicBackendBaseUrl = PUBLIC_BACKEND_BASE_URL
+} = {}) {
+  return async (req, res) => {
+    try {
+      if (
+        !req.body
+        || typeof req.body !== "object"
+        || Array.isArray(req.body)
+        || Object.keys(req.body).some(key => key !== "request")
+        || !req.body.request
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "A provider-neutral SpeechGenerationRequest is required"
+        });
+      }
+
+      const generate = generateSpeech || (request => (
+        createDefaultSpeechGenerationService({
+          env,
+          fetchImpl,
+          fsModule,
+          pathModule,
+          audioStorageDir,
+          provenanceStorageDir,
+          publicBackendBaseUrl
+        })[serviceMethod](request)
+      ));
+      const request = validateSpeechGenerationRequest(req.body.request);
+      const spokenAudio = await generate(request);
+
+      return res.status(201).json({
+        success: true,
+        spokenAudio
+      });
+    } catch (err) {
+      if (
+        err.code === "SPEECH_REQUEST_INVALID"
+        || err.code === "SPEECH_SOURCE_UNSUPPORTED"
+      ) {
+        return res.status(400).json({ success: false, error: err.message });
+      }
+      if (err.code === "SPEECH_PROVIDER_CONFIGURATION_ERROR") {
+        return res.status(503).json({ success: false, error: err.message });
+      }
+      if (err.code === "SPEECH_PROVIDER_ERROR") {
+        return res.status(502).json({
+          success: false,
+          error: "Speech provider generation failed"
+        });
+      }
+      console.error(err);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to generate speech audio"
+      });
+    }
+  };
+}
+
 function validateSubmission(input = {}) {
   const publicationIdError = input.publicationId === undefined
     ? null
@@ -531,5 +649,7 @@ module.exports = {
   createPublicationSaveHandler,
   createPublicationHelpAccessHandler,
   createPublicationLoadHandler,
-  createCrosswordPublicationsListHandler
+  createCrosswordPublicationsListHandler,
+  createMusikkryssIntroSpeechGenerationHandler,
+  createMusikkryssAnswerSpeechGenerationHandler
 };

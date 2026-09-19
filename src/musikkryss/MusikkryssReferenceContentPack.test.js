@@ -43,6 +43,15 @@ test("reference pack loads all scripts and canonical solutions on fixed paths", 
   expect(findAnswer(content, 1, "across").solution).toBe("HAMMERED");
   expect(findAnswer(content, 1, "down").solution).toBe("HÅRDROCK");
   expect(findAnswer(content, 13, "across").solution).toBe("ABOVE");
+  expect(findAnswer(content, 1, "across").contentSequence[0].text)
+    .toContain("Svaret ska in på vågrätt ett.");
+  expect(findAnswer(content, 1, "down").contentSequence[0].text)
+    .toContain("Svaret ska in på lodrätt ett.");
+  expect(content.answers.every(answer => (
+    /Svaret ska in på (vågrätt|lodrätt) [^.]+\.$/u.test(
+      answer.contentSequence[0].text
+    )
+  ))).toBe(true);
 });
 
 test("reference solutions are crossing-consistent and help-complete", () => {
@@ -81,6 +90,26 @@ test("reference scripts and solutions persist through Template normalization", (
   expect(persisted.musikkryss.answers.map(answer => (
     answer.contentSequence[0].text
   ))).toEqual(reference.answers.map(answer => answer.contentSequence[0].text));
+  expect(findAnswer(persisted.musikkryss, 1, "across")
+    .contentSequence[0].speechText)
+    .toBe(findAnswer(reference, 1, "across").contentSequence[0].speechText);
+});
+
+test("only 1 across has a provider-neutral pronunciation override", () => {
+  const content = createMusikkryssReferenceContent();
+  const answer = findAnswer(content, 1, "across");
+
+  expect(answer.contentSequence[0].text).toBe(`Vi börjar tungt. Motörhead, med Lemmy Kilmister i spetsen, gav 2002 ut ett
+album med bland annat låtarna Walk a Crooked Mile och Brave New World.
+Vad heter albumet? Vi söker den engelska titeln på åtta bokstäver.
+Svaret ska in på vågrätt ett.`);
+  expect(answer.contentSequence[0].speechText).toBe(`Vi börjar tungt. Motörhead, med Lemmy Kilmister i spetsen, gav 2002 ut ett
+album med bland annat låtarna Walk a Crooked Mile och Brave New World.
+Vad heter albumet? Vi söker den engelska titeln på åtta bokstäver.
+Svaret ska in på vågrätt ett.`);
+  expect(content.answers.filter(candidate => (
+    Object.hasOwn(candidate.contentSequence[0], "speechText")
+  ))).toHaveLength(1);
 });
 
 test("solve projection strips every reference solution", () => {

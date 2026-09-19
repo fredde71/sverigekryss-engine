@@ -109,6 +109,20 @@ test("always derives answer paths from the selected format", () => {
     .toBe(true);
 });
 
+test("preserves provider-neutral speechText separately from display text", () => {
+  const input = createValidImport();
+  input.answers[0].contentSequence[0].speechText = "Anpassad uppläsning";
+
+  const result = importMusikkryssWeeklyContent(input);
+
+  expect(result.status).toBe("valid");
+  expect(result.content.answers[0].contentSequence[0]).toEqual({
+    type: "text",
+    text: input.answers[0].contentSequence[0].text,
+    speechText: "Anpassad uppläsning"
+  });
+});
+
 test("does not mutate import input or external session document and grid state", () => {
   const input = deepFreeze(createValidImport());
   const session = {

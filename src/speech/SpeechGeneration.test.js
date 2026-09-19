@@ -17,6 +17,9 @@ test("creates deterministic fingerprints from normalized speech source data", ()
   });
 
   expect(first.sourceFingerprint).toBe(second.sourceFingerprint);
+  expect(first.sourceFingerprint).toBe(
+    "speech-v1-fnv1a64-ee5847e462fc1e7a"
+  );
   expect(first.sourceFingerprint).toMatch(
     /^speech-v1-fnv1a64-[0-9a-f]{16}$/
   );
@@ -37,6 +40,42 @@ test("fingerprint changes with script, provider-neutral voice profile, or locale
   expect(changedScript.sourceFingerprint).not.toBe(baseline.sourceFingerprint);
   expect(changedVoice.sourceFingerprint).not.toBe(baseline.sourceFingerprint);
   expect(changedLocale.sourceFingerprint).not.toBe(baseline.sourceFingerprint);
+});
+
+test("speechText controls spoken fingerprint without changing display text", () => {
+  const first = createIntroRequest({
+    contentSequence: [{
+      type: "text",
+      text: "Motörhead visas för spelaren",
+      speechText: "Möterhed läses upp"
+    }]
+  });
+  const changedDisplayText = createIntroRequest({
+    contentSequence: [{
+      type: "text",
+      text: "Annan visningstext",
+      speechText: "Möterhed läses upp"
+    }]
+  });
+  const changedSpeechText = createIntroRequest({
+    contentSequence: [{
+      type: "text",
+      text: "Motörhead visas för spelaren",
+      speechText: "Motorhead läses upp"
+    }]
+  });
+
+  expect(first.contentSequence).toEqual([{
+    type: "text",
+    text: "Motörhead visas för spelaren",
+    speechText: "Möterhed läses upp"
+  }]);
+  expect(changedDisplayText.sourceFingerprint).toBe(first.sourceFingerprint);
+  expect(changedSpeechText.sourceFingerprint).not.toBe(first.sourceFingerprint);
+  expect(compareSpokenAudioReference({
+    request: changedSpeechText,
+    reference: createReference(first)
+  }).status).toBe("stale");
 });
 
 test("creates intro and directional-answer requests through one contract", () => {

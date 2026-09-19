@@ -7,8 +7,8 @@ Projekt: Sverigekryss Engine
 Senast uppdaterad:
 
 Efter browser-verifierat Musikkryss-produktionsflöde från producentimport till
-Editor, Play och separat publicering av facit/hjälp samt etablerad
-provider-oberoende SpeechGeneration-domängrund.
+Editor, Play och separat publicering av facit/hjälp samt en verifierad
+provider-oberoende speech-generation-pipeline för intro och riktningssvar.
 
 ---
 
@@ -79,11 +79,25 @@ kan bevara `musikkryss.introSpokenAudio` och `musikkryss.answers[].spokenAudio`.
 tidigare referens `stale`; saknad referens är `unavailable` och matchande referens
 är `current`.
 
+Textposter kan dessutom ha ett valfritt provider-neutralt `speechText`. `text`
+förblir oförändrad för Editor och Play, medan fingerprint och talgenerering
+använder `speechText` när det finns och annars `text`. `speechText` är en
+naturlig alternativ uppläsning, inte ett provider-specifikt uttalsformat eller
+ett fonetiskt transkriptionssystem. Ändrad `speechText` gör befintlig audio
+`stale`. Referensinnehållets riktningsfraser använder formen ”vågrätt ett” och
+”lodrätt ett” med naturlig, korrekt stavning.
+
 Tal ska genereras före publicering och återanvändas av alla spelare, inte skapas
-live per spelare. Provideradaptrar, provider-röst-ID:n, API-parametrar och
-hemligheter ingår inte i Template eller domänkontrakten. De ska ägas server-side
-av kommande `SpeechGenerationService` och provideradapter. Ingen provider,
-generation, endpoint eller Play-uppspelning är ännu implementerad.
+live per spelare. Backendens `SpeechGenerationService` använder den första
+server-side provideradaptern, ElevenLabs, för både Musikkryss-intro och enskilda
+riktningssvar. Produktprofilen `sv-female-natural-v1` mappas till provider-röst
+och modell enbart server-side. Genererade MP3-assets lagras immutabelt separat
+från Template, återanvänds via fingerprint och exponeras genom stabil publik URL;
+providerproveniens lagras separat och privat. Providerfel loggas server-side med
+sanerade statusdetaljer men exponeras inte i publikt API. API-nyckel,
+provider-röst-ID och providerparametrar ingår aldrig i Template eller svaret.
+Play-uppspelning, batchgenerering och automatiserad publiceringssekvensering är
+ännu inte implementerade.
 
 Följande är färdigt i aktuell editor/play-produktion:
 
@@ -225,8 +239,8 @@ Den verifierade Wordex-källan ger ett redigerbart 25 × 25-förslag. Explicita 
 
 Fortsatt forskning om image-aligned linjegeometri, avbrutna linjer, projection ridges, fragment tracks och lattice-conditioned evidence är senarelagd till efter V1. Ground Truth används fortsatt endast för validering.
 
-Nästa produktmilstolpe är backend `SpeechGenerationService` och den första
-server-side TTS-provideradaptern ovanpå den provider-oberoende domängrunden.
+Nästa speech-milstolpe är provider-neutral Editor-orkestrering för explicit
+generering och applicering av aktuella audioreferenser, följt av Play-uppspelning.
 Slutlig UX-polering är senarelagd. Avancerad automatisk klassificering av celler
 och ledtrådar är också senarelagd bortom V1.
 

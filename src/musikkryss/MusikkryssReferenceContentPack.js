@@ -20,58 +20,61 @@ const REFERENCE_ANSWERS = Object.freeze({
   "1:across": answer("HAMMERED", `Vi börjar tungt. Motörhead, med Lemmy Kilmister i spetsen, gav 2002 ut ett
 album med bland annat låtarna Walk a Crooked Mile och Brave New World.
 Vad heter albumet? Vi söker den engelska titeln på åtta bokstäver.
-Svaret ska in på ett vågrätt.`),
+Svaret ska in på vågrätt ett.`, `Vi börjar tungt. Motörhead, med Lemmy Kilmister i spetsen, gav 2002 ut ett
+album med bland annat låtarna Walk a Crooked Mile och Brave New World.
+Vad heter albumet? Vi söker den engelska titeln på åtta bokstäver.
+Svaret ska in på vågrätt ett.`),
   "1:down": answer("HÅRDROCK", `Vi stannar kvar bland distade gitarrer. Deep Purple, AC/DC och Motörhead
 förknippas alla med en tyngre form av rockmusik. Vilken musikgenre söker vi?
-Åtta bokstäver. Svaret ska in på ett lodrätt.`),
+Åtta bokstäver. Svaret ska in på lodrätt ett.`),
   "2:down": answer("METALLICA", `Nu söker vi ett amerikanskt metalband. Bandet bildades i början av 1980-talet
 och har gjort låtar som Enter Sandman, Nothing Else Matters och Master of
-Puppets. Vad heter bandet? Nio bokstäver. Svaret ska in på två lodrätt.`),
+Puppets. Vad heter bandet? Nio bokstäver. Svaret ska in på lodrätt två.`),
   "3:down": answer("EBONY", `Paul McCartney och Stevie Wonder fick en stor hit tillsammans 1982 med
 Ebony and Ivory. Titeln anspelar på de svarta och vita tangenterna på ett piano.
 Vi söker det första ordet i låttiteln. Fem bokstäver.
-Svaret ska in på tre lodrätt.`),
+Svaret ska in på lodrätt tre.`),
   "4:down": answer("EGO", `Den svenska artisten Agnes släppte 2025 en singel om att lägga jaget åt sidan
 och släppa kontrollen. Titeln består av bara tre bokstäver. Vad heter låten?
-Svaret ska in på fyra lodrätt.`),
+Svaret ska in på lodrätt fyra.`),
   "5:down": answer("GITARRER", `Nu blir det instrument. Akustiska, elektriska, tolvsträngade och klassiska.
 Eric Clapton, Jimi Hendrix och Mark Knopfler har alla gjort sig berömda med
 olika varianter av samma instrument. Vi söker instrumentet i plural.
-Åtta bokstäver. Svaret ska in på fem lodrätt.`),
+Åtta bokstäver. Svaret ska in på lodrätt fem.`),
   "6:across": answer("OBOIST", `Vi lämnar rockscenen och går in i orkestern. En oboe är ett träblåsinstrument
 med dubbelt rörblad. Vad kallas personen som spelar oboe?
-Sex bokstäver. Svaret ska in på sex vågrätt.`),
+Sex bokstäver. Svaret ska in på vågrätt sex.`),
   "7:across": answer("RALLY", `Lite svensk radiohistoria. Under slutet av 1990-talet och början av 2000-talet
 sändes ett populärt humorprogram i P3 med bland andra Anna Mannheimer och
 Peter Apelgren. Programmet blev känt för sketcher, parodier och egna versioner
 av kända låtar. Vad hette programmet? Fem bokstäver.
-Svaret ska in på sju vågrätt.`),
+Svaret ska in på vågrätt sju.`),
   "8:across": answer("AMOR", `Nu tar vi hjälp av spanskan och latinet. Det här fyrbokstavsordet betyder
 kärlek och förekommer flitigt i musik, från operor och visor till moderna
 poplåtar. Vilket ord söker vi? Fyra bokstäver.
-Svaret ska in på åtta vågrätt.`),
+Svaret ska in på vågrätt åtta.`),
   "8:down": answer("ADELE", `Från kärlek till en artist som har sjungit mycket om just kärlek och relationer.
 Den brittiska sångerskan bakom Hello, Someone Like You, Rolling in the Deep
 och Easy on Me använder sitt förnamn som artistnamn. Vad heter hon?
-Fem bokstäver. Svaret ska in på åtta lodrätt.`),
+Fem bokstäver. Svaret ska in på lodrätt åtta.`),
   "9:across": answer("CHINESE", `Nu tillbaka till rocken. Guns N' Roses gav 2008 ut det efterlängtade albumet
 Chinese Democracy. Vi söker det första ordet i albumtiteln.
-Sju bokstäver. Svaret ska in på nio vågrätt.`),
+Sju bokstäver. Svaret ska in på vågrätt nio.`),
   "10:down": answer("EKO", `När ett ljud studsar mot en yta och kommer tillbaka kan vi höra samma ljud
 en gång till. Fenomenet används också som effekt i musikproduktion.
 Vad kallas det på svenska? Tre bokstäver.
-Svaret ska in på tio lodrätt.`),
+Svaret ska in på lodrätt tio.`),
   "11:across": answer("RE", `Nu blir det musikteori. I solmisation känner vi igen serien do, re, mi, fa,
 sol, la och ti. Vilken stavelse kommer direkt efter do?
-Två bokstäver. Svaret ska in på elva vågrätt.`),
+Två bokstäver. Svaret ska in på vågrätt elva.`),
   "12:across": answer("LP", `Före streamingens tid var vinylskivan ett självklart sätt att ge ut ett helt
 album. Den större vinylskivan som normalt spelas med trettiotre och en tredjedels
 varv per minut brukar betecknas med två bokstäver. Vilka?
-Svaret ska in på tolv vågrätt.`),
+Svaret ska in på vågrätt tolv.`),
   "13:across": answer("ABOVE", `Vi avslutar elektroniskt. Den brittiska trancegruppen Above & Beyond består
 av Jono Grant, Tony McGuinness och Paavo Siljamäki.
 Vi söker det första ordet i gruppnamnet. Fem bokstäver.
-Svaret ska in på tretton vågrätt.`)
+Svaret ska in på vågrätt tretton.`)
 });
 
 const REFERENCE_CONTENT = createReferenceContent();
@@ -108,7 +111,13 @@ function createReferenceContent() {
         direction: definition.direction,
         answerPath: [...definition.answerPath],
         solution: reference.solution,
-        contentSequence: [{ type: "text", text: reference.script }]
+        contentSequence: [{
+          type: "text",
+          text: reference.script,
+          ...(reference.speechText
+            ? { speechText: reference.speechText }
+            : {})
+        }]
       };
     })
   });
@@ -116,8 +125,12 @@ function createReferenceContent() {
   return deepFreeze(content);
 }
 
-function answer(solution, script) {
-  return Object.freeze({ solution, script });
+function answer(solution, script, speechText) {
+  return Object.freeze({
+    solution,
+    script,
+    ...(speechText ? { speechText } : {})
+  });
 }
 
 function deepFreeze(value) {

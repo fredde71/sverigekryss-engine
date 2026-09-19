@@ -108,7 +108,10 @@ export function normalizeMusikkryssContent(
         answerPath: [...definition.answerPath],
         contentSequence: [{
           type: "text",
-          text: typeof textEntry?.text === "string" ? textEntry.text : ""
+          text: typeof textEntry?.text === "string" ? textEntry.text : "",
+          ...(typeof textEntry?.speechText === "string"
+            ? { speechText: textEntry.speechText }
+            : {})
         }],
         ...(solution ? { solution } : {}),
         ...(spokenAudio ? { spokenAudio } : {})

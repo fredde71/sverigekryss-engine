@@ -88,7 +88,11 @@ test("normalizes content independently by number and direction without mutation"
       {
         number: 1,
         direction: "across",
-        contentSequence: [{ type: "text", text: "Vågrät text" }]
+        contentSequence: [{
+          type: "text",
+          text: "Vågrät text",
+          speechText: "Vågrät uppläsning"
+        }]
       },
       {
         number: 1,
@@ -105,6 +109,8 @@ test("normalizes content independently by number and direction without mutation"
   expect(result.introScript).toBe("Välkommen");
   expect(result.answers).toHaveLength(15);
   expect(result.answers[0].contentSequence[0].text).toBe("Vågrät text");
+  expect(result.answers[0].contentSequence[0].speechText)
+    .toBe("Vågrät uppläsning");
   expect(result.answers[1].contentSequence[0].text).toBe("Lodrät text");
   expect(result.answers[0].answerPath).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   expect(result.answers[1].answerPath).toEqual([0, 10, 20, 30, 40, 50, 60, 70]);

@@ -23,6 +23,8 @@
 !/backend/submissions/.gitkeep
 /backend/publications/*
 !/backend/publications/.gitkeep
+/backend/speech-assets/*
+/backend/speech-provenance/*
 .env.local
 .env.development.local
 .env.test.local

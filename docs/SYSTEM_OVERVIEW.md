@@ -215,10 +215,22 @@ fingerprint, voice profile och locale. Jämförelse mot aktuell request ger
 respektive riktningssvar, men känner inte till provider, provider-röst-ID,
 API-parametrar eller hemligheter.
 
+Varje textpost kan ha ett valfritt `speechText`. Den normala `text`-egenskapen
+fortsätter vara visnings-/redigeringstext. Speech-fingerprint och provideradapter
+använder `speechText` om det finns, annars `text`. Detta är en provider-neutral
+alternativ uppläsning med naturlig stavning, inte provider-markup eller ett
+fonetiskt system. Samma regel gäller intro- och svarsförfrågningar.
+
 Talproduktionen ska ske före publicering och dess asset återanvändas av alla
-spelare. Nästa systemgräns är en backendägd `SpeechGenerationService` med en
-utbytbar server-side provideradapter och server-side secrets. Någon provider,
-genereringsendpoint eller Runtime/Play-uppspelning ingår ännu inte.
+spelare. Backendens `SpeechGenerationService` validerar det provider-neutrala
+request-kontraktet och orkestrerar den utbytbara ElevenLabs-adaptern samt separat
+immutable audio-/provenienslagring. Intro och riktningssvar har separata
+genereringsendpoints men går genom samma service, provider och
+fingerprint-baserade assetåteranvändning. MP3-filen exponeras via stabil publik
+URL medan providerproveniens, röst-/modellmappning och secrets stannar server-side.
+Sanerad providerstatus loggas endast server-side; publikt API returnerar ett
+generiskt providerfel. Runtime/Play känner fortsatt endast den provider-neutrala
+`SpokenAudioReference`; uppspelningskontroller är ännu inte implementerade.
 
 EditorWorkspace äger editor composition:
 

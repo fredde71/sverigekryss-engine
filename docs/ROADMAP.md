@@ -68,17 +68,24 @@ Musikkryss produktionsimport och Play-flöde är genomfört och browser-verifier
   manus, locale eller provider-neutral voice profile ändras
 - provider-neutrala audioreferenser kan bevaras i Template; providerdata och
   secrets ingår inte i Template, App, Runtime eller Play
+- valfri provider-neutral `speechText` låter intro och svar ha en separat naturlig
+  uppläsning utan att ändra visningstext; fingerprints följer den effektiva
+  uppläsningstexten och gör tidigare audio stale när den ändras
+- backend `SpeechGenerationService`, ElevenLabs-adapter och endpoints för intro
+  respektive riktningssvar är implementerade ovanpå samma request-/referenskontrakt
+- genererade MP3-assets är separata, immutabla och fingerprint-återanvändbara;
+  providerproveniens och konfiguration stannar server-side och providerfel loggas
+  sanerat utan att exponeras publikt
 
 Det registrerade formatet väljs utan filnamnslogik. `Ladda referenskryss` är
 fortsatt endast en explicit utvecklings-/demofunktion och referensarbetsboken är
 en development-/manuell verifieringsfixture, inte runtime-standard eller del av
 produktionspubliceringen.
 
-Nästa Musikkryss-milstolpe är en backendägd `SpeechGenerationService` och den
-första utbytbara server-side TTS-provideradaptern. Generering ska ske före
-publicering och samma asset ska återanvändas av alla spelare; providerhemligheter
-ska stanna server-side. Genereringsendpoint, Play-uppspelning och AI-röst är ännu
-inte implementerade. Slutlig UX-polering är senarelagd.
+Nästa Musikkryss speech-milstolpe är provider-neutral Editor-orkestrering för
+explicit generering och applicering av aktuella audioreferenser, följt av
+Play-uppspelning. Batchgenerering, automatisk uppspelning och slutlig
+röstvals-UX är ännu inte implementerade. Slutlig UX-polering är senarelagd.
 
 V1-arbetsflödet är browser-testat end-to-end:
 

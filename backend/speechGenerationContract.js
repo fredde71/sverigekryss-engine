@@ -1,13 +1,14 @@
-export const SPEECH_CONTRACT_VERSION = 1;
-
+const SPEECH_CONTRACT_VERSION = 1;
 const REQUEST_TYPE = "speech-generation-request";
 const AUDIO_REFERENCE_TYPE = "spoken-audio-reference";
-const COMPARISON_TYPE = "spoken-audio-reference-comparison";
 const REQUEST_KEYS = new Set([
+  "type",
+  "version",
   "sourceRef",
   "contentSequence",
   "locale",
-  "voiceProfileId"
+  "voiceProfileId",
+  "sourceFingerprint"
 ]);
 const AUDIO_REFERENCE_KEYS = new Set([
   "type",
@@ -21,83 +22,92 @@ const AUDIO_REFERENCE_KEYS = new Set([
   "locale"
 ]);
 
-export function createSpeechGenerationRequest(input) {
-  assertPlainObject(input, "SpeechGenerationRequest input");
-  assertOnlyKeys(input, REQUEST_KEYS, "SpeechGenerationRequest");
-
-  const sourceRef = normalizeSourceRef(input.sourceRef);
-  const contentSequence = normalizeContentSequence(input.contentSequence);
-  const locale = requireNonEmptyString(input.locale, "locale");
-  const voiceProfileId = requireNonEmptyString(
-    input.voiceProfileId,
-    "voiceProfileId"
-  );
-  const sourceFingerprint = createSpeechSourceFingerprint({
-    contentSequence,
-    locale,
-    voiceProfileId
-  });
-
-  return deepFreeze({
-    type: REQUEST_TYPE,
-    version: SPEECH_CONTRACT_VERSION,
-    sourceRef,
-    contentSequence,
-    locale,
-    voiceProfileId,
-    sourceFingerprint
-  });
-}
-
-export function createSpeechSourceFingerprint({
+function createSpeechGenerationRequest({
+  sourceRef,
   contentSequence,
   locale,
   voiceProfileId
 }) {
+  const normalizedSourceRef = normalizeSourceRef(sourceRef);
   const normalizedContentSequence = normalizeContentSequence(contentSequence);
   const normalizedLocale = requireNonEmptyString(locale, "locale");
   const normalizedVoiceProfileId = requireNonEmptyString(
     voiceProfileId,
     "voiceProfileId"
   );
+
+  return deepFreeze({
+    type: REQUEST_TYPE,
+    version: SPEECH_CONTRACT_VERSION,
+    sourceRef: normalizedSourceRef,
+    contentSequence: normalizedContentSequence,
+    locale: normalizedLocale,
+    voiceProfileId: normalizedVoiceProfileId,
+    sourceFingerprint: createSpeechSourceFingerprint({
+      contentSequence: normalizedContentSequence,
+      locale: normalizedLocale,
+      voiceProfileId: normalizedVoiceProfileId
+    })
+  });
+}
+
+function validateSpeechGenerationRequest(input) {
+  assertPlainObject(input, "SpeechGenerationRequest");
+  assertOnlyKeys(input, REQUEST_KEYS, "SpeechGenerationRequest");
+  if (input.type !== REQUEST_TYPE) {
+    throw contractError("SpeechGenerationRequest type is invalid");
+  }
+  if (input.version !== SPEECH_CONTRACT_VERSION) {
+    throw contractError("SpeechGenerationRequest version is unsupported");
+  }
+
+  const normalized = createSpeechGenerationRequest(input);
+  if (input.sourceFingerprint !== normalized.sourceFingerprint) {
+    throw contractError("SpeechGenerationRequest sourceFingerprint is invalid");
+  }
+
+  return normalized;
+}
+
+function createSpeechSourceFingerprint({ contentSequence, locale, voiceProfileId }) {
   const canonicalSource = JSON.stringify({
     contractVersion: SPEECH_CONTRACT_VERSION,
-    contentSequence: createSpokenContentSequence(normalizedContentSequence),
-    locale: normalizedLocale,
-    voiceProfileId: normalizedVoiceProfileId
+    contentSequence: createSpokenContentSequence(
+      normalizeContentSequence(contentSequence)
+    ),
+    locale: requireNonEmptyString(locale, "locale"),
+    voiceProfileId: requireNonEmptyString(voiceProfileId, "voiceProfileId")
   });
 
   return `speech-v${SPEECH_CONTRACT_VERSION}-fnv1a64-${fnv1a64(canonicalSource)}`;
 }
 
-export function createSpokenAudioReference(input) {
-  assertPlainObject(input, "SpokenAudioReference input");
+function createSpokenAudioReference(input) {
+  assertPlainObject(input, "SpokenAudioReference");
   assertOnlyKeys(input, AUDIO_REFERENCE_KEYS, "SpokenAudioReference");
   if (input.type !== undefined && input.type !== AUDIO_REFERENCE_TYPE) {
-    throw new TypeError("SpokenAudioReference type is invalid");
+    throw contractError("SpokenAudioReference type is invalid");
   }
   if (
     input.version !== undefined
     && input.version !== SPEECH_CONTRACT_VERSION
   ) {
-    throw new TypeError("SpokenAudioReference version is unsupported");
+    throw contractError("SpokenAudioReference version is unsupported");
   }
-
-  const assetVersion = input.assetVersion;
-  if (!Number.isInteger(assetVersion) || assetVersion < 1) {
-    throw new TypeError("assetVersion must be a positive integer");
+  if (!Number.isInteger(input.assetVersion) || input.assetVersion < 1) {
+    throw contractError("assetVersion must be a positive integer");
   }
 
   const mediaType = requireNonEmptyString(input.mediaType, "mediaType");
   if (!mediaType.startsWith("audio/")) {
-    throw new TypeError("mediaType must be an audio media type");
+    throw contractError("mediaType must be an audio media type");
   }
 
   return deepFreeze({
     type: AUDIO_REFERENCE_TYPE,
     version: SPEECH_CONTRACT_VERSION,
     assetId: requireNonEmptyString(input.assetId, "assetId"),
-    assetVersion,
+    assetVersion: input.assetVersion,
     mediaType,
     publicUrl: requireNonEmptyString(input.publicUrl, "publicUrl"),
     sourceFingerprint: requireNonEmptyString(
@@ -112,42 +122,12 @@ export function createSpokenAudioReference(input) {
   });
 }
 
-export function normalizeSpokenAudioReference(input) {
-  if (input == null) return null;
-
-  try {
-    return createSpokenAudioReference(input);
-  } catch {
-    return null;
-  }
-}
-
-export function compareSpokenAudioReference({ request, reference }) {
-  assertSpeechGenerationRequest(request);
-  const normalizedReference = normalizeSpokenAudioReference(reference);
-  const status = !normalizedReference
-    ? "unavailable"
-    : normalizedReference.sourceFingerprint === request.sourceFingerprint
-      ? "current"
-      : "stale";
-
-  return deepFreeze({
-    type: COMPARISON_TYPE,
-    version: SPEECH_CONTRACT_VERSION,
-    status,
-    requestFingerprint: request.sourceFingerprint,
-    referenceFingerprint: normalizedReference?.sourceFingerprint ?? null
-  });
-}
-
 function normalizeSourceRef(value) {
   assertPlainObject(value, "sourceRef");
-
   if (value.type === "musikkryss-intro") {
     assertOnlyKeys(value, new Set(["type"]), "Musikkryss intro sourceRef");
     return deepFreeze({ type: "musikkryss-intro" });
   }
-
   if (value.type === "musikkryss-answer") {
     assertOnlyKeys(
       value,
@@ -155,10 +135,10 @@ function normalizeSourceRef(value) {
       "Musikkryss answer sourceRef"
     );
     if (!Number.isInteger(value.number) || value.number < 1) {
-      throw new TypeError("Musikkryss answer number must be a positive integer");
+      throw contractError("Musikkryss answer number must be a positive integer");
     }
     if (value.direction !== "across" && value.direction !== "down") {
-      throw new TypeError("Musikkryss answer direction is invalid");
+      throw contractError("Musikkryss answer direction is invalid");
     }
     return deepFreeze({
       type: "musikkryss-answer",
@@ -166,26 +146,24 @@ function normalizeSourceRef(value) {
       direction: value.direction
     });
   }
-
-  throw new TypeError("Unsupported speech sourceRef");
+  throw contractError("Unsupported speech sourceRef");
 }
 
 function normalizeContentSequence(value) {
   if (!Array.isArray(value) || value.length === 0) {
-    throw new TypeError("contentSequence must be a non-empty array");
+    throw contractError("contentSequence must be a non-empty array");
   }
-
   return value.map((entry, index) => {
     assertPlainObject(entry, `contentSequence[${index}]`);
     if (typeof entry.type !== "string" || entry.type.trim() === "") {
-      throw new TypeError(`contentSequence[${index}].type is required`);
+      throw contractError(`contentSequence[${index}].type is required`);
     }
     if (
       entry.type === "text"
       && Object.hasOwn(entry, "speechText")
       && typeof entry.speechText !== "string"
     ) {
-      throw new TypeError(
+      throw contractError(
         `contentSequence[${index}].speechText must be a string`
       );
     }
@@ -209,7 +187,7 @@ function createSpokenContentSequence(contentSequence) {
 function normalizeSerializableValue(value, path) {
   if (value === null || typeof value === "boolean" || typeof value === "number") {
     if (typeof value === "number" && !Number.isFinite(value)) {
-      throw new TypeError(`${path} contains a non-finite number`);
+      throw contractError(`${path} contains a non-finite number`);
     }
     return value;
   }
@@ -227,7 +205,7 @@ function normalizeSerializableValue(value, path) {
       normalizeSerializableValue(value[key], `${path}.${key}`)
     ]));
   }
-  throw new TypeError(`${path} must contain only serializable domain data`);
+  throw contractError(`${path} must contain only serializable domain data`);
 }
 
 function fnv1a64(value) {
@@ -237,14 +215,9 @@ function fnv1a64(value) {
 
   for (const character of value) {
     low = (low ^ character.codePointAt(0)) >>> 0;
-
     const lowProduct = low * primeLow;
     const carry = Math.floor(lowProduct / 0x100000000);
-    high = (
-      (high * primeLow)
-      + (low * 0x100)
-      + carry
-    ) >>> 0;
+    high = ((high * primeLow) + (low * 0x100) + carry) >>> 0;
     low = lowProduct >>> 0;
   }
 
@@ -252,20 +225,9 @@ function fnv1a64(value) {
     + low.toString(16).padStart(8, "0");
 }
 
-function assertSpeechGenerationRequest(value) {
-  if (
-    !isPlainObject(value)
-    || value.type !== REQUEST_TYPE
-    || value.version !== SPEECH_CONTRACT_VERSION
-    || typeof value.sourceFingerprint !== "string"
-  ) {
-    throw new TypeError("request must be a SpeechGenerationRequest");
-  }
-}
-
 function requireNonEmptyString(value, field) {
   if (typeof value !== "string" || value.trim() === "") {
-    throw new TypeError(`${field} must be a non-empty string`);
+    throw contractError(`${field} must be a non-empty string`);
   }
   return value.trim().normalize("NFC");
 }
@@ -273,7 +235,7 @@ function requireNonEmptyString(value, field) {
 function assertOnlyKeys(value, allowedKeys, contractName) {
   const unexpected = Object.keys(value).filter(key => !allowedKeys.has(key));
   if (unexpected.length > 0) {
-    throw new TypeError(
+    throw contractError(
       `${contractName} contains unsupported fields: ${unexpected.join(", ")}`
     );
   }
@@ -281,7 +243,7 @@ function assertOnlyKeys(value, allowedKeys, contractName) {
 
 function assertPlainObject(value, name) {
   if (!isPlainObject(value)) {
-    throw new TypeError(`${name} must be an object`);
+    throw contractError(`${name} must be an object`);
   }
 }
 
@@ -300,3 +262,17 @@ function deepFreeze(value) {
   Object.values(value).forEach(deepFreeze);
   return Object.freeze(value);
 }
+
+function contractError(message) {
+  const error = new TypeError(message);
+  error.code = "SPEECH_REQUEST_INVALID";
+  return error;
+}
+
+module.exports = {
+  SPEECH_CONTRACT_VERSION,
+  createSpeechGenerationRequest,
+  createSpeechSourceFingerprint,
+  createSpokenAudioReference,
+  validateSpeechGenerationRequest
+};
